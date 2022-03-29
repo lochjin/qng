@@ -96,7 +96,6 @@ func (this *MeerCrypto) Mine(wg *sync.WaitGroup) {
 			if this.HasNewWork || this.ForceStop {
 				break
 			}
-
 			hData := make([]byte, 128)
 			copy(hData[0:types.MaxBlockHeaderPayload-pow.PROOFDATA_LENGTH], this.header.BlockData())
 			nonce++
@@ -114,6 +113,8 @@ func (this *MeerCrypto) Mine(wg *sync.WaitGroup) {
 					subm += "-" + this.header.JobID + "-" + this.header.Exnonce2
 				}
 				this.SubmitData <- subm
+
+				time.Sleep(time.Second*30)
 			}
 		}
 	}

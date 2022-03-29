@@ -2,6 +2,7 @@ package peers
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/qnr"
@@ -242,9 +243,11 @@ func (p *Status) SubscribedToSubnet(index uint64) []peer.ID {
 }
 
 func (p *Status) StatsSnapshots() []*StatsSnap {
+	fmt.Println("测试 Status.StatsSnapshots")
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
+	fmt.Println("测试 Status.StatsSnapshots 1")
 	pes := make([]*StatsSnap, 0, len(p.peers))
 	for _, pe := range p.peers {
 		ss, err := pe.StatsSnapshot()

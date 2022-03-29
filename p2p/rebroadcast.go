@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
@@ -58,8 +59,9 @@ func (r *Rebroadcast) Stop() error {
 	log.Info("Rebroadcast shutting down")
 
 	close(r.quit)
-
+	fmt.Println("测试3")
 	r.wg.Wait()
+	fmt.Println("测试4")
 	return nil
 
 }
@@ -108,6 +110,7 @@ out:
 			r.onRegainMempool()
 
 		case <-r.quit:
+			fmt.Println("测试1")
 			break out
 		}
 	}
@@ -122,6 +125,7 @@ cleanup:
 		}
 	}
 	r.wg.Done()
+	fmt.Println("测试2")
 }
 
 func (r *Rebroadcast) AddInventory(h *hash.Hash, data interface{}) {

@@ -24,7 +24,7 @@ import (
 
 func main() {
 	// Initialize the goroutine count,  Use all processor cores.
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(2)
 
 	// Block and transaction processing can cause bursty allocations.  This
 	// limits the garbage collector from excessively overallocating during

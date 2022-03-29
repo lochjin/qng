@@ -71,7 +71,7 @@ func (this *QitmeerWork) Get() bool {
 		this.Block.ParentRoot = header.ParentRoot
 		this.Block.WorkData = header.BlockData()
 		this.Block.Target = fmt.Sprintf("%064x", pow.CompactToBig(header.Difficulty))
-		common.MinerLoger.Info(fmt.Sprintf("getRemoteBlockTemplate , target :%s", this.Block.Target))
+		common.MinerLoger.Info(fmt.Sprintf("getRemoteBlockTemplate , target :%s ,ParentRoot:%s", this.Block.Target,this.Block.ParentRoot.String()))
 		return true
 	}
 }

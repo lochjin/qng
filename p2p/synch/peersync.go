@@ -86,6 +86,7 @@ func (ps *PeerSync) handler() {
 
 out:
 	for {
+		fmt.Println("测试:PeerSync.handler")
 		select {
 		case m := <-ps.msgChan:
 			switch msg := m.(type) {
@@ -170,8 +171,11 @@ func (ps *PeerSync) handleStallSample() {
 	if atomic.LoadInt32(&ps.shutdown) != 0 {
 		return
 	}
+	fmt.Println("lastSync1:",ps.lastSync)
 	if ps.HasSyncPeer() {
+		fmt.Println("lastSync2:",ps.lastSync,ps.sy.PeerInterval)
 		if time.Since(ps.lastSync) >= ps.sy.PeerInterval {
+			fmt.Println("lastSync3:",ps.lastSync)
 			ps.updateSyncPeer(true)
 		}
 	}
@@ -184,16 +188,18 @@ func (ps *PeerSync) Pause() chan<- struct{} {
 }
 
 func (ps *PeerSync) SyncPeer() *peers.Peer {
+	fmt.Println("PeerSync.SyncPeer")
 	ps.splock.RLock()
 	defer ps.splock.RUnlock()
-
+	fmt.Println("PeerSync.SyncPeer end")
 	return ps.syncPeer
 }
 
 func (ps *PeerSync) SetSyncPeer(pe *peers.Peer) {
+	fmt.Println("PeerSync.SetSyncPeer")
 	ps.splock.Lock()
 	defer ps.splock.Unlock()
-
+	fmt.Println("PeerSync.SetSyncPeer end")
 	ps.syncPeer = pe
 
 	if pe != nil {
@@ -225,9 +231,10 @@ func (ps *PeerSync) OnPeerDisconnected(pe *peers.Peer) {
 }
 
 func (ps *PeerSync) isSyncPeer(pe *peers.Peer) bool {
+	fmt.Println("PeerSync.isSyncPeer")
 	ps.splock.RLock()
 	defer ps.splock.RUnlock()
-
+	fmt.Println("PeerSync.isSyncPeer end")
 	if ps.syncPeer == nil || pe == nil {
 		return false
 	}

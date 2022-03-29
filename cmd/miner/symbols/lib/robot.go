@@ -248,6 +248,7 @@ func (this *QitmeerRobot) SubmitWork() {
 					}, int64(this.Cfg.OptionConfig.Timeout), func() {
 						err = errors.New("submit timeout")
 					})
+					fmt.Println("submit blockhash=",blockHash," parentRoot=",header.ParentRoot.String())
 				}
 				if err != nil {
 					if err != ErrSameWork || err == ErrSameWork {

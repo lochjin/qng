@@ -57,6 +57,7 @@ func (this *MinerBlockData) PackagePoolHeader(work *QitmeerWork, powType pow.Pow
 
 //the solo work submit structure
 func (this *MinerBlockData) PackageRpcHeader(work *QitmeerWork) {
+	fmt.Println("PackageRpcHeader")
 	bitesBy, _ := hex.DecodeString(work.Block.Target)
 	this.Target2 = common.Reverse(bitesBy[0:32])
 	bitesBy = common.Reverse(bitesBy[:8])

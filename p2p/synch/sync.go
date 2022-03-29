@@ -107,6 +107,7 @@ func (s *Sync) Stop() error {
 	if s.disconnectionNotify != nil {
 		s.p2p.Host().Network().StopNotify(s.disconnectionNotify)
 	}
+	fmt.Println("测试5")
 	return s.peerSync.Stop()
 }
 

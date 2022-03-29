@@ -301,8 +301,11 @@ func (p *Peer) CommitteeIndices() []uint64 {
 }
 
 func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
+	fmt.Println("测试 Peer.StatsSnapshot")
 	p.lock.RLock()
 	defer p.lock.RUnlock()
+
+	fmt.Println("测试 Peer.StatsSnapshot 1")
 
 	ss := &StatsSnap{
 		PeerID:     p.pid.String(),
