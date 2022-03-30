@@ -272,8 +272,13 @@ func (p *Status) Decay() {
 }
 
 func (p *Status) ForPeers(state PeerConnectionState, closure func(pe *Peer)) {
+	fmt.Println("Status.ForPeers")
+	log.Debug("Status.ForPeers")
 	p.lock.RLock()
 	defer p.lock.RUnlock()
+
+	fmt.Println("Status.ForPeers 1")
+	log.Debug("Status.ForPeers 1")
 
 	for _, pe := range p.peers {
 		if pe.ConnectionState() != state {
@@ -281,6 +286,9 @@ func (p *Status) ForPeers(state PeerConnectionState, closure func(pe *Peer)) {
 		}
 		closure(pe)
 	}
+
+	fmt.Println("Status.ForPeers 2")
+	log.Debug("Status.ForPeers 2")
 }
 
 func (p *Status) UpdateBroadcasts() {

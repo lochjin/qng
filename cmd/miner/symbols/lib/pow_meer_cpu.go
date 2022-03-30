@@ -114,7 +114,7 @@ func (this *MeerCrypto) Mine(wg *sync.WaitGroup) {
 				}
 				this.SubmitData <- subm
 
-				time.Sleep(time.Second*30)
+				time.Sleep(time.Second*3)
 			}
 		}
 	}

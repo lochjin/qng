@@ -82,13 +82,14 @@ out:
 			}
 
 		case <-timer.C:
-
+			fmt.Println("Rebroadcast.handler.timer.C")
+			log.Debug("Rebroadcast.handler.timer.C")
 			nds := []*notify.NotifyData{}
 			for h, data := range pendingInvs {
 				dh := h
 				if _, ok := data.(*types.TxDesc); ok {
 					if !r.s.TxMemPool().HaveTransaction(&dh) {
-						r.RemoveInventory(&dh)
+						delete(pendingInvs,dh)
 						continue
 					}
 				}
@@ -109,8 +110,12 @@ out:
 
 			r.onRegainMempool()
 
+			fmt.Println("Rebroadcast.handler.timer.C end")
+			log.Debug("Rebroadcast.handler.timer.C end")
+
 		case <-r.quit:
 			fmt.Println("测试1")
+			log.Debug("测试1")
 			break out
 		}
 	}
@@ -154,8 +159,9 @@ func (r *Rebroadcast) RegainMempool() {
 }
 
 func (r *Rebroadcast) onRegainMempool() {
+	mptxCount:=r.s.TxMemPool().Count()
 	if !r.regainMP {
-		if r.s.TxMemPool().Count() > 0 {
+		if  mptxCount> 0 {
 			return
 		}
 	}
@@ -166,10 +172,11 @@ func (r *Rebroadcast) onRegainMempool() {
 	r.regainMP = false
 
 	r.s.sy.Peers().ForPeers(peers.PeerConnected, func(pe *peers.Peer) {
+
 		if !protocol.HasServices(pe.Services(), protocol.Full) {
 			return
 		}
-		r.s.sy.SendMempoolRequest(r.s.Context(), pe)
+		r.s.sy.SendMempoolRequest(r.s.Context(), pe,uint64(mptxCount))
 	})
 }
 
