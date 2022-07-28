@@ -6,23 +6,28 @@ package main
 
 import (
 	"fmt"
-	"github.com/Qitmeer/qng/meerevm/cmd"
 	"github.com/Qitmeer/qng/common/roughtime"
 	"github.com/Qitmeer/qng/config"
 	_ "github.com/Qitmeer/qng/database/ffldb"
 	"github.com/Qitmeer/qng/log"
-	"github.com/Qitmeer/qng/params"
+	"github.com/Qitmeer/qng/meerevm/cmd"
 	"github.com/Qitmeer/qng/node"
+	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/services/common"
 	"github.com/Qitmeer/qng/services/index"
 	"github.com/Qitmeer/qng/version"
 	"gopkg.in/urfave/cli.v1"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"runtime/debug"
 )
 
 func main() {
+	go func() {
+		http.ListenAndServe("127.0.0.1:6060", nil)
+	}()
 	// Initialize the goroutine count,  Use all processor cores.
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
