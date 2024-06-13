@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// key:package path
+// value: logger level
 var packLevelMap = map[string]slog.Level{
 	"github.com/ethereum/go-ethereum/miner": slog.LevelDebug, // The original level is info
 }
