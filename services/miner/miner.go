@@ -787,7 +787,12 @@ func (m *Miner) handleStallSample() {
 			if err := m.CanMining(); err != nil {
 				return
 			}
-			go m.updateBlockTemplate(false)
+			go func() {
+				m.updateBlockTemplate(false)
+				if m.IsCPUMiner() && m.cfg.Generate {
+					m.worker.Update()
+				}
+			}()
 		}
 	}
 }
