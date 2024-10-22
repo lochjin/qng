@@ -49,6 +49,9 @@ func NewPublicMinerAPI(m *Miner) *PublicMinerAPI {
 
 // func (api *PublicMinerAPI) GetBlockTemplate(request *mining.TemplateRequest) (interface{}, error){
 func (api *PublicMinerAPI) GetBlockTemplate(capabilities []string, powType byte) (interface{}, error) {
+	if api.miner.IsCPUMiner() {
+		return nil, rpc.RpcInvalidError("This API cannot work in the CPU mining mode. Please switch to the GPT mining mode and restart the node.")
+	}
 	// Set the default mode and override it if supplied.
 	mode := "template"
 	request := json.TemplateRequest{Mode: mode, Capabilities: capabilities, PowType: powType}
@@ -170,6 +173,10 @@ func (api *PublicMinerAPI) GetMinerInfo() (interface{}, error) {
 }
 
 func (api *PublicMinerAPI) GetRemoteGBT(powType byte, extraNonce *bool) (interface{}, error) {
+	if api.miner.IsCPUMiner() {
+		return nil, rpc.RpcInvalidError("This API cannot work in the CPU mining mode. Please switch to the GPT mining mode and restart the node.")
+	}
+
 	reply := make(chan *gbtResponse)
 	coinbaseFlags := mining.CoinbaseFlagsStatic
 	if extraNonce != nil && *extraNonce {
