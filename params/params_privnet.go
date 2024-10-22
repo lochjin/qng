@@ -7,14 +7,15 @@
 package params
 
 import (
+	"math/big"
+	"time"
+
 	"github.com/Qitmeer/qng/common"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/ledger"
 	eparams "github.com/ethereum/go-ethereum/params"
-	"math/big"
-	"time"
 )
 
 // privNetPowLimit is the highest proof of work value a block can
@@ -120,10 +121,10 @@ var PrivNetParams = Params{
 	MaximumBlockSizes:        []int{1000000, 1310720},
 	MaxTxSize:                1000000,
 	WorkDiffAlpha:            1,
-	WorkDiffWindowSize:       1600,
+	WorkDiffWindowSize:       60,
 	WorkDiffWindows:          20,
 	TargetTimePerBlock:       time.Second * privTargetTimePerBlock,
-	TargetTimespan:           time.Second * privTargetTimePerBlock * 1600, // TimePerBlock * WindowSize
+	TargetTimespan:           time.Second * privTargetTimePerBlock * 60, // TimePerBlock * WindowSize
 	RetargetAdjustmentFactor: 2,
 
 	// Subsidy parameters.
