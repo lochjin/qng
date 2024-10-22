@@ -980,6 +980,13 @@ func (m *Miner) CheckSubMainChainTip(parents []*hash.Hash) error {
 		mt.GetHash().String(), mt.GetHeight(), mainTip.GetHash().String(), mainTip.GetHeight(), distance)
 }
 
+func (m *Miner) IsCPUMiner() bool {
+	if m.worker == nil {
+		return false
+	}
+	return m.worker.GetType() == CPUWorkerType
+}
+
 func NewMiner(consensus model.Consensus, policy *mining.Policy, txpool *mempool.TxPool, p2pSer model.P2PService) *Miner {
 	m := Miner{
 		msgChan:       make(chan interface{}),
