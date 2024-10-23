@@ -312,7 +312,7 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 		if err != nil {
 			return err
 		}
-
+		infoChange := false
 		if balance == nil {
 			if entry.IsCoinBase() ||
 				scriptClass == txscript.CLTVPubKeyHashTy {
@@ -321,13 +321,7 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 				balance = NewAcctBalance(uint64(entry.Amount().Value), 1, 0, 0)
 			}
 			a.info.total++
-			err = a.db.Update(func(tx legacydb.Tx) error {
-				return DBPutACCTInfo(tx, a.info)
-			})
-			if err != nil {
-				a.info.total--
-				return err
-			}
+			infoChange = true
 		} else {
 			if entry.IsCoinBase() ||
 				scriptClass == txscript.CLTVPubKeyHashTy {
@@ -384,9 +378,19 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 			}
 		}
 		log.Trace(fmt.Sprintf("Add balance: %s (%s)", addrStr, au.String()))
+
 		if a.isAllMode() {
 			if !a.info.Has(addrStr) {
 				a.info.Add(addrStr)
+				infoChange = true
+			}
+		}
+		if infoChange {
+			err = a.db.Update(func(tx legacydb.Tx) error {
+				return DBPutACCTInfo(tx, a.info)
+			})
+			if err != nil {
+				return err
 			}
 		}
 		return a.db.Update(func(tx legacydb.Tx) error {
