@@ -335,6 +335,9 @@ out:
 				} else {
 					log.Warn(fmt.Sprintf("Failed to submit new block:%s ,%v", block.Hash().String(), err))
 				}
+				if !w.discrete {
+					w.hasNewWork.Store(true)
+				}
 				continue
 			} else {
 				w.miner.StatsSubmit(startSB, block.Block().BlockHash().String(), len(block.Block().Transactions)-1)
