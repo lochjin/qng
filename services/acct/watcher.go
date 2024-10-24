@@ -36,15 +36,23 @@ func (aw *AcctBalanceWatcher) Add(op []byte, au AcctUTXOIWatcher) {
 }
 
 func (aw *AcctBalanceWatcher) Del(op []byte) {
-	key := hex.EncodeToString(op)
 	aw.lock.Lock()
+	defer aw.lock.Unlock()
+	aw.del(op)
+}
+
+func (aw *AcctBalanceWatcher) del(op []byte) {
+	key := hex.EncodeToString(op)
 	delete(aw.watchers, key)
-	aw.lock.Unlock()
 	log.Trace(fmt.Sprintf("Balance (%s) del utxo watcher:%s", aw.address, key))
 }
 
 func (aw *AcctBalanceWatcher) Has(op []byte) bool {
 	ops := hex.EncodeToString(op)
+	return aw.HasByOPS(ops)
+}
+
+func (aw *AcctBalanceWatcher) HasByOPS(ops string) bool {
 	aw.lock.RLock()
 	_, exist := aw.watchers[ops]
 	aw.lock.RUnlock()
@@ -67,9 +75,21 @@ func (aw *AcctBalanceWatcher) GetBalance() uint64 {
 	return aw.ab.normal + aw.unlocked
 }
 
+func (aw *AcctBalanceWatcher) Unlock(uw AcctUTXOIWatcher) {
+	aw.unlocked += uw.GetBalance()
+	aw.unlocUTXONum++
+}
+
+func (aw *AcctBalanceWatcher) Drop(au *AcctUTXO) {
+	if aw.unlocked > au.balance {
+		aw.unlocked -= au.balance
+	}
+	if aw.unlocUTXONum > 0 {
+		aw.unlocUTXONum--
+	}
+}
+
 func (aw *AcctBalanceWatcher) Update(am *AccountManager) error {
-	aw.unlocked = 0
-	aw.unlocUTXONum = 0
 	aw.lock.RLock()
 	defer aw.lock.RUnlock()
 	for k, w := range aw.watchers {
@@ -77,9 +97,10 @@ func (aw *AcctBalanceWatcher) Update(am *AccountManager) error {
 		if err != nil {
 			return err
 		}
-		aw.unlocked += w.GetBalance()
 		if w.IsUnlocked() {
-			aw.unlocUTXONum++
+			aw.Unlock(w)
+			delete(aw.watchers, k)
+			log.Trace(fmt.Sprintf("Balance (%s) del utxo watcher:%s, because of final(%s)", aw.address, k, w.GetUTXO().String()))
 		}
 		if am.cfg.AutoCollectEvm && w.IsUnlocked() {
 			opk, err := hex.DecodeString(k)
@@ -119,23 +140,10 @@ type AcctUTXOIWatcher interface {
 	GetBalance() uint64
 	IsUnlocked() bool
 	GetName() string
+	GetUTXO() *AcctUTXO
 }
 
-func BuildUTXOWatcher(op []byte, au *AcctUTXO, entry *utxo.UtxoEntry, am *AccountManager) AcctUTXOIWatcher {
-	if entry == nil {
-		outpoint, err := parseOutpoint(op)
-		if err != nil {
-			return nil
-		}
-		entry, err = utxo.DBFetchUtxoEntry(am.chain.Consensus().DatabaseContext(), *outpoint)
-		if err != nil {
-			log.Error(err.Error())
-			return nil
-		}
-		if entry == nil {
-			return nil
-		}
-	}
+func BuildUTXOWatcher(op *types.TxOutPoint, au *AcctUTXO, entry *utxo.UtxoEntry, am *AccountManager) AcctUTXOIWatcher {
 	if entry.BlockHash().IsEqual(&hash.ZeroHash) {
 		return nil
 	}
@@ -158,11 +166,7 @@ func BuildUTXOWatcher(op []byte, au *AcctUTXO, entry *utxo.UtxoEntry, am *Accoun
 			return nil
 		}
 		lockTime := txscript.GetInt64FromOpcode(ops[0])
-		outpoint, err := parseOutpoint(op)
-		if err != nil {
-			return nil
-		}
-		return NewCLTVWatcher(au, lockTime, forks.IsMaxLockUTXOInGenesis(outpoint))
+		return NewCLTVWatcher(au, lockTime, forks.IsMaxLockUTXOInGenesis(op))
 	}
 	return nil
 }

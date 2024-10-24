@@ -339,15 +339,18 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 		if err != nil {
 			return err
 		}
-		au := NewAcctUTXO()
-		au.SetBalance(uint64(entry.Amount().Value))
+		au := NewAcctUTXO(uint64(entry.Amount().Value))
 		if entry.IsCoinBase() {
 			au.SetCoinbase()
+			// update watcher
+			a.addWatcher(op, entry, addrStr, balance, au)
 		} else if scriptClass == txscript.CLTVPubKeyHashTy {
 			au.SetCLTV()
+			// update watcher
+			a.addWatcher(op, entry, addrStr, balance, au)
+		} else {
+			au.FinalizeBalanceByAmount()
 		}
-		// update watcher
-		a.addWatcher(op, entry, addrStr, balance, au)
 
 		log.Trace(fmt.Sprintf("Add balance: %s (%s)", addrStr, au.String()))
 
@@ -375,7 +378,7 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 				return er
 			}
 			if balance == nil {
-				a.DelWatcher(addrStr, nil)
+				a.DelWatcher(addrStr)
 				return nil
 			} else {
 				amount := uint64(entry.Amount().Value)
@@ -401,6 +404,7 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 				}
 			}
 			log.Trace(fmt.Sprintf("Del balance: %s (%s:%d)", addrStr, op.Hash.String(), op.OutIndex))
+			var au *AcctUTXO
 			if balance.IsEmpty() {
 				er = a.cleanBalanceDB(dbTx, addrStr)
 				if er != nil {
@@ -411,16 +415,19 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 				if er != nil {
 					return er
 				}
+				au, err = DBGetACCTUTXO(dbTx, addrStr, op)
+				if er != nil {
+					return er
+				}
 				er = DBDelACCTUTXO(dbTx, addrStr, op)
 				if er != nil {
 					return er
 				}
 			}
 			if balance.locUTXONum <= 0 {
-				a.DelWatcher(addrStr, nil)
-			} else if entry.IsCoinBase() ||
-				scriptClass == txscript.CLTVPubKeyHashTy {
-				a.DelWatcher(addrStr, op)
+				a.DelWatcher(addrStr)
+			} else {
+				a.DelWatcherOP(addrStr, op, au)
 			}
 			return nil
 		})
@@ -429,43 +436,66 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 }
 
 func (a *AccountManager) addWatcher(op *types.TxOutPoint, entry *utxo.UtxoEntry, addrStr string, balance *AcctBalance, au *AcctUTXO) {
-	var uw AcctUTXOIWatcher
-	var opk []byte
-	if au.IsCoinbase() || au.IsCLTV() {
-		opk = OutpointKey(op)
-		uw = BuildUTXOWatcher(opk, au, entry, a)
+	opk := OutpointKey(op)
+	uw := BuildUTXOWatcher(op, au, entry, a)
+	if uw == nil {
+		return
 	}
-	a.watchLock.RLock()
-	wb, exist := a.watchers[addrStr]
-	a.watchLock.RUnlock()
-	if exist {
-		wb.ab = balance
+	uw.Update(a)
+
+	wb := a.getWatcher(addrStr)
+	if wb == nil {
+		wb = NewAcctBalanceWatcher(addrStr, balance)
+		a.watchLock.Lock()
+		a.watchers[addrStr] = wb
+		a.watchLock.Unlock()
+	}
+	if uw.IsUnlocked() {
+		wb.Unlock(uw)
 	} else {
-		if uw != nil {
-			wb = NewAcctBalanceWatcher(addrStr, balance)
-			a.watchLock.Lock()
-			a.watchers[addrStr] = wb
-			a.watchLock.Unlock()
-		}
-	}
-	if uw != nil {
 		wb.Add(opk, uw)
 	}
 }
 
-func (a *AccountManager) DelWatcher(addr string, op *types.TxOutPoint) {
-	if op != nil {
-		a.watchLock.RLock()
-		wb, exist := a.watchers[addr]
-		a.watchLock.RUnlock()
-		if !exist {
-			return
-		}
-		wb.Del(OutpointKey(op))
+func (a *AccountManager) hasWatcher(addr string) bool {
+	a.watchLock.RLock()
+	_, exist := a.watchers[addr]
+	a.watchLock.RUnlock()
+	return exist
+}
+
+func (a *AccountManager) getWatcher(addr string) *AcctBalanceWatcher {
+	a.watchLock.RLock()
+	wb, exist := a.watchers[addr]
+	a.watchLock.RUnlock()
+	if exist {
+		return wb
+	}
+	return nil
+}
+
+func (a *AccountManager) DelWatcher(addr string) {
+	a.watchLock.Lock()
+	delete(a.watchers, addr)
+	a.watchLock.Unlock()
+}
+
+func (a *AccountManager) DelWatcherOP(addr string, op *types.TxOutPoint, au *AcctUTXO) {
+	a.watchLock.RLock()
+	wb, exist := a.watchers[addr]
+	a.watchLock.RUnlock()
+	if !exist {
+		return
+	}
+	opk := OutpointKey(op)
+	if wb.Has(opk) {
+		wb.Del(opk)
 	} else {
-		a.watchLock.Lock()
-		delete(a.watchers, addr)
-		a.watchLock.Unlock()
+		if au.IsFinal() {
+			if au.IsCoinbase() || au.IsCLTV() {
+				wb.Drop(au)
+			}
+		}
 	}
 }
 
@@ -484,10 +514,7 @@ func (a *AccountManager) trackCfgAddresses(setinfo bool) error {
 			log.Warn("Already exists", "addr", addr)
 			continue
 		}
-		a.watchLock.RLock()
-		_, exist := a.watchers[addr]
-		a.watchLock.RUnlock()
-		if exist {
+		if a.hasWatcher(addr) {
 			return fmt.Errorf("Already exists watcher:%s", addr)
 		}
 		a.info.Add(addr)
@@ -516,7 +543,8 @@ func (a *AccountManager) initWatchers(dbTx legacydb.Tx) error {
 	}
 	kus := [][]byte{}
 	aus := []*AcctUTXO{}
-	wbs := []*AcctBalanceWatcher{}
+	bas := []*AcctBalance{}
+	ads := []string{}
 	err := balBucket.ForEach(func(k, v []byte) error {
 		balance := &AcctBalance{}
 		err := balance.Decode(bytes.NewReader(v))
@@ -531,28 +559,19 @@ func (a *AccountManager) initWatchers(dbTx legacydb.Tx) error {
 			return nil
 		}
 		balUTXOBucket.ForEach(func(ku, vu []byte) error {
-			au := NewAcctUTXO()
+			au := NewAcctUTXO(0)
 			err := au.Decode(bytes.NewReader(vu))
 			if err != nil {
 				return err
 			}
-			if !au.IsCoinbase() &&
-				!au.IsCLTV() {
+			if au.IsFinal() {
 				return nil
 			}
 			addrStr := string(k)
-			a.watchLock.RLock()
-			wb, exist := a.watchers[addrStr]
-			a.watchLock.RUnlock()
-			if !exist {
-				wb = NewAcctBalanceWatcher(addrStr, balance)
-				a.watchLock.Lock()
-				a.watchers[addrStr] = wb
-				a.watchLock.Unlock()
-			}
 			kus = append(kus, ku)
 			aus = append(aus, au)
-			wbs = append(wbs, wb)
+			bas = append(bas, balance)
+			ads = append(ads, addrStr)
 			return nil
 		})
 		return nil
@@ -562,20 +581,17 @@ func (a *AccountManager) initWatchers(dbTx legacydb.Tx) error {
 	}
 	if len(aus) > 0 {
 		for i := 0; i < len(aus); i++ {
-			uw := BuildUTXOWatcher(kus[i], aus[i], nil, a)
-			if uw != nil {
-				wbs[i].Add(kus[i], uw)
-			}
-		}
-	}
-	a.watchLock.RLock()
-	defer a.watchLock.RUnlock()
-	if len(a.watchers) > 0 {
-		for _, w := range a.watchers {
-			err = w.Update(a)
+			outpoint, err := parseOutpoint(kus[i])
 			if err != nil {
-				return err
+				log.Error(err.Error())
+				continue
 			}
+			entry, err := a.getEntry(outpoint)
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
+			a.addWatcher(outpoint, entry, ads[i], bas[i], aus[i])
 		}
 	}
 	return nil
@@ -635,10 +651,9 @@ func (a *AccountManager) GetBalance(addr string) (uint64, error) {
 		return 0, fmt.Errorf("Please track this account:%s", addr)
 	}
 	result := uint64(0)
-	a.watchLock.RLock()
-	wb, exist := a.watchers[addr]
-	a.watchLock.RUnlock()
-	if exist {
+
+	wb := a.getWatcher(addr)
+	if wb != nil {
 		return wb.GetBalance(), nil
 	}
 
@@ -672,25 +687,20 @@ func (a *AccountManager) GetUTXOs(addr string, limit *int, locked *bool, amount 
 		us := DBGetACCTUTXOs(dbTx, addr)
 		if len(us) > 0 {
 			for k, v := range us {
-				ur := UTXOResult{Type: v.TypeStr(), Amount: v.balance, Status: "valid"}
-				a.watchLock.RLock()
-				wb, exist := a.watchers[addr]
-				a.watchLock.RUnlock()
-				if exist {
-					wu := wb.GetByOPS(k)
-					if wu != nil {
-						if wu.IsUnlocked() {
-							if locked != nil && *locked {
-								continue
-							}
-							ur.Status = "unlocked"
-						} else {
+				ur := UTXOResult{Type: v.TypeStr(), Amount: v.amount, Status: "valid"}
+				if !v.IsFinal() {
+					wb := a.getWatcher(addr)
+					if wb != nil {
+						wu := wb.GetByOPS(k)
+						if wu != nil {
 							if locked != nil && !(*locked) {
 								continue
 							}
 							ur.Status = "locked"
 						}
 					}
+				} else {
+					ur.Amount = v.balance
 				}
 
 				opk, err := hex.DecodeString(k)
@@ -711,6 +721,7 @@ func (a *AccountManager) GetUTXOs(addr string, limit *int, locked *bool, amount 
 					}
 				}
 				totalAmount += ur.Amount
+
 				if amount != nil {
 					if totalAmount >= *amount {
 						break
@@ -739,21 +750,9 @@ func (a *AccountManager) HasUTXO(addr string, outPoint *types.TxOutPoint) bool {
 		us := DBGetACCTUTXOs(dbTx, addr)
 		if len(us) > 0 {
 			for k, v := range us {
-				ur := UTXOResult{Type: v.TypeStr(), Amount: v.balance, Status: "valid"}
-				a.watchLock.RLock()
-				wb, exist := a.watchers[addr]
-				a.watchLock.RUnlock()
-				if exist {
-					wu := wb.GetByOPS(k)
-					if wu != nil {
-						if wu.IsUnlocked() {
-							ur.Status = "unlocked"
-						} else {
-							continue
-						}
-					}
+				if !v.IsFinal() {
+					continue
 				}
-
 				opk, err := hex.DecodeString(k)
 				if err != nil {
 					return err
@@ -787,10 +786,7 @@ func (a *AccountManager) AddAddress(addr string) error {
 	if a.info.Has(addr) {
 		return fmt.Errorf("Already exists:%s", addr)
 	}
-	a.watchLock.RLock()
-	_, exist := a.watchers[addr]
-	a.watchLock.RUnlock()
-	if exist {
+	if a.hasWatcher(addr) {
 		return fmt.Errorf("Already exists watcher:%s", addr)
 	}
 	a.info.Add(addr)
@@ -814,7 +810,7 @@ func (a *AccountManager) DelAddress(addr string) error {
 	if !a.info.Has(addr) {
 		return fmt.Errorf("Account does not exist:%s", addr)
 	}
-	a.DelWatcher(addr, nil)
+	a.DelWatcher(addr)
 	a.info.Del(addr)
 	return a.db.Update(func(dbTx legacydb.Tx) error {
 		return a.cleanBalanceDB(dbTx, addr)
@@ -884,6 +880,18 @@ func (a *AccountManager) getUtxoWatcherSize() int {
 
 func (a *AccountManager) isAllMode() bool {
 	return a.info.all
+}
+
+func (a AccountManager) getEntry(outpoint *types.TxOutPoint) (*utxo.UtxoEntry, error) {
+	entry, err := utxo.DBFetchUtxoEntry(a.chain.Consensus().DatabaseContext(), *outpoint)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
+	}
+	if entry == nil {
+		return nil, fmt.Errorf("No entry:%s", outpoint.Hash.String())
+	}
+	return entry, nil
 }
 
 func New(chain *blockchain.BlockChain, cfg *config.Config, _events *event.Feed) (*AccountManager, error) {

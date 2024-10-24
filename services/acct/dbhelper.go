@@ -193,6 +193,28 @@ func DBDelACCTUTXO(dbTx legacydb.Tx, address string, op *types.TxOutPoint) error
 	return balUTXOBucket.Delete(key)
 }
 
+func DBGetACCTUTXO(dbTx legacydb.Tx, address string, op *types.TxOutPoint) (*AcctUTXO, error) {
+	meta := dbTx.Metadata()
+	bucket := meta.Bucket(BalanceBucketName)
+	if bucket == nil {
+		return nil, nil
+	}
+	bkey := GetACCTUTXOKey(address)
+	balUTXOBucket := bucket.Bucket(bkey)
+	if balUTXOBucket == nil {
+		return nil, nil
+	}
+
+	key := OutpointKey(op)
+	vu := balUTXOBucket.Get(key)
+	au := NewAcctUTXO(0)
+	err := au.Decode(bytes.NewReader(vu))
+	if err != nil {
+		return nil, err
+	}
+	return au, nil
+}
+
 func DBDelACCTUTXOs(dbTx legacydb.Tx, address string) error {
 	meta := dbTx.Metadata()
 	bucket := meta.Bucket(BalanceBucketName)
@@ -219,14 +241,14 @@ func DBGetACCTUTXOs(dbTx legacydb.Tx, address string) map[string]*AcctUTXO {
 	}
 	result := map[string]*AcctUTXO{}
 	err := balUTXOBucket.ForEach(func(ku, vu []byte) error {
-		au := NewAcctUTXO()
+		au := NewAcctUTXO(0)
 		err := au.Decode(bytes.NewReader(vu))
 		if err != nil {
 			return err
 		}
 		kus := hex.EncodeToString(ku)
 		if result[kus] != nil {
-			log.Error("Already exists:Outpoint=%s", kus)
+			log.Error("Already exists", "Outpoint", kus)
 		}
 		result[kus] = au
 		return nil
