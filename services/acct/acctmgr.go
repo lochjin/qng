@@ -341,42 +341,14 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 		}
 		au := NewAcctUTXO()
 		au.SetBalance(uint64(entry.Amount().Value))
-
-		a.watchLock.RLock()
-		wb, exist := a.watchers[addrStr]
-		a.watchLock.RUnlock()
 		if entry.IsCoinBase() {
 			au.SetCoinbase()
-			//
-			if !exist {
-				wb = NewAcctBalanceWatcher(addrStr, balance)
-				a.watchLock.Lock()
-				a.watchers[addrStr] = wb
-				a.watchLock.Unlock()
-			}
-			opk := OutpointKey(op)
-			uw := BuildUTXOWatcher(opk, au, entry, a)
-			if uw != nil {
-				wb.Add(opk, uw)
-			}
 		} else if scriptClass == txscript.CLTVPubKeyHashTy {
 			au.SetCLTV()
-			if !exist {
-				wb = NewAcctBalanceWatcher(addrStr, balance)
-				a.watchLock.Lock()
-				a.watchers[addrStr] = wb
-				a.watchLock.Unlock()
-			}
-			opk := OutpointKey(op)
-			uw := BuildUTXOWatcher(opk, au, entry, a)
-			if uw != nil {
-				wb.Add(opk, uw)
-			}
-		} else {
-			if exist {
-				wb.ab = balance
-			}
 		}
+		// update watcher
+		a.addWatcher(op, entry, addrStr, balance, au)
+
 		log.Trace(fmt.Sprintf("Add balance: %s (%s)", addrStr, au.String()))
 
 		if a.isAllMode() {
@@ -451,6 +423,31 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 			return nil
 		})
 		return err
+	}
+}
+
+func (a *AccountManager) addWatcher(op *types.TxOutPoint, entry *utxo.UtxoEntry, addrStr string, balance *AcctBalance, au *AcctUTXO) {
+	var uw AcctUTXOIWatcher
+	var opk []byte
+	if au.IsCoinbase() || au.IsCLTV() {
+		opk = OutpointKey(op)
+		uw = BuildUTXOWatcher(opk, au, entry, a)
+	}
+	a.watchLock.RLock()
+	wb, exist := a.watchers[addrStr]
+	a.watchLock.RUnlock()
+	if exist {
+		wb.ab = balance
+	} else {
+		if uw != nil {
+			wb = NewAcctBalanceWatcher(addrStr, balance)
+			a.watchLock.Lock()
+			a.watchers[addrStr] = wb
+			a.watchLock.Unlock()
+		}
+	}
+	if uw != nil {
+		wb.Add(opk, uw)
 	}
 }
 
