@@ -379,7 +379,8 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 				return nil
 			} else {
 				amount := uint64(entry.Amount().Value)
-				if entry.IsCoinBase() {
+				if entry.IsCoinBase() ||
+					scriptClass == txscript.CLTVPubKeyHashTy {
 					if balance.locked <= amount {
 						balance.locked = 0
 					} else {
@@ -417,7 +418,8 @@ func (a *AccountManager) apply(add bool, op *types.TxOutPoint, entry *utxo.UtxoE
 			}
 			if balance.locUTXONum <= 0 {
 				a.DelWatcher(addrStr, nil)
-			} else if entry.IsCoinBase() {
+			} else if entry.IsCoinBase() ||
+				scriptClass == txscript.CLTVPubKeyHashTy {
 				a.DelWatcher(addrStr, op)
 			}
 			return nil
