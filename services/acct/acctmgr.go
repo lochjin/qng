@@ -906,7 +906,7 @@ func (a *AccountManager) isAllMode() bool {
 	return a.info.all
 }
 
-func (a AccountManager) getEntry(outpoint *types.TxOutPoint) (*utxo.UtxoEntry, error) {
+func (a *AccountManager) getEntry(outpoint *types.TxOutPoint) (*utxo.UtxoEntry, error) {
 	entry, err := utxo.DBFetchUtxoEntry(a.chain.Consensus().DatabaseContext(), *outpoint)
 	if err != nil {
 		log.Error(err.Error())
