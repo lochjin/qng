@@ -5,10 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Qitmeer/qng/consensus/model"
-	"sync"
-
+	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/config"
+	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/address"
 	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
@@ -16,10 +15,14 @@ import (
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/database/legacydb"
 	"github.com/Qitmeer/qng/engine/txscript"
+	qlog "github.com/Qitmeer/qng/log"
+	"github.com/Qitmeer/qng/meerevm/eth"
 	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/Qitmeer/qng/rpc/client/cmds"
+	"github.com/schollz/progressbar/v3"
+	"sync"
 )
 
 // account manager communicate with various backends for signing transactions.
@@ -203,9 +206,13 @@ func (a *AccountManager) cleanDB() {
 
 func (a *AccountManager) rebuild(addrs []string) error {
 	if len(addrs) > 0 {
-		log.Trace(fmt.Sprintf("Try to rebuild account index for (%v)", addrs))
+		log.Info(fmt.Sprintf("Try to rebuild account index for (%v)", addrs))
 	} else {
-		log.Trace("Try to rebuild account index")
+		if a.info.all {
+			log.Info("Try to rebuild account index, the first time may be very slow, please be patient and wait")
+		} else {
+			log.Info("Try to rebuild account index")
+		}
 	}
 	ops := []*types.TxOutPoint{}
 	entrys := []*utxo.UtxoEntry{}
@@ -240,13 +247,30 @@ func (a *AccountManager) rebuild(addrs []string) error {
 		return err
 	}
 	if len(ops) > 0 {
+		logLvl := qlog.Glogger().GetVerbosity()
+		bar := progressbar.Default(int64(len(ops)), "Build ACCT Index:")
+		qlog.Glogger().Verbosity(qlog.LvlCrit)
+		eth.InitLog(qlog.LvlCrit.String(), a.chain.Consensus().Config().DebugPrintOrigins)
+		defer func() {
+			fmt.Println()
+			qlog.Glogger().Verbosity(logLvl)
+			eth.InitLog(logLvl.String(), a.chain.Consensus().Config().DebugPrintOrigins)
+			bar.Close()
+		}()
+
 		for i := 0; i < len(ops); i++ {
+			if system.InterruptRequested(a.chain.Consensus().Interrupt()) {
+				return fmt.Errorf("interrupt rebuild, can also use --acctmode=false to cleanup")
+			}
 			err = a.apply(true, ops[i], entrys[i])
 			if err != nil {
 				return err
 			}
+			bar.Add(1)
 		}
+
 	}
+
 	return nil
 }
 
