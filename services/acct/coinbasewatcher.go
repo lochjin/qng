@@ -8,8 +8,6 @@ import (
 
 type CoinbaseWatcher struct {
 	au             *AcctUTXO
-	unlocked       bool
-	fee            uint64
 	target         meerdag.IBlock
 	targetMainFork meerdag.IBlock
 }
@@ -26,32 +24,33 @@ func (cw *CoinbaseWatcher) Update(am *AccountManager) error {
 	if !ret {
 		return nil
 	}
-	cw.unlocked = true
-
+	amount := cw.au.amount
 	if !cw.target.GetHash().IsEqual(params.ActiveNetParams.GenesisHash) {
-		cw.fee = uint64(am.chain.GetFeeByCoinID(cw.target.GetHash(), types.MEERA))
+		fee := uint64(am.chain.GetFeeByCoinID(cw.target.GetHash(), types.MEERA))
+		amount += fee
 	}
+	cw.au.FinalizeBalance(amount)
 	return nil
 }
 
 func (cw *CoinbaseWatcher) GetBalance() uint64 {
-	if cw.unlocked {
-		return cw.au.balance + cw.fee
-	}
-	return 0
+	return cw.au.balance
 }
 
 func (cw *CoinbaseWatcher) Lock() {
-	cw.unlocked = false
-	cw.fee = 0
+	cw.au.Lock()
 }
 
 func (cw *CoinbaseWatcher) IsUnlocked() bool {
-	return cw.unlocked
+	return cw.au.IsFinal()
 }
 
 func (cw *CoinbaseWatcher) GetName() string {
 	return cw.au.TypeStr()
+}
+
+func (cw *CoinbaseWatcher) GetUTXO() *AcctUTXO {
+	return cw.au
 }
 
 func NewCoinbaseWatcher(au *AcctUTXO, target meerdag.IBlock) *CoinbaseWatcher {

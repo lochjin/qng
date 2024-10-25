@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	CurrentAcctInfoVersion = 3
+	CurrentAcctInfoVersion = 4
 )
 
 type AcctInfo struct {

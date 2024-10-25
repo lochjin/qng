@@ -8,7 +8,6 @@ import (
 
 type CLTVWatcher struct {
 	au            *AcctUTXO
-	unlocked      bool
 	lockTime      int64
 	isForkGenUTXO bool // MeerEVM fork
 }
@@ -22,7 +21,7 @@ func (cw *CLTVWatcher) Update(am *AccountManager) error {
 		return fmt.Errorf("No main tip")
 	}
 	if params.ActiveNetParams.IsMeerUTXOFork(int64(mainTip.GetHeight())) && cw.isForkGenUTXO {
-		cw.unlocked = true
+		cw.au.FinalizeBalanceByAmount()
 		return nil
 	}
 	lockTime := int64(0)
@@ -36,27 +35,28 @@ func (cw *CLTVWatcher) Update(am *AccountManager) error {
 		return nil
 	}
 
-	cw.unlocked = true
+	cw.au.FinalizeBalanceByAmount()
 	return nil
 }
 
 func (cw *CLTVWatcher) GetBalance() uint64 {
-	if cw.unlocked {
-		return cw.au.balance
-	}
-	return 0
+	return cw.au.balance
 }
 
 func (cw *CLTVWatcher) Lock() {
-	cw.unlocked = false
+	cw.au.Lock()
 }
 
 func (cw *CLTVWatcher) IsUnlocked() bool {
-	return cw.unlocked
+	return cw.au.IsFinal()
 }
 
 func (cw *CLTVWatcher) GetName() string {
 	return cw.au.TypeStr()
+}
+
+func (cw *CLTVWatcher) GetUTXO() *AcctUTXO {
+	return cw.au
 }
 
 func NewCLTVWatcher(au *AcctUTXO, lockTime int64, isForkGenUTXO bool) *CLTVWatcher {
