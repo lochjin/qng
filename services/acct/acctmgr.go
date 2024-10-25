@@ -260,7 +260,11 @@ func (a *AccountManager) rebuild(addrs []string) error {
 
 		for i := 0; i < len(ops); i++ {
 			if system.InterruptRequested(a.chain.Consensus().Interrupt()) {
-				return fmt.Errorf("interrupt rebuild, can also use --acctmode=false to cleanup")
+				err := removeDB(getDBPath(getDataDir(a.cfg)))
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("interrupt rebuild")
 			}
 			err = a.apply(true, ops[i], entrys[i])
 			if err != nil {
