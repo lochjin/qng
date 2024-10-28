@@ -76,7 +76,7 @@ func init() {
 
 	glogger.Verbosity(LvlInfo)
 
-	LocationTrims = append(LocationTrims, "github.com/Qitmeer/qng/")
+	AddLocationPrefix("github.com/Qitmeer/qng/")
 }
 
 // initLogRotator initializes the logging rotater to write logs to logFile and
@@ -115,4 +115,13 @@ func LogAndMeasureExecutionTime(log Logger, functionName string) (onEnd func()) 
 	return func() {
 		log.Trace(fmt.Sprintf("%s end. Took: %s", functionName, time.Since(start)))
 	}
+}
+
+func AddLocationPrefix(prefix string) {
+	for _, pf := range LocationTrims {
+		if prefix == pf {
+			return
+		}
+	}
+	LocationTrims = append(LocationTrims, prefix)
 }

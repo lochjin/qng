@@ -44,7 +44,7 @@ func InitLog(DebugLevel string, DebugPrintOrigins bool) {
 		agentTH.lvl = lvl
 	}
 	glogger.Verbosity(log.FromLegacyLevel(int(lvl)))
-	qlog.LocationTrims = append(qlog.LocationTrims, "github.com/ethereum/go-ethereum/")
+	qlog.AddLocationPrefix("github.com/ethereum/go-ethereum/")
 }
 
 type agentTerminalHandler struct {
