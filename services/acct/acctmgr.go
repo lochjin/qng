@@ -519,7 +519,7 @@ func (a *AccountManager) DelWatcherOP(addr string, op *types.TxOutPoint, au *Acc
 	if wb.Has(opk) {
 		wb.Del(opk)
 	} else {
-		if au.IsFinal() {
+		if au != nil && au.IsFinal() {
 			if au.IsCoinbase() || au.IsCLTV() {
 				wb.Drop(au)
 			}
