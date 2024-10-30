@@ -3,16 +3,12 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/Qitmeer/qng/config"
 	"github.com/Qitmeer/qng/meerevm/amana"
 	"github.com/Qitmeer/qng/meerevm/meer"
-	"github.com/ethereum/go-ethereum/node"
-	"strings"
-
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/console"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/node"
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,7 +20,7 @@ var (
 		Name:      "attach",
 		Usage:     "Start an interactive JavaScript environment (connect to node)",
 		ArgsUsage: "[endpoint]",
-		Flags:     append(consoleFlags, utils.DataDirFlag),
+		Flags:     append(consoleFlags, utils.DataDirFlag, utils.HttpHeaderFlag),
 		Category:  "CONSOLE COMMANDS",
 		Description: `
 The QNG console is an interactive shell for the JavaScript runtime environment
@@ -39,19 +35,25 @@ This command allows to open a console on a running geth node.`,
 func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running geth instance and start the JavaScript console
 	endpoint := ctx.Args().First()
-	if endpoint == "" {
-		path := config.Cfg.DataDir
-		if ctx.IsSet(utils.DataDirFlag.Name) {
-			path = ctx.String(utils.DataDirFlag.Name)
-		}
-		endpoint = fmt.Sprintf("%s/qng.ipc", path)
+	nconfig := &node.Config{DataDir: config.Cfg.DataDir}
+	if ctx.IsSet(utils.DataDirFlag.Name) {
+		nconfig.DataDir = ctx.String(utils.DataDirFlag.Name)
 	}
-	client, err := dialRPC(endpoint)
+	if endpoint == "" {
+		if config.Cfg.Amana {
+			nconfig.IPCPath = amana.ClientIdentifier + ".ipc"
+		} else {
+			nconfig.IPCPath = meer.ClientIdentifier + ".ipc"
+		}
+		endpoint = nconfig.IPCEndpoint()
+
+	}
+	client, err := utils.DialRPCWithHeaders(endpoint, ctx.StringSlice(utils.HttpHeaderFlag.Name))
 	if err != nil {
 		utils.Fatalf("Unable to attach to remote qng: %v", err)
 	}
 	config := console.Config{
-		DataDir: utils.MakeDataDir(ctx),
+		DataDir: nconfig.DataDir,
 		DocRoot: ctx.String(utils.JSpathFlag.Name),
 		Client:  client,
 		Preload: utils.MakeConsolePreloads(ctx),
@@ -73,23 +75,4 @@ func remoteConsole(ctx *cli.Context) error {
 	console.Interactive()
 
 	return nil
-}
-
-// dialRPC returns a RPC client which connects to the given endpoint.
-// The check for empty endpoint implements the defaulting logic
-// for "geth attach" with no argument.
-func dialRPC(endpoint string) (*rpc.Client, error) {
-	if endpoint == "" {
-		if config.Cfg.Amana {
-			endpoint = node.DefaultIPCEndpoint(amana.ClientIdentifier)
-		} else {
-			endpoint = node.DefaultIPCEndpoint(meer.ClientIdentifier)
-		}
-
-	} else if strings.HasPrefix(endpoint, "rpc:") || strings.HasPrefix(endpoint, "ipc:") {
-		// Backwards compatibility with geth < 1.5 which required
-		// these prefixes.
-		endpoint = endpoint[4:]
-	}
-	return rpc.Dial(endpoint)
 }
