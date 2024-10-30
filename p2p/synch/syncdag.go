@@ -88,17 +88,17 @@ func debugSyncDAG(m *pb.SyncDAG) string {
 }
 
 func (ps *PeerSync) processSyncDAGBlocks(pe *peers.Peer) *ProcessResult {
-	log.Trace(fmt.Sprintf("processSyncDAGBlocks peer=%v ", pe.GetID()), "processID", ps.processID)
+	log.Trace(fmt.Sprintf("processSyncDAGBlocks peer=%v ", pe.GetID()), "processID", ps.getProcessID())
 	if !ps.isSyncPeer(pe) || !pe.IsConnected() {
 		return nil
 	}
 	point := pe.SyncPoint()
 	mainLocator := ps.dagSync.GetMainLocator(point)
 	sd := &pb.SyncDAG{MainLocator: changeHashsToPBHashs(mainLocator), GraphState: ps.sy.getGraphState()}
-	log.Trace(fmt.Sprintf("processSyncDAGBlocks sendSyncDAG point=%v, sd=%v", point.String(), debugSyncDAG(sd)), "processID", ps.processID)
+	log.Trace(fmt.Sprintf("processSyncDAGBlocks sendSyncDAG point=%v, sd=%v", point.String(), debugSyncDAG(sd)), "processID", ps.getProcessID())
 	ret, err := ps.sy.Send(pe, RPCSyncDAG, sd)
 	if err != nil {
-		log.Trace(fmt.Sprintf("processSyncDAGBlocks err=%v ", err.Error()), "processID", ps.processID)
+		log.Trace(fmt.Sprintf("processSyncDAGBlocks err=%v ", err.Error()), "processID", ps.getProcessID())
 		return &ProcessResult{act: ProcessResultActionTryAgain}
 	}
 	subd := ret.(*pb.SubDAG)
@@ -107,7 +107,7 @@ func (ps *PeerSync) processSyncDAGBlocks(pe *peers.Peer) *ProcessResult {
 	}
 	log.Trace(fmt.Sprintf("processSyncDAGBlocks result graphstate=(%v,%v,%v), blocks=%v ",
 		subd.GraphState.MainOrder, subd.GraphState.MainHeight, subd.GraphState.Layer,
-		len(subd.Blocks)), "processID", ps.processID)
+		len(subd.Blocks)), "processID", ps.getProcessID())
 	pe.UpdateSyncPoint(changePBHashToHash(subd.SyncPoint))
 	pe.UpdateGraphState(subd.GraphState)
 
@@ -119,7 +119,7 @@ func (ps *PeerSync) processSyncDAGBlocks(pe *peers.Peer) *ProcessResult {
 	conCount := 0
 	for len(subd.Blocks) > 0 {
 		blocks := changePBHashsToHashs(subd.Blocks)
-		log.Trace(fmt.Sprintf("processSyncDAGBlocks do GetBlockDatas blocks=%v ", len(subd.Blocks)), "processID", ps.processID)
+		log.Trace(fmt.Sprintf("processSyncDAGBlocks do GetBlockDatas blocks=%v ", len(subd.Blocks)), "processID", ps.getProcessID())
 		pret = ps.processGetBlockDatas(pe, blocks)
 		if pret == nil ||
 			pret.add > 0 ||
@@ -134,11 +134,11 @@ func (ps *PeerSync) processSyncDAGBlocks(pe *peers.Peer) *ProcessResult {
 			return pret
 		}
 		point = pe.SyncPoint()
-		log.Trace("Try continue sync DAG blocks", "point", point.String(), "start", endBlock.String(), "continue", conCount, "processID", ps.processID)
+		log.Trace("Try continue sync DAG blocks", "point", point.String(), "start", endBlock.String(), "continue", conCount, "processID", ps.getProcessID())
 		csd := &pb.ContinueSyncDAG{SyncPoint: &pb.Hash{Hash: point.Bytes()}, Start: &pb.Hash{Hash: endBlock.Bytes()}}
 		ret, err := ps.sy.Send(pe, RPCContinueSyncDAG, csd)
 		if err != nil {
-			log.Trace(fmt.Sprintf("processSyncDAGBlocks err=%v ", err.Error()), "processID", ps.processID)
+			log.Trace(fmt.Sprintf("processSyncDAGBlocks err=%v ", err.Error()), "processID", ps.getProcessID())
 			return &ProcessResult{act: ProcessResultActionTryAgain}
 		}
 		subd = ret.(*pb.SubDAG)
@@ -147,7 +147,7 @@ func (ps *PeerSync) processSyncDAGBlocks(pe *peers.Peer) *ProcessResult {
 		}
 		log.Trace(fmt.Sprintf("processSyncDAGBlocks result graphstate=(%v,%v,%v), blocks=%v ",
 			subd.GraphState.MainOrder, subd.GraphState.MainHeight, subd.GraphState.Layer,
-			len(subd.Blocks)), "continue", conCount, "processID", ps.processID)
+			len(subd.Blocks)), "continue", conCount, "processID", ps.getProcessID())
 		pe.UpdateGraphState(subd.GraphState)
 		conCount++
 	}

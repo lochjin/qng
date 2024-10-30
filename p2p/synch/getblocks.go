@@ -43,12 +43,12 @@ func (s *Sync) getBlocksHandler(ctx context.Context, msg interface{}, stream lib
 func (ps *PeerSync) processGetBlocks(pe *peers.Peer, blocks []*hash.Hash) *ProcessResult {
 	ret, err := ps.sy.Send(pe, RPCGetBlocks, &pb.GetBlocks{Locator: changeHashsToPBHashs(blocks)})
 	if err != nil {
-		log.Warn(err.Error(), "processID", ps.processID)
+		log.Warn(err.Error(), "processID", ps.getProcessID())
 		return nil
 	}
 	db := ret.(*pb.DagBlocks)
 	if len(db.Blocks) <= 0 {
-		log.Warn("no block need to get", "processID", ps.processID)
+		log.Warn("no block need to get", "processID", ps.getProcessID())
 		return nil
 	}
 	if ps.IsInterrupt() {
