@@ -21,14 +21,17 @@ const (
 	// Support continue block sync for DAG search
 	ConSyncDAGProtocolVersion uint32 = 44
 
-	// Support continue block sync for DAG search
+	// Support broadcast block when received command
 	BroadcastblockProtocolVersion uint32 = 45
 
 	// Support meerevm tx transmission
 	MeerPoolProtocolVersion uint32 = 46
 
+	// Support snap sync for blockchain
+	SnapSyncProtocolVersion uint32 = 47
+
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = MeerPoolProtocolVersion
+	ProtocolVersion uint32 = SnapSyncProtocolVersion
 )
 
 // Network represents which qitmeer network a message belongs to.

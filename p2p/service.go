@@ -485,7 +485,7 @@ func (s *Service) BroadcastBlock(block *types.SerializedBlock, source *peer.ID) 
 				continue
 			}
 		}
-		if pe.ChainState().ProtocolVersion < uint32(pv.BroadcastblockProtocolVersion) {
+		if pe.ChainState().ProtocolVersion < pv.BroadcastblockProtocolVersion {
 			continue
 		}
 		go func(pe *peers.Peer) {
@@ -609,6 +609,10 @@ func (s *Service) IsRunning() bool {
 
 func (s *Service) Consensus() model.Consensus {
 	return s.consensus
+}
+
+func (s *Service) IsSnapSync() bool {
+	return s.PeerSync().IsSnapSync()
 }
 
 func NewService(cfg *config.Config, consensus model.Consensus, param *params.Params) (*Service, error) {

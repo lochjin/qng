@@ -49,6 +49,8 @@ type PeerSync struct {
 	processLock    sync.Mutex
 	processWorkNum atomic.Int32
 	processwg      sync.WaitGroup
+
+	snapStatus *SnapStatus
 }
 
 func (ps *PeerSync) Start() error {
