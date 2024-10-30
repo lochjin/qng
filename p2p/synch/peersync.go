@@ -314,7 +314,6 @@ func (ps *PeerSync) startSync() {
 		// not support the headers-first approach so do normal block
 		// downloads when in regression test mode.
 		ps.SetSyncPeer(bestPeer)
-		ps.dagSync.SetGraphState(gs)
 
 	cleanup:
 		for {
@@ -371,6 +370,14 @@ func (ps *PeerSync) startSync() {
 	} else {
 		log.Trace("You're already up to date, no synchronization is required.")
 	}
+}
+
+func (ps *PeerSync) startConsensusSync() {
+
+}
+
+func (ps *PeerSync) startSnapSync() {
+
 }
 
 // getBestPeer
