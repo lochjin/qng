@@ -325,7 +325,7 @@ func (ps *PeerSync) startSync() {
 		startTime := time.Now()
 		ps.lastSync = startTime
 
-		if ps.IsSnapSync() || gs.GetTotal() >= best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
+		if gs.GetTotal() >= best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
 			ps.startSnapSync(bestPeer, best, startTime)
 		} else {
 			ps.startConsensusSync(bestPeer, best, gs, startTime)
