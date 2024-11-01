@@ -74,6 +74,7 @@ func (api *PublicP2PAPI) GetPeerInfo(verbose *bool, pid *string) (interface{}, e
 			Bads:      p.Bads,
 			ReConnect: p.ReConnect,
 			Active:    active,
+			Snap:      p.IsSnap(),
 		}
 		info.Protocol = p.Protocol
 		info.Services = p.Services.String()

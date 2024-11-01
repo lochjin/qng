@@ -42,7 +42,11 @@ type StatsSnap struct {
 }
 
 func (p *StatsSnap) IsRelay() bool {
-	return protocol.HasServices(protocol.ServiceFlag(p.Services), protocol.Relay)
+	return protocol.HasServices(p.Services, protocol.Relay)
+}
+
+func (p *StatsSnap) IsSnap() bool {
+	return protocol.HasServices(p.Services, protocol.Snap)
 }
 
 func (p *StatsSnap) IsTheSameNetwork() bool {

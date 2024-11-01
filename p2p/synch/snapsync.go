@@ -66,8 +66,8 @@ func (s *SnapStatus) PeerID() peer.ID {
 	return s.peid
 }
 
-func NewSnapStatus() *SnapStatus {
-	return &SnapStatus{}
+func NewSnapStatus(peid peer.ID) *SnapStatus {
+	return &SnapStatus{peid: peid}
 }
 
 func (ps *PeerSync) IsSnapSync() bool {
@@ -108,8 +108,7 @@ cleanup:
 	startTime := time.Now()
 	ps.lastSync = startTime
 
-	ps.snapStatus = NewSnapStatus()
-
+	ps.snapStatus = NewSnapStatus(bestPeer.GetID())
 	log.Info("Snap syncing", "cur", best.GraphState.String(), "target", ps.snapStatus.ToString(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 	// ------
