@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/core/blockchain"
+	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
@@ -284,8 +285,15 @@ func (ps *PeerSync) startSync() {
 		log.Debug("P2P is pause.")
 		return
 	}
+	if ps.startSnapSync() {
+		return
+	}
+	ps.startConsensusSync()
+}
+
+func (ps *PeerSync) startConsensusSync() {
 	best := ps.Chain().BestSnapshot()
-	bestPeer := ps.getBestPeer()
+	bestPeer := ps.getBestPeer(false)
 	// Start syncing from the best peer if one was selected.
 	if bestPeer != nil {
 		ps.processID++
@@ -294,6 +302,7 @@ func (ps *PeerSync) startSync() {
 		}
 		ps.processwg.Add(1)
 		gs := bestPeer.GraphState()
+		log.Info("Syncing graph state", "cur", best.GraphState.String(), "target", gs.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 		// When the current height is less than a known checkpoint we
 		// can use block headers to learn about which blocks comprise
 		// the chain up to the checkpoint and perform less validation
@@ -324,13 +333,45 @@ func (ps *PeerSync) startSync() {
 		ps.interrupt = make(chan struct{})
 		startTime := time.Now()
 		ps.lastSync = startTime
+		longSyncMod := false
 
 		if gs.GetTotal() >= best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
-			ps.startSnapSync(bestPeer, best, startTime)
-		} else {
-			ps.startConsensusSync(bestPeer, best, gs, startTime)
+			longSyncMod = true
+			ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 		}
-
+		refresh := true
+		add := 0
+		for {
+			if ps.IsInterrupt() {
+				break
+			}
+			ret := ps.IntellectSyncBlocks(refresh, bestPeer)
+			if ret == nil ||
+				ret.act.IsNothing() {
+				break
+			} else if ret.act.IsContinue() {
+				refresh = ret.orphan
+				add += ret.add
+				if !ps.checkContinueSync() || ret.add <= 0 {
+					break
+				}
+			} else if ret.act.IsTryAgain() {
+				go ps.TryAgainUpdateSyncPeer(false)
+				break
+			}
+		}
+		//
+		log.Info("The sync of graph state has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
+		if add > 0 {
+			if longSyncMod && !ps.IsInterrupt() {
+				if ps.IsCurrent() {
+					log.Info("You're up to date now.")
+				}
+			}
+		}
+		if longSyncMod {
+			ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
+		}
 		ps.SetSyncPeer(nil)
 		ps.processwg.Done()
 	} else {
@@ -338,39 +379,20 @@ func (ps *PeerSync) startSync() {
 	}
 }
 
-func (ps *PeerSync) startConsensusSync(bestPeer *peers.Peer, best *blockchain.BestState, gs *meerdag.GraphState, startTime time.Time) {
-	log.Info("Syncing graph state", "cur", best.GraphState.String(), "target", gs.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
-	refresh := true
-	add := 0
-	for {
-		if ps.IsInterrupt() {
-			break
-		}
-		ret := ps.IntellectSyncBlocks(refresh, bestPeer)
-		if ret == nil ||
-			ret.act.IsNothing() {
-			break
-		} else if ret.act.IsContinue() {
-			refresh = ret.orphan
-			add += ret.add
-			if !ps.checkContinueSync() || ret.add <= 0 {
-				break
-			}
-		} else if ret.act.IsTryAgain() {
-			go ps.TryAgainUpdateSyncPeer(false)
-			break
-		}
-	}
-	//
-	log.Info("The sync of graph state has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
-}
-
 // getBestPeer
-func (ps *PeerSync) getBestPeer() *peers.Peer {
+func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 	best := ps.Chain().BestSnapshot()
 	var bestPeer *peers.Peer
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
+		if snap {
+			if !sp.IsSnap() {
+				continue
+			}
+			if ps.IsSnapSync() && sp.GetID() == ps.snapStatus.PeerID() {
+				return sp
+			}
+		}
 		// Remove sync candidate peers that are no longer candidates due
 		// to passing their latest known block.  NOTE: The < is
 		// intentional as opposed to <=.  While techcnically the peer
@@ -536,7 +558,7 @@ func (ps *PeerSync) checkContinueSync() bool {
 			go ps.TryAgainUpdateSyncPeer(true)
 			return false
 		}
-		bestPeer := ps.getBestPeer()
+		bestPeer := ps.getBestPeer(false)
 		if bestPeer == nil {
 			go ps.TryAgainUpdateSyncPeer(true)
 			return false

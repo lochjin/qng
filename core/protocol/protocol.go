@@ -27,11 +27,8 @@ const (
 	// Support meerevm tx transmission
 	MeerPoolProtocolVersion uint32 = 46
 
-	// Support snap sync for blockchain
-	SnapSyncProtocolVersion uint32 = 47
-
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = SnapSyncProtocolVersion
+	ProtocolVersion uint32 = MeerPoolProtocolVersion
 )
 
 // Network represents which qitmeer network a message belongs to.

@@ -13,6 +13,7 @@ var sfStrings = map[ServiceFlag]string{
 	Light:    "Light",
 	Relay:    "Relay",
 	Observer: "Observer",
+	Snap:     "Snap",
 	Unknown:  "Unknown",
 }
 
@@ -25,6 +26,7 @@ var orderedSFStrings = []ServiceFlag{
 	Light,
 	Relay,
 	Observer,
+	Snap,
 	Unknown,
 }
 
@@ -49,6 +51,9 @@ const (
 
 	// Observer
 	Observer
+
+	// Observer
+	Snap
 
 	// None
 	Unknown

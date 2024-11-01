@@ -25,6 +25,7 @@ import (
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/services/notifymgr/notify"
 	"github.com/dgraph-io/ristretto"
+	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/gogo/protobuf/proto"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-kad-dht"
@@ -663,6 +664,11 @@ func NewService(cfg *config.Config, consensus model.Consensus, param *params.Par
 	if cfg.MaxBadResp > 0 {
 		peers.MaxBadResponses = cfg.MaxBadResp
 	}
+	bc := consensus.BlockChain().(*blockchain.BlockChain)
+	services := defaultServices
+	if bc.MeerChain().SyncMode() == downloader.SnapSync {
+		services |= pv.Snap
+	}
 	s := &Service{
 		cfg: &common.Config{
 			NoDiscovery:          cfg.NoDiscovery,
@@ -678,7 +684,7 @@ func NewService(cfg *config.Config, consensus model.Consensus, param *params.Par
 			UDPPort:              uint(cfg.P2PUDPPort),
 			Encoding:             "ssz-snappy",
 			ProtocolVersion:      pv.ProtocolVersion,
-			Services:             defaultServices,
+			Services:             services,
 			UserAgent:            BuildUserAgent("QNG"),
 			DisableRelayTx:       cfg.BlocksOnly,
 			MaxOrphanTxs:         cfg.MaxOrphanTxs,
@@ -698,7 +704,7 @@ func NewService(cfg *config.Config, consensus model.Consensus, param *params.Par
 		isPreGenesis:  true,
 		events:        consensus.Events(),
 		consensus:     consensus,
-		blockChain:    consensus.BlockChain().(*blockchain.BlockChain),
+		blockChain:    bc,
 	}
 	s.InitContext()
 
