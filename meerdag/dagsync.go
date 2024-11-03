@@ -92,7 +92,7 @@ func (ds *DAGSync) CalcSyncBlocks(locator []*hash.Hash, mode SyncMode, maxHashes
 }
 
 // GetMainLocator
-func (ds *DAGSync) GetMainLocator(point *hash.Hash) []*hash.Hash {
+func (ds *DAGSync) GetMainLocator(point *hash.Hash, withRoot bool) ([]*hash.Hash, []*hash.Hash) {
 	ds.bd.stateLock.Lock()
 	defer ds.bd.stateLock.Unlock()
 
@@ -124,7 +124,12 @@ func (ds *DAGSync) GetMainLocator(point *hash.Hash) []*hash.Hash {
 			cur.GetID() <= endBlock.GetID() {
 			break
 		}
-		locator.PushFront(cur.GetHash())
+		if withRoot {
+			locator.PushFront([]*hash.Hash{cur.GetHash(), cur.GetState().Root()})
+		} else {
+			locator.PushFront(cur.GetHash())
+		}
+
 		cur = ds.bd.getBlockById(cur.GetMainParent())
 		if cur == nil {
 			break
@@ -134,6 +139,10 @@ func (ds *DAGSync) GetMainLocator(point *hash.Hash) []*hash.Hash {
 		halfStart := cur.GetID()
 		halfEnd := endBlock.GetID()
 		hlocator := []*hash.Hash{}
+		var stateRoots []*hash.Hash
+		if withRoot {
+			stateRoots = []*hash.Hash{}
+		}
 		for locator.Len()+len(hlocator)+1 < MaxMainLocatorNum {
 			//for {
 			nextID := (halfStart - halfEnd) / 2
@@ -155,19 +164,37 @@ func (ds *DAGSync) GetMainLocator(point *hash.Hash) []*hash.Hash {
 				continue
 			}
 			hlocator = append(hlocator, ib.GetHash())
+			if withRoot {
+				stateRoots = append(stateRoots, ib.GetState().Root())
+			}
 			halfEnd = nextID
 		}
 		if len(hlocator) > 0 {
 			for i := len(hlocator) - 1; i >= 0; i-- {
-				locator.PushFront(hlocator[i])
+				if withRoot {
+					locator.PushFront([]*hash.Hash{hlocator[i], stateRoots[i]})
+				} else {
+					locator.PushFront(hlocator[i])
+				}
 			}
 		}
 	}
-	result := []*hash.Hash{endBlock.GetHash()}
-	for i := locator.Front(); i != nil; i = i.Next() {
-		result = append(result, i.Value.(*hash.Hash))
+	result0 := []*hash.Hash{endBlock.GetHash()}
+	var result1 []*hash.Hash
+	if withRoot {
+		result1 = []*hash.Hash{endBlock.GetState().Root()}
 	}
-	return result
+
+	for i := locator.Front(); i != nil; i = i.Next() {
+		if withRoot {
+			value := i.Value.([]*hash.Hash)
+			result0 = append(result0, value[0])
+			result1 = append(result1, value[1])
+		} else {
+			result0 = append(result0, i.Value.(*hash.Hash))
+		}
+	}
+	return result0, result1
 }
 
 func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) []*hash.Hash {

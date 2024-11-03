@@ -93,7 +93,7 @@ func (ps *PeerSync) processSyncDAGBlocks(pe *peers.Peer) *ProcessResult {
 		return nil
 	}
 	point := pe.SyncPoint()
-	mainLocator := ps.dagSync.GetMainLocator(point)
+	mainLocator, _ := ps.dagSync.GetMainLocator(point, false)
 	sd := &pb.SyncDAG{MainLocator: changeHashsToPBHashs(mainLocator), GraphState: ps.sy.getGraphState()}
 	log.Trace(fmt.Sprintf("processSyncDAGBlocks sendSyncDAG point=%v, sd=%v", point.String(), debugSyncDAG(sd)), "processID", ps.getProcessID())
 	ret, err := ps.sy.Send(pe, RPCSyncDAG, sd)
