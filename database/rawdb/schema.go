@@ -88,6 +88,7 @@ var (
 	// snapshot
 	SnapshotBlockOrderPrefix  = []byte("o") // SnapshotBlockOrderPrefix + block order -> block id
 	SnapshotBlockStatusPrefix = []byte("s") // SnapshotBlockStatusPrefix + block id -> block status
+	SnapUTXOPrefix            = []byte("U") // snaputxoPrefix + outpoint data -> UtxoEntry data
 
 	// EstimateFeeDatabaseKey is the key that we use to
 	// store the fee estimator in the database.
@@ -163,4 +164,9 @@ func invalidtxLookupKey(hash *hash.Hash) []byte {
 // invalidtxFullHashKey = invalidtxFullHashPrefix + hash
 func invalidtxFullHashKey(hash *hash.Hash) []byte {
 	return append(invalidtxFullHashPrefix, hash.Bytes()...)
+}
+
+// utxoKey = utxoPrefix + outpoint data
+func snapUTXOKey(opd []byte) []byte {
+	return append(SnapUTXOPrefix, opd...)
 }
