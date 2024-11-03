@@ -2,6 +2,7 @@ package synch
 
 import (
 	"context"
+	"fmt"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/p2p/common"
@@ -127,5 +128,10 @@ func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.S
 }
 
 func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp2pcore.Stream, pe *peers.Peer) *common.Error {
-	return nil
+	m, ok := msg.(*pb.SnapSyncReq)
+	if !ok {
+		err := fmt.Errorf("message is not type *pb.Hash")
+		return ErrMessage(err)
+	}
+	return s.EncodeResponseMsg(stream, m)
 }

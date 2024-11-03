@@ -41,6 +41,9 @@ func (b *BlockChain) ProcessBlock(block *types.SerializedBlock, flags BehaviorFl
 	if b.IsShutdown() {
 		return nil, false, fmt.Errorf("block chain is shutdown")
 	}
+	if b.IsSnapSyncing() {
+		return nil, false, fmt.Errorf("block chain is syncing snap")
+	}
 	block.Reset()
 	bh := *block.Hash()
 	if _, ok := b.processQueueMap.Load(bh); ok {
