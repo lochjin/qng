@@ -2,73 +2,15 @@ package synch
 
 import (
 	"context"
-	"fmt"
-	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
+	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	libp2pcore "github.com/libp2p/go-libp2p/core"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"sync"
 	"time"
 )
-
-type SnapStatus struct {
-	locker *sync.RWMutex
-
-	blockHash *hash.Hash
-	stateRoot *hash.Hash
-
-	peid peer.ID
-}
-
-func (s *SnapStatus) IsInit() bool {
-	s.locker.RLock()
-	defer s.locker.RUnlock()
-
-	return s.isInit()
-}
-
-func (s *SnapStatus) isInit() bool {
-	return s.blockHash != nil
-}
-
-func (s *SnapStatus) ToInfo() *json.SnapSyncInfo {
-	s.locker.RLock()
-	defer s.locker.RUnlock()
-	if !s.isInit() {
-		return &json.SnapSyncInfo{
-			TargetBlock: "initializing",
-			StateRoot:   "initializing",
-		}
-	}
-	return &json.SnapSyncInfo{
-		TargetBlock: s.blockHash.String(),
-		StateRoot:   s.stateRoot.String(),
-	}
-}
-
-func (s *SnapStatus) ToString() string {
-	s.locker.RLock()
-	defer s.locker.RUnlock()
-	if !s.isInit() {
-		return "initializing"
-	}
-	return fmt.Sprintf("TargetBlock:%s, StateRoot:%s", s.blockHash.String(), s.stateRoot.String())
-}
-
-func (s *SnapStatus) PeerID() peer.ID {
-	s.locker.RLock()
-	defer s.locker.RUnlock()
-
-	return s.peid
-}
-
-func NewSnapStatus(peid peer.ID) *SnapStatus {
-	return &SnapStatus{peid: peid}
-}
 
 func (ps *PeerSync) IsSnapSync() bool {
 	return ps.snapStatus != nil
@@ -88,7 +30,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		return false
 	}
 	gs := bestPeer.GraphState()
-	if gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
+	if !ps.IsSnapSync() && gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
 		return false
 	}
 	// Start syncing from the best peer if one was selected.
@@ -108,14 +50,35 @@ cleanup:
 	startTime := time.Now()
 	ps.lastSync = startTime
 
-	ps.snapStatus = NewSnapStatus(bestPeer.GetID())
+	if ps.IsSnapSync() {
+		ps.snapStatus.Reset(bestPeer.GetID())
+	} else {
+		ps.snapStatus = NewSnapStatus(bestPeer.GetID())
+	}
+
 	log.Info("Snap syncing", "cur", best.GraphState.String(), "target", ps.snapStatus.ToString(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 	// ------
-
+	ps.sy.p2p.BlockChain().SetSnapSyncing(true)
+	for !ps.snapStatus.isCompleted() {
+		ret, err := ps.syncSnapStatus(bestPeer)
+		if err != nil {
+			log.Warn("Snap-sync", "err", err.Error())
+			break
+		}
+		err = ps.snapStatus.processRsp(ret, ps.sy.p2p)
+		if err != nil {
+			break
+		}
+	}
+	ps.sy.p2p.BlockChain().SetSnapSyncing(false)
 	// ------
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
-	log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
+	if ps.snapStatus.isCompleted() {
+		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
+	} else {
+		log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
+	}
 
 	ps.SetSyncPeer(nil)
 	ps.processwg.Done()
@@ -123,9 +86,44 @@ cleanup:
 	return true
 }
 
-func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) *common.Error {
+func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
+	point := pe.SyncPoint()
+	mainLocator, mainStateRoot := ps.dagSync.GetMainLocator(point, true)
+	locator := []*pb.Locator{}
+	for i := 0; i < len(mainLocator); i++ {
+		locator = append(locator, &pb.Locator{
+			Block:     &pb.Hash{Hash: mainLocator[i].Bytes()},
+			StateRoot: &pb.Hash{Hash: mainStateRoot[i].Bytes()},
+		})
+	}
+	req := &pb.SnapSyncReq{
+		Locator: locator,
+	}
 
-	return nil
+	targetBlock, stateRoot := ps.snapStatus.GetTarget()
+	if targetBlock != nil {
+		req.TargetBlock = &pb.Hash{Hash: targetBlock.Bytes()}
+		req.StateRoot = &pb.Hash{Hash: stateRoot.Bytes()}
+	}
+
+	ret, err := ps.sy.Send(pe, RPCSyncSnap, req)
+	if err != nil {
+		return nil, err
+	}
+	return ret.(*pb.SnapSyncRsp), nil
+}
+
+func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {
+	e := ReadRspCode(stream, s.p2p)
+	if !e.Code.IsSuccess() {
+		e.Add("get block date request rsp")
+		return nil, e
+	}
+	msg := &pb.SnapSyncRsp{}
+	if err := DecodeMessage(stream, s.p2p, msg); err != nil {
+		return nil, common.NewError(common.ErrStreamRead, err)
+	}
+	return msg, nil
 }
 
 func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp2pcore.Stream, pe *peers.Peer) *common.Error {
