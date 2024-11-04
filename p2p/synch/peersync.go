@@ -49,6 +49,8 @@ type PeerSync struct {
 	processLock    sync.Mutex
 	processWorkNum atomic.Int32
 	processwg      sync.WaitGroup
+
+	snapStatus *SnapStatus
 }
 
 func (ps *PeerSync) Start() error {
@@ -283,8 +285,15 @@ func (ps *PeerSync) startSync() {
 		log.Debug("P2P is pause.")
 		return
 	}
+	if ps.startSnapSync() {
+		return
+	}
+	ps.startConsensusSync()
+}
+
+func (ps *PeerSync) startConsensusSync() {
 	best := ps.Chain().BestSnapshot()
-	bestPeer := ps.getBestPeer()
+	bestPeer := ps.getBestPeer(false)
 	// Start syncing from the best peer if one was selected.
 	if bestPeer != nil {
 		ps.processID++
@@ -293,7 +302,7 @@ func (ps *PeerSync) startSync() {
 		}
 		ps.processwg.Add(1)
 		gs := bestPeer.GraphState()
-		log.Info("Syncing graph state", "cur", best.GraphState.String(), "target", gs.String(), "peer", bestPeer.GetID().String(), "processID", ps.processID)
+		log.Info("Syncing graph state", "cur", best.GraphState.String(), "target", gs.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 		// When the current height is less than a known checkpoint we
 		// can use block headers to learn about which blocks comprise
 		// the chain up to the checkpoint and perform less validation
@@ -312,7 +321,6 @@ func (ps *PeerSync) startSync() {
 		// not support the headers-first approach so do normal block
 		// downloads when in regression test mode.
 		ps.SetSyncPeer(bestPeer)
-		ps.dagSync.SetGraphState(gs)
 
 	cleanup:
 		for {
@@ -353,7 +361,7 @@ func (ps *PeerSync) startSync() {
 			}
 		}
 		//
-		log.Info("The sync of graph state has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.processID)
+		log.Info("The sync of graph state has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
 		if add > 0 {
 			if longSyncMod && !ps.IsInterrupt() {
 				if ps.IsCurrent() {
@@ -372,11 +380,19 @@ func (ps *PeerSync) startSync() {
 }
 
 // getBestPeer
-func (ps *PeerSync) getBestPeer() *peers.Peer {
+func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 	best := ps.Chain().BestSnapshot()
 	var bestPeer *peers.Peer
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
+		if snap {
+			if !sp.IsSnap() {
+				continue
+			}
+			if ps.IsSnapSync() && sp.GetID() == ps.snapStatus.PeerID() {
+				return sp
+			}
+		}
 		// Remove sync candidate peers that are no longer candidates due
 		// to passing their latest known block.  NOTE: The < is
 		// intentional as opposed to <=.  While techcnically the peer
@@ -473,17 +489,17 @@ func (ps *PeerSync) IsCompleteForSyncPeer() bool {
 
 func (ps *PeerSync) IntellectSyncBlocks(refresh bool, pe *peers.Peer) *ProcessResult {
 	if pe == nil {
-		log.Trace(fmt.Sprintf("IntellectSyncBlocks has not sync peer, return directly"), "processID", ps.processID)
+		log.Trace(fmt.Sprintf("IntellectSyncBlocks has not sync peer, return directly"), "processID", ps.getProcessID())
 		return nil
 	}
 	if ps.pause {
-		log.Debug("P2P is pause.", "processID", ps.processID)
+		log.Debug("P2P is pause.", "processID", ps.getProcessID())
 		return nil
 	}
 	if ps.Chain().GetOrphansTotal() >= blockchain.MaxOrphanBlocks || refresh {
 		err := ps.Chain().RefreshOrphans()
 		if err != nil {
-			log.Trace(fmt.Sprintf("IntellectSyncBlocks failed to refresh orphans, err=%v", err.Error()), "processID", ps.processID)
+			log.Trace(fmt.Sprintf("IntellectSyncBlocks failed to refresh orphans, err=%v", err.Error()), "processID", ps.getProcessID())
 		}
 	}
 	if ps.IsInterrupt() {
@@ -494,13 +510,13 @@ func (ps *PeerSync) IntellectSyncBlocks(refresh bool, pe *peers.Peer) *ProcessRe
 		return nil
 	}
 	if len(allOrphan) > 0 {
-		log.Trace(fmt.Sprintf("IntellectSyncBlocks do ps.GetBlock, peer=%v,allOrphan=%v ", pe.GetID(), allOrphan), "processID", ps.processID)
+		log.Trace(fmt.Sprintf("IntellectSyncBlocks do ps.GetBlock, peer=%v,allOrphan=%v ", pe.GetID(), allOrphan), "processID", ps.getProcessID())
 		if len(allOrphan) == 1 {
 			return ps.processGetBlockDatas(pe, allOrphan)
 		}
 		return ps.processGetBlocks(pe, allOrphan)
 	} else {
-		log.Trace(fmt.Sprintf("IntellectSyncBlocks do ps.syncDAGBlocks, peer=%v ", pe.GetID()), "processID", ps.processID)
+		log.Trace(fmt.Sprintf("IntellectSyncBlocks do ps.syncDAGBlocks, peer=%v ", pe.GetID()), "processID", ps.getProcessID())
 		return ps.processSyncDAGBlocks(pe)
 	}
 }
@@ -542,7 +558,7 @@ func (ps *PeerSync) checkContinueSync() bool {
 			go ps.TryAgainUpdateSyncPeer(true)
 			return false
 		}
-		bestPeer := ps.getBestPeer()
+		bestPeer := ps.getBestPeer(false)
 		if bestPeer == nil {
 			go ps.TryAgainUpdateSyncPeer(true)
 			return false
@@ -696,6 +712,13 @@ func (ps *PeerSync) IsInterrupt() bool {
 		return true
 	}
 	return false
+}
+
+func (ps *PeerSync) getProcessID() string {
+	if ps.IsSnapSync() {
+		return fmt.Sprintf("%d-snap", ps.processID)
+	}
+	return fmt.Sprintf("%d", ps.processID)
 }
 
 func NewPeerSync(sy *Sync) *PeerSync {

@@ -74,6 +74,7 @@ func (api *PublicP2PAPI) GetPeerInfo(verbose *bool, pid *string) (interface{}, e
 			Bads:      p.Bads,
 			ReConnect: p.ReConnect,
 			Active:    active,
+			Snap:      p.IsSnap(),
 		}
 		info.Protocol = p.Protocol
 		info.Services = p.Services.String()
@@ -141,8 +142,15 @@ func (api *PublicP2PAPI) IsCurrent() (interface{}, error) {
 func (api *PublicP2PAPI) GetNetworkInfo() (interface{}, error) {
 	ps := api.s
 	peers := ps.Peers().StatsSnapshots()
-	nstat := &json.NetworkStat{MaxConnected: ps.Config().MaxPeers,
-		MaxInbound: ps.Config().MaxInbound, Infos: []*json.NetworkInfo{}}
+	nstat := &json.NetworkStat{
+		MaxConnected: ps.Config().MaxPeers,
+		MaxInbound:   ps.Config().MaxInbound,
+		Infos:        []*json.NetworkInfo{},
+	}
+	ss := ps.PeerSync().GetSnapSyncInfo()
+	if ss != nil {
+		nstat.SnapSync = ss
+	}
 	infos := map[string]*json.NetworkInfo{}
 	gsups := map[string][]time.Duration{}
 
@@ -331,6 +339,6 @@ func (api *PrivateP2PAPI) CheckConsistency(hashOrNumber string) (interface{}, er
 }
 
 func (api *PrivateP2PAPI) DisableRelayTx(dis bool) (interface{}, error) {
-	api.s.cfg.DisableRelayTx=dis
-	return api.s.cfg.DisableRelayTx,nil
+	api.s.cfg.DisableRelayTx = dis
+	return api.s.cfg.DisableRelayTx, nil
 }

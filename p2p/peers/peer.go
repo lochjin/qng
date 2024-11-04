@@ -741,6 +741,16 @@ func (p *Peer) SetMempoolReqTime(t time.Time) {
 	p.mempoolreq = t
 }
 
+func (p *Peer) IsSnap() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return protocol.HasServices(protocol.ServiceFlag(p.chainState.Services), protocol.Snap)
+}
+
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
 	return &Peer{
 		peerStatus: &peerStatus{

@@ -58,6 +58,7 @@ type GetPeerInfoResult struct {
 	MempoolReqTime string               `json:"mempoolreqtime,omitempty"`
 	Tasks          int                  `json:"tasks,omitempty"`
 	Broadcast      int                  `json:"broadcast,omitempty"`
+	Snap           bool                 `json:"snap,omitempty"`
 }
 
 // GetGraphStateResult data
@@ -91,6 +92,7 @@ type NetworkStat struct {
 	TotalConnected int            `json:"totalconnected"`
 	TotalRelays    int            `json:"totalrelays"`
 	Infos          []*NetworkInfo `json:"infos"`
+	SnapSync       *SnapSyncInfo  `json:"snapsync,omitempty"`
 }
 
 type NetworkInfo struct {
@@ -101,6 +103,11 @@ type NetworkInfo struct {
 	AverageGS  string `json:"averagegs,omitempty"`
 	MaxGS      string `json:"maxgs,omitempty"`
 	MinGS      string `json:"mings,omitempty"`
+}
+
+type SnapSyncInfo struct {
+	TargetBlock string `json:"targetblock"`
+	StateRoot   string `json:"stateroot"`
 }
 
 type SubsidyInfo struct {

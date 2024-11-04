@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package qitmeer.p2p.v1;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "message.proto";
+
+message SnapSyncReq {
+  Hash targetBlock =1;
+  Hash stateRoot=2;
+  repeated Locator locator =3 [(gogoproto.moretags) = "ssz-max:\"32\""];
+  repeated TransferStatus status =4 [(gogoproto.moretags) = "ssz-max:\"8\""];
+}
+
+message SnapSyncRsp {
+  Hash targetBlock =1;
+  Hash stateRoot=2;
+  repeated TransferStatus status =3 [(gogoproto.moretags) = "ssz-max:\"8\""];
+  repeated TransferData datas =4 [(gogoproto.moretags) = "ssz-max:\"262144\""];
+}
+
+message Locator {
+  Hash block =1;
+  Hash stateRoot=2;
+}
+
+message TransferStatus {
+  uint64 start =2;
+  uint32 num =3;
+  uint64 total=4;
+}
+
+message TransferData {
+  bytes key = 2 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
+  bytes value = 3 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
+}

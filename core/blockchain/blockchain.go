@@ -144,6 +144,8 @@ type BlockChain struct {
 	processQueueMap sync.Map
 
 	selfAdd atomic.Int64
+
+	snapSyncing atomic.Bool
 }
 
 func (b *BlockChain) Init() error {
@@ -1030,6 +1032,14 @@ func (b *BlockChain) ProcessQueueSize() int {
 	return size
 }
 
+func (b *BlockChain) IsSnapSyncing() bool {
+	return b.snapSyncing.Load()
+}
+
+func (b *BlockChain) SetSnapSyncing(val bool) {
+	b.snapSyncing.Store(val)
+}
+
 // New returns a BlockChain instance using the provided configuration details.
 func New(consensus model.Consensus) (*BlockChain, error) {
 	// Enforce required config fields.
@@ -1074,6 +1084,7 @@ func New(consensus model.Consensus) (*BlockChain, error) {
 		quit:               make(chan struct{}),
 	}
 	b.selfAdd.Store(0)
+	b.snapSyncing.Store(false)
 
 	b.subsidyCache = NewSubsidyCache(0, b.params)
 

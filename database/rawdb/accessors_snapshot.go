@@ -166,3 +166,43 @@ func WriteSnapshotSyncStatus(db ethdb.KeyValueWriter, status []byte) {
 		log.Error("Failed to store snapshot sync status", "err", err)
 	}
 }
+
+// snaputxo
+
+func ReadSnapUtxo(db ethdb.Reader, opd []byte) []byte {
+	data, err := db.Get(snapUTXOKey(opd))
+	if len(data) == 0 {
+		if isErrWithoutNotFound(err) {
+			log.Error("read utxo", "err", err.Error())
+		}
+		return nil
+	}
+	return data
+}
+
+func WriteSnapUtxo(db ethdb.KeyValueWriter, opd []byte, data []byte) error {
+	if len(data) <= 0 {
+		return nil
+	}
+	return db.Put(snapUTXOKey(opd), data)
+}
+
+func DeleteSnapUtxo(db ethdb.KeyValueWriter, opd []byte) {
+	if err := db.Delete(snapUTXOKey(opd)); err != nil {
+		log.Crit("Failed to delete hash to utxo mapping", "err", err)
+	}
+}
+
+func ForeachSnapUtxo(db ethdb.KeyValueStore, fn func(opd []byte, data []byte) error) error {
+	it := db.NewIterator(SnapUTXOPrefix, nil)
+	defer it.Release()
+
+	for it.Next() {
+		op := it.Key()[len(SnapUTXOPrefix):]
+		err := fn(op, it.Value())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

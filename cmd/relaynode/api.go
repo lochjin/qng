@@ -80,6 +80,7 @@ func (api *PublicRelayAPI) GetPeerInfo(verbose *bool, network *string) (interfac
 			Bads:      p.Bads,
 			ReConnect: p.ReConnect,
 			Active:    active,
+			Snap:      p.IsSnap(),
 		}
 		info.Protocol = p.Protocol
 		info.Services = p.Services.String()

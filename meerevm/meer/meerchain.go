@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/holiman/uint256"
@@ -653,6 +654,10 @@ func (b *MeerChain) checkMeerChange() error {
 	}
 	meerchange.EnableContractAddr()
 	return nil
+}
+
+func (b *MeerChain) SyncMode() downloader.SyncMode {
+	return b.chain.Config().Eth.SyncMode
 }
 
 func (b *MeerChain) APIs() []api.API {

@@ -21,7 +21,7 @@ const (
 	// Support continue block sync for DAG search
 	ConSyncDAGProtocolVersion uint32 = 44
 
-	// Support continue block sync for DAG search
+	// Support broadcast block when received command
 	BroadcastblockProtocolVersion uint32 = 45
 
 	// Support meerevm tx transmission
