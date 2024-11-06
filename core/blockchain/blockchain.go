@@ -1040,6 +1040,21 @@ func (b *BlockChain) SetSnapSyncing(val bool) {
 	b.snapSyncing.Store(val)
 }
 
+func (b *BlockChain) BeginSnapSyncing() error {
+	b.SetSnapSyncing(true)
+	err := b.DB().Rebuild(b.indexManager)
+	if err != nil {
+		return err
+	}
+	meer.Cleanup(b.consensus.Config())
+
+	return nil
+}
+
+func (b *BlockChain) EndSnapSyncing() {
+	b.SetSnapSyncing(false)
+}
+
 // New returns a BlockChain instance using the provided configuration details.
 func New(consensus model.Consensus) (*BlockChain, error) {
 	// Enforce required config fields.

@@ -60,7 +60,11 @@ cleanup:
 	log.Info("Snap syncing", "cur", best.GraphState.String(), "target", ps.snapStatus.ToString(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 	// ------
-	ps.sy.p2p.BlockChain().SetSnapSyncing(true)
+	err := ps.sy.p2p.BlockChain().BeginSnapSyncing()
+	if err != nil {
+		log.Error(err.Error())
+		return false
+	}
 	for !ps.snapStatus.isCompleted() {
 		ret, err := ps.syncSnapStatus(bestPeer)
 		if err != nil {
@@ -72,7 +76,7 @@ cleanup:
 			break
 		}
 	}
-	ps.sy.p2p.BlockChain().SetSnapSyncing(false)
+	ps.sy.p2p.BlockChain().EndSnapSyncing()
 	// ------
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 	if ps.snapStatus.isCompleted() {
