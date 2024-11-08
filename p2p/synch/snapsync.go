@@ -62,27 +62,35 @@ cleanup:
 	// ------
 	err := ps.sy.p2p.BlockChain().BeginSnapSyncing()
 	if err != nil {
-		log.Error(err.Error())
 		return false
 	}
+	add := 0
 	for !ps.snapStatus.isCompleted() {
 		ret, err := ps.syncSnapStatus(bestPeer)
 		if err != nil {
 			log.Warn("Snap-sync", "err", err.Error())
 			break
 		}
-		err = ps.snapStatus.processRsp(ret, ps.sy.p2p)
+		sds, err := ps.snapStatus.processRsp(ret, ps.sy.p2p)
 		if err != nil {
 			break
 		}
+		if len(sds) <= 0 {
+			continue
+		}
+		err = ps.sy.p2p.BlockChain().ProcessBlockBySnap(sds)
+		if err != nil {
+			break
+		}
+		add += len(sds)
 	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
 	// ------
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 	if ps.snapStatus.isCompleted() {
-		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
+		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
 	} else {
-		log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
+		log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
 	}
 
 	ps.SetSyncPeer(nil)

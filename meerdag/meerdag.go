@@ -401,6 +401,11 @@ func (bd *MeerDAG) AddBlock(b IBlockData) (*list.List, *list.List, IBlock, bool)
 	return news, olds, ib, lastMT != curMT.GetID()
 }
 
+func (bd *MeerDAG) AddDirectBlock(db IBlock) (IBlock, bool) {
+
+	return nil, false
+}
+
 // Acquire the genesis block of chain
 func (bd *MeerDAG) getGenesis() IBlock {
 	return bd.getBlockById(GenesisId)

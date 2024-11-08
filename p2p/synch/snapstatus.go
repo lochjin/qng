@@ -3,6 +3,7 @@ package synch
 import (
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/database/common"
@@ -109,7 +110,7 @@ func (s *SnapStatus) isCompleted() bool {
 	return true
 }
 
-func (s *SnapStatus) processRsp(ssr *pb.SnapSyncRsp, p2p peers.P2P) error {
+func (s *SnapStatus) processRsp(ssr *pb.SnapSyncRsp, p2p peers.P2P) ([]*blockchain.SnapData, error) {
 	s.locker.Lock()
 	defer s.locker.Unlock()
 
@@ -117,12 +118,12 @@ func (s *SnapStatus) processRsp(ssr *pb.SnapSyncRsp, p2p peers.P2P) error {
 	s.stateRoot = changePBHashToHash(ssr.StateRoot)
 	// Legitimacy verification
 	if len(ssr.Status) != Max.Index() {
-		return fmt.Errorf("SnapSyncRsp.TransferStatus len is %d, expect %d", len(ssr.Status), Max.Index())
+		return nil, fmt.Errorf("SnapSyncRsp.TransferStatus len is %d, expect %d", len(ssr.Status), Max.Index())
 	}
 	if s.tstatus != nil {
 		for i := 0; i < Max.Index(); i++ {
 			if s.tstatus[i].Start+uint64(s.tstatus[i].Num) != ssr.Status[i].Start {
-				return fmt.Errorf("SnapSyncRsp.TransferStatus start is %d. (type:%d)", ssr.Status[i].Start, i)
+				return nil, fmt.Errorf("SnapSyncRsp.TransferStatus start is %d. (type:%d)", ssr.Status[i].Start, i)
 			}
 		}
 	}
@@ -147,11 +148,11 @@ func (s *SnapStatus) processRsp(ssr *pb.SnapSyncRsp, p2p peers.P2P) error {
 					idx := offset + j
 					block, err := types.NewBlockFromBytes(ssr.Datas[idx].Value)
 					if err != nil {
-						return err
+						return nil, err
 					}
 					err = p2p.BlockChain().DB().PutBlock(block)
 					if err != nil {
-						return err
+						return nil, err
 					}
 				}
 			} else if TransferDataType(i) == UTXO {
@@ -166,7 +167,7 @@ func (s *SnapStatus) processRsp(ssr *pb.SnapSyncRsp, p2p peers.P2P) error {
 				}
 				err := p2p.BlockChain().DB().UpdateUtxo(opts)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 
@@ -182,7 +183,7 @@ func (s *SnapStatus) processRsp(ssr *pb.SnapSyncRsp, p2p peers.P2P) error {
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func NewSnapStatus(peid peer.ID) *SnapStatus {
