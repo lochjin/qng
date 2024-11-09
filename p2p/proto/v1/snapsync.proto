@@ -13,7 +13,7 @@ message Locator {
 
 message TransferData {
   bytes block = 1 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
-  repeated BytesData stxos = 2 [(gogoproto.moretags) = "ssz-max:\"24379\""];
+  bytes stxos = 2 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
   bytes dagBlock = 3 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
   bool main = 4;
   bytes tokenState = 5 [(gogoproto.moretags) = "ssz-max:\"1048576\""];

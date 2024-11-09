@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/Qitmeer/qng/core/blockchain"
+	"github.com/Qitmeer/qng/core/blockchain/token"
+	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
@@ -62,7 +64,7 @@ cleanup:
 	log.Info("Snap syncing", "cur", best.GraphState.String(), "target", ps.snapStatus.ToString(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 	// ------
-	err := ps.sy.p2p.BlockChain().BeginSnapSyncing()
+	err := ps.Chain().BeginSnapSyncing()
 	if err != nil {
 		return false
 	}
@@ -82,7 +84,7 @@ cleanup:
 			log.Warn("No process snap sync data")
 			continue
 		}
-		err = ps.sy.p2p.BlockChain().ProcessBlockBySnap(sds)
+		err = ps.Chain().ProcessBlockBySnap(sds)
 		if err != nil {
 			break
 		}
@@ -157,8 +159,31 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 			sd.SetBlock(block)
 		}
 		if len(data.Stxos) > 0 {
-
+			sts, err := utxo.DeserializeSpendJournalEntry(data.Stxos)
+			if err != nil {
+				return nil, err
+			}
+			sd.SetStxos(sts)
 		}
+		if len(data.DagBlock) > 0 {
+			dblock, err := ps.Chain().BlockDAG().NewBlockFromBytes(data.DagBlock)
+			if err != nil {
+				return nil, err
+			}
+			sd.SetDAGBlock(dblock)
+		}
+		sd.SetMain(data.Main)
+		if len(data.TokenState) > 0 {
+			ts, err := token.NewTokenStateFromBytes(data.TokenState)
+			if err != nil {
+				return nil, err
+			}
+			sd.SetTokenState(ts)
+		}
+		if data.PrevTSHash != nil && len(data.PrevTSHash.Hash) > 0 {
+			sd.SetPrevTSHash(changePBHashToHash(data.PrevTSHash))
+		}
+		ret = append(ret, sd)
 	}
 	return ret, nil
 }

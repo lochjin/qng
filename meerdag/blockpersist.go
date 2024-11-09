@@ -302,3 +302,13 @@ func (bd *MeerDAG) SetCacheSize(dag uint64, data uint64) {
 func (bd *MeerDAG) DB() model.DataBase {
 	return bd.db
 }
+
+func (bd *MeerDAG) NewBlockFromBytes(data []byte) (IBlock, error) {
+	block := &Block{}
+	pblock := bd.instance.CreateBlock(block)
+	err := NewDAGError(pblock.Decode(bytes.NewReader(data)))
+	if err != nil {
+		return nil, err
+	}
+	return pblock, nil
+}
