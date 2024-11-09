@@ -12,11 +12,25 @@ import (
 
 type SnapData struct {
 	block      *types.SerializedBlock
-	stxo       []utxo.SpentTxOut
+	stxos      []*utxo.SpentTxOut
 	dagBlock   meerdag.IBlock
 	main       bool
 	tokenState token.TokenState
 	prevTSHash *hash.Hash
+}
+
+func (s *SnapData) SetBlock(block *types.SerializedBlock) {
+	s.block = block
+}
+
+func (s *SnapData) AddSTXO(stxo *utxo.SpentTxOut) {
+	s.stxos = append(s.stxos, stxo)
+}
+
+func NewSnapData() *SnapData {
+	return &SnapData{
+		stxos: []*utxo.SpentTxOut{},
+	}
 }
 
 func (b *BlockChain) IsSnapSyncing() bool {

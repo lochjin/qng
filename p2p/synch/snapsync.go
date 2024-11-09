@@ -3,8 +3,10 @@ package synch
 import (
 	"context"
 	"fmt"
+	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
+	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
@@ -71,11 +73,13 @@ cleanup:
 			log.Warn("Snap-sync", "err", err.Error())
 			break
 		}
-		sds, err := ps.snapStatus.processRsp(ret, ps.sy.p2p)
+		sds, err := ps.processRsp(ret)
 		if err != nil {
+			log.Warn(err.Error())
 			break
 		}
 		if len(sds) <= 0 {
+			log.Warn("No process snap sync data")
 			continue
 		}
 		err = ps.sy.p2p.BlockChain().ProcessBlockBySnap(sds)
@@ -100,23 +104,26 @@ cleanup:
 }
 
 func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
-	point := pe.SyncPoint()
-	mainLocator, mainStateRoot := ps.dagSync.GetMainLocator(point, true)
-	locator := []*pb.Locator{}
-	for i := 0; i < len(mainLocator); i++ {
-		locator = append(locator, &pb.Locator{
-			Block:     &pb.Hash{Hash: mainLocator[i].Bytes()},
-			StateRoot: &pb.Hash{Hash: mainStateRoot[i].Bytes()},
-		})
-	}
-	req := &pb.SnapSyncReq{
-		Locator: locator,
-	}
+	req := &pb.SnapSyncReq{Locator: []*pb.Locator{}}
 
 	targetBlock, stateRoot := ps.snapStatus.GetTarget()
 	if targetBlock != nil {
+		sp := ps.snapStatus.GetSyncPoint()
 		req.TargetBlock = &pb.Hash{Hash: targetBlock.Bytes()}
 		req.StateRoot = &pb.Hash{Hash: stateRoot.Bytes()}
+		req.Locator = append(req.Locator, &pb.Locator{
+			Block:     &pb.Hash{Hash: sp.GetHash().Bytes()},
+			StateRoot: &pb.Hash{Hash: sp.GetState().Root().Bytes()},
+		})
+	} else {
+		point := pe.SyncPoint()
+		mainLocator, mainStateRoot := ps.dagSync.GetMainLocator(point, true)
+		for i := 0; i < len(mainLocator); i++ {
+			req.Locator = append(req.Locator, &pb.Locator{
+				Block:     &pb.Hash{Hash: mainLocator[i].Bytes()},
+				StateRoot: &pb.Hash{Hash: mainStateRoot[i].Bytes()},
+			})
+		}
 	}
 
 	ret, err := ps.sy.Send(pe, RPCSyncSnap, req)
@@ -124,6 +131,36 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 		return nil, err
 	}
 	return ret.(*pb.SnapSyncRsp), nil
+}
+
+func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, error) {
+	if len(ssr.TargetBlock.Hash) <= 0 || len(ssr.StateRoot.Hash) <= 0 {
+		return nil, fmt.Errorf("No snap sync data")
+	}
+	targetBlock := changePBHashToHash(ssr.TargetBlock)
+	stateRoot := changePBHashToHash(ssr.StateRoot)
+	ps.snapStatus.SetTarget(targetBlock, stateRoot)
+
+	log.Trace("Snap-sync receive", "targetBlock", targetBlock.String(), "stateRoot", stateRoot.String(), "dataNum", len(ssr.Datas), "processID", ps.getProcessID())
+
+	if len(ssr.Datas) <= 0 {
+		return nil, nil
+	}
+	ret := []*blockchain.SnapData{}
+	for _, data := range ssr.Datas {
+		sd := blockchain.NewSnapData()
+		if len(data.Block) > 0 {
+			block, err := types.NewBlockFromBytes(data.Block)
+			if err != nil {
+				return nil, err
+			}
+			sd.SetBlock(block)
+		}
+		if len(data.Stxos) > 0 {
+
+		}
+	}
+	return ret, nil
 }
 
 func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {

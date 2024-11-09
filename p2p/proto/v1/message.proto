@@ -16,3 +16,7 @@ message MetaData {
 message Hash {
   bytes hash =200 [(gogoproto.moretags) = "ssz-size:\"32\""];
 }
+
+message BytesData {
+  bytes data = 1 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
+}
