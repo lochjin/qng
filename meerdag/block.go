@@ -115,6 +115,9 @@ func (b *Block) GetID() uint {
 
 func (b *Block) SetID(id uint) {
 	b.id = id
+	if b.state != nil {
+		b.state.SetID(uint64(id))
+	}
 }
 
 // Return the hash of block. It will be a pointer.
@@ -134,6 +137,13 @@ func (b *Block) RemoveParent(id uint) {
 		return
 	}
 	b.parents.Remove(id)
+}
+
+func (b *Block) CleanParents() {
+	if !b.HasParents() {
+		return
+	}
+	b.parents.Clean()
 }
 
 // Get all parents set,the dag block has more than one parent
@@ -185,6 +195,13 @@ func (b *Block) RemoveChild(child uint) {
 		return
 	}
 	b.children.Remove(child)
+}
+
+func (b *Block) CleanChildren() {
+	if !b.HasChildren() {
+		return
+	}
+	b.children.Clean()
 }
 
 // Setting the layer of block

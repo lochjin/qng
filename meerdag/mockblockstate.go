@@ -18,6 +18,10 @@ type mockBlockState struct {
 	status model.BlockStatus
 }
 
+func (b *mockBlockState) SetID(id uint64) {
+	b.id = id
+}
+
 func (b *mockBlockState) GetID() uint64 {
 	return b.id
 }

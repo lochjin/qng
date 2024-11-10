@@ -80,3 +80,35 @@ func (b *BlockProgressLogger) LogBlockOrder(order uint, block *types.SerializedB
 func (b *BlockProgressLogger) SetLastLogTime(time time.Time) {
 	b.lastBlockLogTime = time
 }
+
+func (b *BlockProgressLogger) LogBlockOrders(latest meerdag.IBlock, blockNum, txNum int64) {
+	b.Lock()
+	defer b.Unlock()
+	b.receivedLogBlocks += blockNum
+	b.receivedLogTx += txNum
+	now := roughtime.Now()
+	duration := now.Sub(b.lastBlockLogTime)
+	if duration < time.Second*10 {
+		return
+	}
+
+	// Truncate the duration to 10s of milliseconds.
+	durationMillis := int64(duration / time.Millisecond)
+	tDuration := 10 * time.Millisecond * time.Duration(durationMillis/10)
+
+	// Log information about new block height.
+	blockStr := "blocks"
+	if b.receivedLogBlocks == 1 {
+		blockStr = "block"
+	}
+	txStr := "transactions"
+	if b.receivedLogTx == 1 {
+		txStr = "transaction"
+	}
+
+	b.subsystemLogger.Info(fmt.Sprintf("%s %d %s in the last %s ", b.progressAction, b.receivedLogBlocks, blockStr, tDuration),
+		txStr, b.receivedLogTx, "order", meerdag.GetOrderLogStr(latest.GetOrder()), "time", time.Unix(latest.GetData().GetTimestamp(), 0).String())
+	b.receivedLogBlocks = 0
+	b.receivedLogTx = 0
+	b.lastBlockLogTime = now
+}

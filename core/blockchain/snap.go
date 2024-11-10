@@ -74,10 +74,35 @@ func (b *BlockChain) BeginSnapSyncing() error {
 }
 
 func (b *BlockChain) EndSnapSyncing() {
+	b.bd.RecalDiffAnticone()
 	b.SetSnapSyncing(false)
 }
 
-func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) error {
+func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) (meerdag.IBlock, error) {
+	if len(sds) <= 0 {
+		return nil, nil
+	}
+	var latest meerdag.IBlock
+	b.ChainLock()
+	defer b.ChainUnlock()
+	txNum := int64(0)
+	for _, sd := range sds {
+		if !b.DB().HasBlock(sd.block.Hash()) {
+			err := dbMaybeStoreBlock(b.DB(), sd.block)
+			if err != nil {
+				return latest, err
+			}
+		}
+		node := NewBlockNode(sd.block)
+		dblock, err := b.bd.AddDirectBlock(node, sd.dagBlock, sd.main)
+		if err != nil {
+			return latest, err
+		}
 
-	return nil
+		latest = dblock
+
+		txNum += int64(len(sd.block.Transactions()))
+	}
+	b.progressLogger.LogBlockOrders(latest, int64(len(sds)), txNum)
+	return latest, nil
 }

@@ -84,7 +84,7 @@ cleanup:
 			log.Warn("No process snap sync data")
 			continue
 		}
-		err = ps.Chain().ProcessBlockBySnap(sds)
+		_, err = ps.Chain().ProcessBlockBySnap(sds)
 		if err != nil {
 			break
 		}
