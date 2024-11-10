@@ -118,6 +118,13 @@ func (s *SnapStatus) GetSyncPoint() meerdag.IBlock {
 	return s.syncPoint
 }
 
+func (s *SnapStatus) SetSyncPoint(point meerdag.IBlock) {
+	s.locker.Lock()
+	defer s.locker.Unlock()
+
+	s.syncPoint = point
+}
+
 func (s *SnapStatus) isCompleted() bool {
 	s.locker.RLock()
 	defer s.locker.RUnlock()

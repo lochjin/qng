@@ -84,10 +84,11 @@ cleanup:
 			log.Warn("No process snap sync data")
 			continue
 		}
-		_, err = ps.Chain().ProcessBlockBySnap(sds)
+		latest, err := ps.Chain().ProcessBlockBySnap(sds)
 		if err != nil {
 			break
 		}
+		ps.snapStatus.SetSyncPoint(latest)
 		add += len(sds)
 	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
@@ -207,5 +208,9 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 		err := fmt.Errorf("message is not type *pb.Hash")
 		return ErrMessage(err)
 	}
+	if m.TargetBlock == nil || len(m.TargetBlock.Hash) <= 0 {
+		log.Info("Received Snap-sync request", "peer", pe.GetID().String())
+	}
+
 	return s.EncodeResponseMsg(stream, m)
 }
