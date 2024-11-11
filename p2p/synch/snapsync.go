@@ -112,19 +112,18 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 	targetBlock, stateRoot := ps.snapStatus.GetTarget()
 	if targetBlock != nil {
 		sp := ps.snapStatus.GetSyncPoint()
-		req.TargetBlock = &pb.Hash{Hash: targetBlock.Bytes()}
-		req.StateRoot = &pb.Hash{Hash: stateRoot.Bytes()}
+		req.Target = &pb.Locator{Block: &pb.Hash{Hash: targetBlock.Bytes()}, Root: &pb.Hash{Hash: stateRoot.Bytes()}}
 		req.Locator = append(req.Locator, &pb.Locator{
-			Block:     &pb.Hash{Hash: sp.GetHash().Bytes()},
-			StateRoot: &pb.Hash{Hash: sp.GetState().Root().Bytes()},
+			Block: &pb.Hash{Hash: sp.GetHash().Bytes()},
+			Root:  &pb.Hash{Hash: sp.GetState().Root().Bytes()},
 		})
 	} else {
 		point := pe.SyncPoint()
 		mainLocator, mainStateRoot := ps.dagSync.GetMainLocator(point, true)
 		for i := 0; i < len(mainLocator); i++ {
 			req.Locator = append(req.Locator, &pb.Locator{
-				Block:     &pb.Hash{Hash: mainLocator[i].Bytes()},
-				StateRoot: &pb.Hash{Hash: mainStateRoot[i].Bytes()},
+				Block: &pb.Hash{Hash: mainLocator[i].Bytes()},
+				Root:  &pb.Hash{Hash: mainStateRoot[i].Bytes()},
 			})
 		}
 	}
@@ -137,11 +136,11 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 }
 
 func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, error) {
-	if len(ssr.TargetBlock.Hash) <= 0 || len(ssr.StateRoot.Hash) <= 0 {
+	if isLocatorEmpty(ssr.Target) {
 		return nil, fmt.Errorf("No snap sync data")
 	}
-	targetBlock := changePBHashToHash(ssr.TargetBlock)
-	stateRoot := changePBHashToHash(ssr.StateRoot)
+	targetBlock := changePBHashToHash(ssr.Target.Block)
+	stateRoot := changePBHashToHash(ssr.Target.Root)
 	ps.snapStatus.SetTarget(targetBlock, stateRoot)
 
 	log.Trace("Snap-sync receive", "targetBlock", targetBlock.String(), "stateRoot", stateRoot.String(), "dataNum", len(ssr.Datas), "processID", ps.getProcessID())
@@ -208,9 +207,24 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 		err := fmt.Errorf("message is not type *pb.Hash")
 		return ErrMessage(err)
 	}
-	if m.TargetBlock == nil || len(m.TargetBlock.Hash) <= 0 {
-		log.Info("Received Snap-sync request", "peer", pe.GetID().String())
+	log.Debug("Received Snap-sync request", "peer", pe.GetID().String())
+	blocks, target, err := s.peerSync.dagSync.CalcSnapSyncBlocks(changePBLocatorsToLocators(m.Locator), MaxBlockLocatorsPerMsg, changePBLocatorToLocator(m.Target))
+	if err != nil {
+		log.Error(err.Error())
+		return ErrMessage(err)
+	}
+	if len(blocks) <= 0 {
+		return ErrMessage(fmt.Errorf("Can't find blocks for snap-sync"))
+	}
+	rsp := &pb.SnapSyncRsp{}
+	if isLocatorEmpty(m.Target) {
+		rsp.Target = &pb.Locator{
+			Block: &pb.Hash{Hash: target.GetHash().Bytes()},
+			Root:  &pb.Hash{Hash: target.GetState().Root().Bytes()},
+		}
+	} else {
+		rsp.Target = m.Target
 	}
 
-	return s.EncodeResponseMsg(stream, m)
+	return s.EncodeResponseMsg(stream, rsp)
 }

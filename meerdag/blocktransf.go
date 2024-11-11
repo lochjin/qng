@@ -176,6 +176,22 @@ func (bd *MeerDAG) getBlockByOrder(order uint) IBlock {
 	return bd.getBlockById(id)
 }
 
+func (bd *MeerDAG) getBlockIDByOrder(order uint) uint {
+	if order >= MaxBlockOrder {
+		return MaxId
+	}
+	id, ok := bd.commitOrder[order]
+	if ok {
+		return id
+	}
+	id, err := DBGetBlockIdByOrder(bd.db, order)
+	if err != nil {
+		log.Error(err.Error())
+		return MaxId
+	}
+	return id
+}
+
 // Return the last added block
 func (bd *MeerDAG) GetLastBlock() IBlock {
 	bd.stateLock.Lock()

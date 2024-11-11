@@ -101,6 +101,16 @@ func getMessageString(message interface{}) string {
 		}
 		str += fmt.Sprintf(" blockHash:%s", block.Hash().String())
 		return str
+
+	case *pb.SnapSyncRsp:
+		if isLocatorEmpty(msg.Target) {
+			str += fmt.Sprintf(" datas:%d", len(msg.Datas))
+		} else {
+			targetBlock := changePBHashToHash(msg.Target.Block)
+			stateRoot := changePBHashToHash(msg.Target.Root)
+			str += fmt.Sprintf(" targetBlock:%s stateRoot:%s datas:%d", targetBlock.String(), stateRoot.String(), len(msg.Datas))
+		}
+		return str
 	}
 	str += fmt.Sprintf("%v", message)
 	if len(str) > peers.MaxBadResponses {
@@ -128,4 +138,37 @@ func changePBGraphStateToGraphState(csgs *pb.GraphState) *meerdag.GraphState {
 	}
 	gs.SetTips(tips)
 	return gs
+}
+
+func changePBLocatorsToLocators(locator []*pb.Locator) []*meerdag.SnapLocator {
+	if len(locator) <= 0 {
+		return nil
+	}
+	sls := []*meerdag.SnapLocator{}
+	for _, loc := range locator {
+		sls = append(sls, changePBLocatorToLocator(loc))
+	}
+	return sls
+}
+
+func changePBLocatorToLocator(locator *pb.Locator) *meerdag.SnapLocator {
+	if isLocatorEmpty(locator) {
+		return nil
+	}
+	return meerdag.NewSnapLocator(changePBHashToHash(locator.Block), changePBHashToHash(locator.Root))
+}
+
+func isLocatorEmpty(locator *pb.Locator) bool {
+	if locator == nil {
+		return true
+	}
+	if locator.Block == nil ||
+		locator.Root == nil {
+		return true
+	}
+	if len(locator.Block.Hash) <= 0 ||
+		len(locator.Root.Hash) <= 0 {
+		return true
+	}
+	return false
 }
