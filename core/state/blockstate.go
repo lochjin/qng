@@ -30,6 +30,10 @@ func (b *BlockState) GetID() uint64 {
 	return b.id
 }
 
+func (b *BlockState) SetID(id uint64) {
+	b.id = id
+}
+
 func (b *BlockState) SetOrder(o uint64) {
 	b.order = o
 }

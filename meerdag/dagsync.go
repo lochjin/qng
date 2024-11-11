@@ -2,12 +2,15 @@ package meerdag
 
 import (
 	"container/list"
+	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"sync"
 )
 
 // This parameter can be set according to the size of TCP package(1500) to ensure the transmission stability of the network
 const MaxMainLocatorNum = 32
+
+const MaxSnapSyncTargetDepth = 1000
 
 // Synchronization mode
 type SyncMode byte
@@ -235,7 +238,52 @@ func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) []*hash.H
 	return result
 }
 
+func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, target *SnapLocator) ([]IBlock, error) {
+	ds.bd.stateLock.Lock()
+	defer ds.bd.stateLock.Unlock()
+
+	if target != nil {
+		result := []IBlock{}
+		if len(locator) != 1 {
+			return nil, fmt.Errorf("Locator len error")
+		}
+		point := ds.bd.getBlock(locator[0].block)
+		if point == nil {
+			return nil, fmt.Errorf("No block:%s", locator[0].block.String())
+		}
+		if !point.GetState().Root().IsEqual(locator[0].root) {
+			return nil, fmt.Errorf("Target root inconsistent:%s != %s", point.GetState().Root().String(), locator[0].root.String())
+		}
+		targetBlock := ds.bd.getBlock(target.block)
+		if point == nil {
+			return nil, fmt.Errorf("No target:%s", target.block.String())
+		}
+		for i := point.GetOrder() + 1; i <= targetBlock.GetOrder(); i++ {
+			block := ds.bd.getBlockByOrder(i)
+			if block == nil {
+				return result, fmt.Errorf("No block in order:%d", i)
+			}
+			result = append(result, block)
+			if uint(len(result)) >= maxHashes {
+				break
+			}
+		}
+		return result, nil
+	}
+	// get target
+	mp := ds.bd.getMainChainTip()
+	if mp.GetOrder() <= MaxSnapSyncTargetDepth {
+		return nil, fmt.Errorf("No blocks for snap-sync:%d", mp.GetOrder())
+	}
+	return nil, nil
+}
+
 // NewDAGSync
 func NewDAGSync(bd *MeerDAG) *DAGSync {
 	return &DAGSync{bd: bd}
+}
+
+type SnapLocator struct {
+	block *hash.Hash
+	root  *hash.Hash
 }

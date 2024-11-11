@@ -239,14 +239,20 @@ func DBFetchTokenState(db model.DataBase, bid uint) (*TokenState, error) {
 	if err != nil {
 		return nil, err
 	}
-	// deserialize the fetched token state record
-	ts := TokenState{}
-	_, err = ts.Deserialize(v)
-	return &ts, err
+	return NewTokenStateFromBytes(v)
 }
 
 func DBRemoveTokenState(db model.DataBase, id uint) error {
 	return db.DeleteTokenState(id)
+}
+
+func NewTokenStateFromBytes(data []byte) (*TokenState, error) {
+	ts := &TokenState{}
+	_, err := ts.Deserialize(data)
+	if err != nil {
+		return nil, err
+	}
+	return ts, nil
 }
 
 // TODO: You can customize the initial value

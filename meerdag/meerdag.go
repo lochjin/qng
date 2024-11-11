@@ -401,6 +401,103 @@ func (bd *MeerDAG) AddBlock(b IBlockData) (*list.List, *list.List, IBlock, bool)
 	return news, olds, ib, lastMT != curMT.GetID()
 }
 
+func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool) (IBlock, error) {
+	bd.stateLock.Lock()
+	defer bd.stateLock.Unlock()
+
+	if ib == nil || b == nil {
+		return nil, fmt.Errorf("block is nil")
+	}
+	if bd.blockTotal <= 0 {
+		return nil, fmt.Errorf("No genesis block")
+	}
+	// Must keep no block in outside.
+	newID := bd.blockTotal
+	if bd.hasBlock(ib.GetHash()) {
+		oldID := bd.getBlockId(ib.GetHash())
+		if oldID != MaxId {
+			newID = oldID
+		}
+	}
+
+	parents := []IBlock{}
+	var mp IBlock
+	parentsIds := b.GetParents()
+	if len(parentsIds) == 0 {
+		return nil, fmt.Errorf("No paretns:%s", b.GetHash())
+	}
+	ids := NewIdSet()
+	for i, v := range parentsIds {
+		pib := bd.getBlock(v)
+		if pib == nil {
+			return nil, fmt.Errorf("No parent:%s about parent(%s)", b.GetHash(), v.String())
+		}
+		parents = append(parents, pib)
+		ids.Add(pib.GetID())
+		if i == 0 {
+			mp = pib
+		}
+	}
+	pblock := ib.(*PhantomBlock)
+	oldID := pblock.id
+	if newID != oldID {
+		pblock.SetID(newID)
+		log.Trace("Change direct block id", "old", oldID, "new", newID)
+	}
+	pblock.mainParent = mp.GetID()
+	pblock.SetData(b)
+	pblock.CleanChildren()
+	pblock.CleanParents()
+
+	bd.blocks[ib.GetID()] = ib
+	bd.blockDataLock.Lock()
+	bd.blockDataCache[ib.GetID()] = time.Now()
+	bd.blockDataLock.Unlock()
+	// db
+	bd.commitBlock.AddPair(ib.GetID(), ib)
+
+	//
+	if bd.blockTotal == 0 {
+		bd.genesis = *ib.GetHash()
+	}
+	bd.lastSnapshot.Clean()
+	bd.lastSnapshot.block = ib
+	bd.lastSnapshot.tips = bd.tips.Clone()
+	bd.lastSnapshot.lastTime = bd.lastTime
+	//
+	bd.blockTotal++
+
+	if len(parents) > 0 {
+		var maxLayer uint = 0
+		for _, v := range parents {
+			parent := v.(IBlock)
+			ib.AddParent(parent)
+			parent.AddChild(ib)
+			bd.commitBlock.AddPair(parent.GetID(), parent)
+			if maxLayer == 0 || maxLayer < parent.GetLayer() {
+				maxLayer = parent.GetLayer()
+			}
+		}
+		pblock.SetLayer(maxLayer + 1)
+	}
+
+	bd.updateTips(ib)
+
+	t := time.Unix(b.GetTimestamp(), 0)
+	if bd.lastTime.Before(t) {
+		bd.lastTime = t
+	}
+	//
+	bd.instance.(*Phantom).AddDirectBlock(ib, main)
+	bd.commitOrder[pblock.GetOrder()] = pblock.GetID()
+	err := bd.commit()
+	if err != nil {
+		return nil, err
+	}
+
+	return ib, nil
+}
+
 // Acquire the genesis block of chain
 func (bd *MeerDAG) getGenesis() IBlock {
 	return bd.getBlockById(GenesisId)
@@ -780,6 +877,14 @@ func (bd *MeerDAG) getDiffAnticone(b IBlock, verbose bool) *IdSet {
 		return optimizeDiffAnt
 	}
 	return result
+}
+
+func (bd *MeerDAG) RecalDiffAnticone() {
+	ph, ok := bd.instance.(*Phantom)
+	if !ok {
+		return
+	}
+	ph.RecalDiffAnticone()
 }
 
 // GetConfirmations

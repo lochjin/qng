@@ -64,6 +64,24 @@ func (ph *Phantom) AddBlock(ib IBlock) (*list.List, *list.List) {
 	return ph.getOrderChangeList(changeBlock), oldOrders
 }
 
+func (ph *Phantom) AddDirectBlock(ib IBlock, main bool) {
+	ph.bd.lastSnapshot.diffAnticone = ph.diffAnticone.Clone()
+	ph.bd.lastSnapshot.mainChainTip = ph.mainChain.tip
+	ph.bd.lastSnapshot.mainChainGenesis = ph.mainChain.genesis
+
+	if main {
+		ph.mainChain.tip = ib.GetID()
+		ph.mainChain.commitBlocks.AddPair(ib.GetID(), true)
+	}
+	ph.diffAnticone.Clean()
+	ph.virtualBlock.SetOrder(MaxBlockOrder)
+}
+
+func (ph *Phantom) RecalDiffAnticone() {
+	ph.diffAnticone = ph.bd.getAnticone(ph.bd.getBlockById(ph.mainChain.tip), nil)
+	log.Trace("Recalculate diff anticone", "size", ph.diffAnticone.Size())
+}
+
 // Build self block
 func (ph *Phantom) CreateBlock(b *Block) IBlock {
 	return &PhantomBlock{b, 0, nil, nil}

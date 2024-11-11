@@ -173,6 +173,20 @@ func (b *BlockChain) updateTokenState(node meerdag.IBlock, block *types.Serializ
 	return state.Commit()
 }
 
+func (b *BlockChain) addTokenState(id uint, state *token.TokenState, PrevStateHash *hash.Hash) error {
+	prevStateID := b.bd.GetBlockId(PrevStateHash)
+	if prevStateID == meerdag.MaxId {
+		return fmt.Errorf("No DAG block:%s", PrevStateHash.String())
+	}
+	state.PrevStateID = uint32(prevStateID)
+	err := token.DBPutTokenState(b.DB(), id, state)
+	if err != nil {
+		return err
+	}
+	b.TokenTipID = uint32(id)
+	return state.Commit()
+}
+
 func (b *BlockChain) GetTokenState(bid uint32) *token.TokenState {
 	state, err := token.DBFetchTokenState(b.DB(), uint(bid))
 	if err != nil {

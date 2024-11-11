@@ -181,6 +181,10 @@ func (m *MeerPool) prepareMeerChangeTxs(txs []*types.Transaction) bool {
 }
 
 func (m *MeerPool) handleStallSample() {
+	if m.p2pSer == nil {
+		// The service is not ready yet, try again next time
+		return
+	}
 	if m.syncing.Load() {
 		return
 	}

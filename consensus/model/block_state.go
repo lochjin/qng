@@ -8,6 +8,7 @@ import (
 )
 
 type BlockState interface {
+	SetID(id uint64)
 	GetID() uint64
 	SetOrder(order uint64)
 	GetOrder() uint64

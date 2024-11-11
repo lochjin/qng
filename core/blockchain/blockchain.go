@@ -1032,14 +1032,6 @@ func (b *BlockChain) ProcessQueueSize() int {
 	return size
 }
 
-func (b *BlockChain) IsSnapSyncing() bool {
-	return b.snapSyncing.Load()
-}
-
-func (b *BlockChain) SetSnapSyncing(val bool) {
-	b.snapSyncing.Store(val)
-}
-
 // New returns a BlockChain instance using the provided configuration details.
 func New(consensus model.Consensus) (*BlockChain, error) {
 	// Enforce required config fields.
