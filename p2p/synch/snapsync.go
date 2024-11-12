@@ -9,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
+	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
@@ -216,7 +217,7 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 	if len(blocks) <= 0 {
 		return ErrMessage(fmt.Errorf("Can't find blocks for snap-sync"))
 	}
-	rsp := &pb.SnapSyncRsp{}
+	rsp := &pb.SnapSyncRsp{Datas: []*pb.TransferData{}}
 	if isLocatorEmpty(m.Target) {
 		rsp.Target = &pb.Locator{
 			Block: &pb.Hash{Hash: target.GetHash().Bytes()},
@@ -225,6 +226,39 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 	} else {
 		rsp.Target = m.Target
 	}
+	for _, block := range blocks {
+		data := &pb.TransferData{}
+		blkBytes, err := s.p2p.BlockChain().FetchBlockBytesByHash(block.GetHash())
+		if err != nil {
+			return ErrMessage(err)
+		}
+		data.Block = blkBytes
 
+		stxo, err := s.p2p.BlockChain().DB().GetSpendJournal(block.GetHash())
+		if err != nil {
+			return ErrMessage(err)
+		}
+		data.Stxos = stxo
+
+		data.DagBlock = block.Bytes()
+		data.Main = s.p2p.BlockChain().BlockDAG().IsOnMainChain(block.GetID())
+		ts := s.p2p.BlockChain().GetTokenState(uint32(block.GetID()))
+		if ts != nil {
+			prevTSHash, err := meerdag.DBGetDAGBlockHashByID(s.p2p.BlockChain().DB(), uint64(ts.PrevStateID))
+			if err != nil {
+				return ErrMessage(err)
+			}
+			serializedData, err := ts.Serialize()
+			if err != nil {
+				return ErrMessage(err)
+			}
+			data.TokenState = serializedData
+			data.PrevTSHash = &pb.Hash{
+				Hash: prevTSHash.Bytes(),
+			}
+		}
+
+		rsp.Datas = append(rsp.Datas, data)
+	}
 	return s.EncodeResponseMsg(stream, rsp)
 }
