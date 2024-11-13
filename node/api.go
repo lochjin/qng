@@ -164,7 +164,7 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	mainHeight := int64(best.GraphState.GetMainHeight())
 	binfo := api.node.GetBlockChain().BlockDAG().GetBlueInfo(api.node.GetBlockChain().BlockDAG().GetMainChainTip())
 
-	info := &json.SubsidyInfo{Mode: sc.GetMode(mainHeight), TotalSubsidy: best.TotalSubsidy, BaseSubsidy: params.ActiveNetParams.BaseSubsidy}
+	info := &json.SubsidyInfo{MainHeight: mainHeight, Mode: sc.GetMode(mainHeight), TotalSubsidy: best.TotalSubsidy, BaseSubsidy: params.ActiveNetParams.BaseSubsidy}
 
 	if params.ActiveNetParams.IsMeerEVMFork(mainHeight) {
 		info.TargetTotalSubsidy = forks.MeerEVMForkTotalSubsidy - binfo.GetWeight()
@@ -190,6 +190,7 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 		info.LeftTotalTime = leftTotalTime.Truncate(time.Second).String()
 	}
 	info.NextSubsidy = sc.CalcBlockSubsidy(binfo)
+	info.ExpectDailySubsidy = int64(time.Hour*24/params.ActiveNetParams.TargetTimePerBlock) * info.NextSubsidy
 	return info, nil
 }
 

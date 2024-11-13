@@ -119,6 +119,8 @@ type SubsidyInfo struct {
 	LeftTotalTime      string `json:"lefttotalTime,omitempty"`
 	BaseSubsidy        int64  `json:"basesubsidy"`
 	NextSubsidy        int64  `json:"nextsubsidy"`
+	ExpectDailySubsidy int64  `json:"expectdailysubsidy,omitempty"`
+	MainHeight         int64  `json:"mainheight"`
 }
 
 type AcctInfo struct {
