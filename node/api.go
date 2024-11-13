@@ -186,19 +186,21 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	info := &json.SubsidyInfo{MainHeight: mainHeight, Mode: sc.GetMode(mainHeight), TotalSubsidy: best.TotalSubsidy, BaseSubsidy: params.ActiveNetParams.BaseSubsidy}
 
 	if params.ActiveNetParams.IsMeerEVMFork(mainHeight) {
-		info.BeforeForkTSubsidy = api.getBeforeMeerEVMForkTotalSubsidy(mainHeight, binfo.GetWeight())
-		info.TargetTotalSubsidy = forks.MeerEVMForkTotalSubsidy - info.BeforeForkTSubsidy
-		info.LeftTotalSubsidy = info.TargetTotalSubsidy - int64(info.TotalSubsidy)
+		beforeForkTSubsidy := api.getBeforeMeerEVMForkTotalSubsidy(mainHeight, binfo.GetWeight())
+		targetTotalSubsidy := forks.MeerEVMForkTotalSubsidy - beforeForkTSubsidy
+		info.TargetTotalSubsidy = fmt.Sprintf("%d (%d + %d)", forks.MeerEVMForkTotalSubsidy, beforeForkTSubsidy, targetTotalSubsidy)
+		info.LeftTotalSubsidy = targetTotalSubsidy - int64(info.TotalSubsidy)
 		if info.LeftTotalSubsidy < 0 {
-			info.TargetTotalSubsidy = 0
+			info.TargetTotalSubsidy = "0"
 		}
 	} else if params.ActiveNetParams.TargetTotalSubsidy > 0 {
-		info.TargetTotalSubsidy = params.ActiveNetParams.TargetTotalSubsidy
-		info.LeftTotalSubsidy = info.TargetTotalSubsidy - int64(info.TotalSubsidy)
+		targetTotalSubsidy := params.ActiveNetParams.TargetTotalSubsidy
+		info.TargetTotalSubsidy = fmt.Sprintf("%d", targetTotalSubsidy)
+		info.LeftTotalSubsidy = targetTotalSubsidy - int64(info.TotalSubsidy)
 		if info.LeftTotalSubsidy < 0 {
-			info.TargetTotalSubsidy = 0
+			info.TargetTotalSubsidy = "0"
 		}
-		totalTime := time.Duration(info.TargetTotalSubsidy / info.BaseSubsidy * int64(params.ActiveNetParams.TargetTimePerBlock))
+		totalTime := time.Duration(targetTotalSubsidy / info.BaseSubsidy * int64(params.ActiveNetParams.TargetTimePerBlock))
 		info.TotalTime = totalTime.Truncate(time.Second).String()
 
 		firstMBlock := api.node.GetBlockChain().BlockDAG().GetBlockByOrder(1)
@@ -210,7 +212,9 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 		info.LeftTotalTime = leftTotalTime.Truncate(time.Second).String()
 	}
 	info.NextSubsidy = sc.CalcBlockSubsidy(binfo)
-	info.EstimateDailySubsidy = int64(time.Hour*24/params.ActiveNetParams.TargetTimePerBlock) * info.NextSubsidy
+	dailyBlockCount := int64(time.Hour * 24 / params.ActiveNetParams.TargetTimePerBlock)
+	estimateDailySubsidy := dailyBlockCount * info.NextSubsidy
+	info.EstimateDailySubsidy = fmt.Sprintf("%d (%d * %d)", estimateDailySubsidy, dailyBlockCount, info.NextSubsidy)
 	return info, nil
 }
 
