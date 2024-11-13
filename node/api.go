@@ -210,7 +210,7 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 		info.LeftTotalTime = leftTotalTime.Truncate(time.Second).String()
 	}
 	info.NextSubsidy = sc.CalcBlockSubsidy(binfo)
-	info.ExpectDailySubsidy = int64(time.Hour*24/params.ActiveNetParams.TargetTimePerBlock) * info.NextSubsidy
+	info.EstimateDailySubsidy = int64(time.Hour*24/params.ActiveNetParams.TargetTimePerBlock) * info.NextSubsidy
 	return info, nil
 }
 
