@@ -121,6 +121,7 @@ type SubsidyInfo struct {
 	NextSubsidy        int64  `json:"nextsubsidy"`
 	ExpectDailySubsidy int64  `json:"expectdailysubsidy,omitempty"`
 	MainHeight         int64  `json:"mainheight"`
+	BeforeForkTSubsidy int64  `json:"beforeforktotalsubsidy,omitempty"`
 }
 
 type AcctInfo struct {

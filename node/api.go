@@ -158,6 +158,25 @@ func (api *PublicBlockChainAPI) GetTimeInfo() (interface{}, error) {
 	return fmt.Sprintf("Now:%s offset:%s", roughtime.Now(), roughtime.Offset()), nil
 }
 
+func (api *PublicBlockChainAPI) getBeforeMeerEVMForkTotalSubsidy(mainHeight int64, mainWeight int64) int64 {
+	forkHeight := params.ActiveNetParams.MeerEVMForkBlock.Int64()
+	if mainHeight <= forkHeight {
+		return mainWeight
+	}
+	bd := api.node.GetBlockChain().BlockDAG()
+	for i := uint(forkHeight); i < bd.GetBlockTotal(); i++ {
+		block := bd.GetBlockById(i)
+		if block == nil {
+			break
+		}
+		if block.GetHeight() == uint(forkHeight) && bd.IsOnMainChain(block.GetID()) {
+			binfo := bd.GetBlueInfo(block)
+			return binfo.GetWeight()
+		}
+	}
+	return 0
+}
+
 func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	best := api.node.GetBlockChain().BestSnapshot()
 	sc := api.node.GetBlockChain().GetSubsidyCache()
@@ -167,7 +186,8 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	info := &json.SubsidyInfo{MainHeight: mainHeight, Mode: sc.GetMode(mainHeight), TotalSubsidy: best.TotalSubsidy, BaseSubsidy: params.ActiveNetParams.BaseSubsidy}
 
 	if params.ActiveNetParams.IsMeerEVMFork(mainHeight) {
-		info.TargetTotalSubsidy = forks.MeerEVMForkTotalSubsidy - binfo.GetWeight()
+		info.BeforeForkTSubsidy = api.getBeforeMeerEVMForkTotalSubsidy(mainHeight, binfo.GetWeight())
+		info.TargetTotalSubsidy = forks.MeerEVMForkTotalSubsidy - info.BeforeForkTSubsidy
 		info.LeftTotalSubsidy = info.TargetTotalSubsidy - int64(info.TotalSubsidy)
 		if info.LeftTotalSubsidy < 0 {
 			info.TargetTotalSubsidy = 0
