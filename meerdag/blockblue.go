@@ -91,3 +91,34 @@ func (bd *MeerDAG) getBlueInfo(ib IBlock) *BlueInfo {
 	blues += pb.GetBlueDiffAnticoneSize()
 	return NewBlueInfo(pb.blueNum+1, mt/int64(blues), int64(mainIB.GetState().GetWeight()), int64(ib.GetHeight()))
 }
+
+func (bd *MeerDAG) GetBluesByDepth(depth uint) int {
+	if _, ok := bd.instance.(*Phantom); !ok {
+		return 0
+	}
+	curDepth := uint(0)
+	start := bd.GetMainChainTip()
+	cur := start
+	count := 0
+	for curDepth < depth && cur != nil {
+		if cur.GetID() != start.GetID() {
+			count++
+			curDepth++
+			if curDepth >= depth {
+				break
+			}
+		}
+		if cur.GetID() == 0 {
+			break
+		}
+		das := cur.(*PhantomBlock).GetDiffAnticoneList(Blue)
+		count += len(das)
+
+		mp := bd.GetBlockById(cur.GetMainParent())
+		if mp == nil {
+			return count
+		}
+		cur = mp
+	}
+	return count
+}

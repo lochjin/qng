@@ -181,7 +181,8 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	best := api.node.GetBlockChain().BestSnapshot()
 	sc := api.node.GetBlockChain().GetSubsidyCache()
 	mainHeight := int64(best.GraphState.GetMainHeight())
-	binfo := api.node.GetBlockChain().BlockDAG().GetBlueInfo(api.node.GetBlockChain().BlockDAG().GetMainChainTip())
+	mainTip := api.node.GetBlockChain().BlockDAG().GetMainChainTip()
+	binfo := api.node.GetBlockChain().BlockDAG().GetBlueInfo(mainTip)
 
 	info := &json.SubsidyInfo{MainHeight: mainHeight, Mode: sc.GetMode(mainHeight), TotalSubsidy: best.TotalSubsidy, BaseSubsidy: params.ActiveNetParams.BaseSubsidy}
 
@@ -213,8 +214,10 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	}
 	info.NextSubsidy = sc.CalcBlockSubsidy(binfo)
 	dailyBlockCount := int64(time.Hour * 24 / params.ActiveNetParams.TargetTimePerBlock)
-	estimateDailySubsidy := dailyBlockCount * info.NextSubsidy
-	info.EstimateDailySubsidy = fmt.Sprintf("%d (%d * %d)", estimateDailySubsidy, dailyBlockCount, info.NextSubsidy)
+	info.EstimateDailyBlocksMined = int64(api.node.GetBlockChain().BlockDAG().GetBluesByDepth(uint(dailyBlockCount)))
+	estimateDailySubsidy := info.EstimateDailyBlocksMined * info.NextSubsidy
+	info.EstimateDailySubsidy = fmt.Sprintf("%d (%d x %d)", estimateDailySubsidy, info.EstimateDailyBlocksMined, info.NextSubsidy)
+	info.EstimateDailyMainheightRange = dailyBlockCount
 	return info, nil
 }
 
