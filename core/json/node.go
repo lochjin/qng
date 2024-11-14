@@ -114,15 +114,16 @@ type SubsidyInfo struct {
 	MainHeight                   int64  `json:"current_mainheight"`
 	Mode                         string `json:"mode"`
 	TotalSubsidy                 uint64 `json:"total_subsidy"`
-	TargetTotalSubsidy           string `json:"target_total_subsidy,omitempty"`
+	TargetTotalSubsidy           int64  `json:"target_total_subsidy,omitempty"`
+	CurTotalSubsidy              int64  `json:"current_total_subsidy,omitempty"`
 	LeftTotalSubsidy             int64  `json:"left_total_subsidy,omitempty"`
-	TotalTime                    string `json:"total_time,omitempty"`
-	LeftTotalTime                string `json:"left_total_time,omitempty"`
-	BaseSubsidy                  int64  `json:"base_subsidy"`
-	NextSubsidy                  int64  `json:"current_base_subsidy"`
-	EstimateDailySubsidy         string `json:"estimate_daily_subsidy,omitempty"`
-	EstimateDailyBlocksMined     int64  `json:"estimate_daily_blocks_mined,omitempty"`
+	TotalTime                    string `json:"target_total_time,omitempty"`
+	LeftTotalTime                string `json:"left_time,omitempty"`
+	BaseSubsidy                  int64  `json:"init_block_subsidy"`
+	NextSubsidy                  int64  `json:"current_block_subsidy"`
 	EstimateDailyMainheightRange int64  `json:"estimate_daily_mainheight_range,omitempty"`
+	EstimateDailyBlocksMined     int64  `json:"estimate_daily_blocks_mined,omitempty"`
+	EstimateDailySubsidy         string `json:"estimate_daily_subsidy,omitempty"`
 }
 
 type AcctInfo struct {

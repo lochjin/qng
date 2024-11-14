@@ -184,22 +184,26 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	mainTip := api.node.GetBlockChain().BlockDAG().GetMainChainTip()
 	binfo := api.node.GetBlockChain().BlockDAG().GetBlueInfo(mainTip)
 
-	info := &json.SubsidyInfo{MainHeight: mainHeight, Mode: sc.GetMode(mainHeight), TotalSubsidy: best.TotalSubsidy, BaseSubsidy: params.ActiveNetParams.BaseSubsidy}
+	info := &json.SubsidyInfo{
+		MainHeight:      mainHeight,
+		Mode:            sc.GetMode(mainHeight),
+		TotalSubsidy:    forks.TotalSubsidy,
+		CurTotalSubsidy: int64(best.TotalSubsidy),
+		BaseSubsidy:     params.ActiveNetParams.BaseSubsidy,
+	}
 
 	if params.ActiveNetParams.IsMeerEVMFork(mainHeight) {
-		beforeForkTSubsidy := api.getBeforeMeerEVMForkTotalSubsidy(mainHeight, binfo.GetWeight())
-		targetTotalSubsidy := forks.MeerEVMForkTotalSubsidy - beforeForkTSubsidy
-		info.TargetTotalSubsidy = fmt.Sprintf("%d (%d + %d)", forks.MeerEVMForkTotalSubsidy, beforeForkTSubsidy, targetTotalSubsidy)
-		info.LeftTotalSubsidy = targetTotalSubsidy - int64(info.TotalSubsidy)
+		info.TargetTotalSubsidy = forks.MeerEVMForkTotalSubsidy
+		info.LeftTotalSubsidy = info.TargetTotalSubsidy - info.CurTotalSubsidy
 		if info.LeftTotalSubsidy < 0 {
-			info.TargetTotalSubsidy = "0"
+			info.TargetTotalSubsidy = 0
 		}
 	} else if params.ActiveNetParams.TargetTotalSubsidy > 0 {
 		targetTotalSubsidy := params.ActiveNetParams.TargetTotalSubsidy
-		info.TargetTotalSubsidy = fmt.Sprintf("%d", targetTotalSubsidy)
-		info.LeftTotalSubsidy = targetTotalSubsidy - int64(info.TotalSubsidy)
+		info.TargetTotalSubsidy = targetTotalSubsidy
+		info.LeftTotalSubsidy = targetTotalSubsidy - info.CurTotalSubsidy
 		if info.LeftTotalSubsidy < 0 {
-			info.TargetTotalSubsidy = "0"
+			info.TargetTotalSubsidy = 0
 		}
 		totalTime := time.Duration(targetTotalSubsidy / info.BaseSubsidy * int64(params.ActiveNetParams.TargetTimePerBlock))
 		info.TotalTime = totalTime.Truncate(time.Second).String()
