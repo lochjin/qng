@@ -257,7 +257,9 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 				Hash: prevTSHash.Bytes(),
 			}
 		}
-
+		if uint64(rsp.SizeSSZ()+data.SizeSSZ()+BLOCKDATA_SSZ_HEAD_SIZE) >= s.p2p.Encoding().GetMaxChunkSize() {
+			break
+		}
 		rsp.Datas = append(rsp.Datas, data)
 	}
 	return s.EncodeResponseMsg(stream, rsp)
