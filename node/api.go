@@ -218,7 +218,7 @@ func (api *PublicBlockChainAPI) GetSubsidy() (interface{}, error) {
 	}
 	info.NextSubsidy = sc.CalcBlockSubsidy(binfo)
 	dailyBlockCount := int64(time.Hour * 24 / params.ActiveNetParams.TargetTimePerBlock)
-	info.EstimateDailyBlocksMined = int64(api.node.GetBlockChain().BlockDAG().GetBluesByDepth(uint(dailyBlockCount)))
+	info.EstimateDailyBlocksMined = int64(api.node.GetBlockChain().BlockDAG().GetBluesByDepth(uint(dailyBlockCount), nil))
 	estimateDailySubsidy := info.EstimateDailyBlocksMined * info.NextSubsidy
 	info.EstimateDailySubsidy = fmt.Sprintf("%d (%d x %d)", estimateDailySubsidy, info.EstimateDailyBlocksMined, info.NextSubsidy)
 	info.EstimateDailyMainheightRange = dailyBlockCount
