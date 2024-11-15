@@ -92,12 +92,14 @@ func (bd *MeerDAG) getBlueInfo(ib IBlock) *BlueInfo {
 	return NewBlueInfo(pb.blueNum+1, mt/int64(blues), int64(mainIB.GetState().GetWeight()), int64(ib.GetHeight()))
 }
 
-func (bd *MeerDAG) GetBluesByDepth(depth uint) int {
+func (bd *MeerDAG) GetBluesByDepth(depth uint, start IBlock) int {
 	if _, ok := bd.instance.(*Phantom); !ok {
 		return 0
 	}
 	curDepth := uint(0)
-	start := bd.GetMainChainTip()
+	if start == nil {
+		start = bd.GetMainChainTip()
+	}
 	cur := start
 	count := 0
 	for curDepth < depth && cur != nil {

@@ -13,9 +13,11 @@ import (
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/engine/txscript"
 	"github.com/Qitmeer/qng/meerdag"
+	"github.com/Qitmeer/qng/params"
 	rapi "github.com/Qitmeer/qng/rpc/api"
 	"github.com/Qitmeer/qng/rpc/client/cmds"
 	"strconv"
+	"time"
 )
 
 func (b *BlockChain) APIs() []rapi.API {
@@ -489,4 +491,34 @@ func (api *PublicBlockAPI) makeBlock(h hash.Hash, verbose *bool, inclTx *bool, f
 	}
 	return fields, nil
 
+}
+
+func (api *PublicBlockAPI) EstimateBlocksMined(start int64, height int64) (interface{}, error) {
+	if height <= 0 {
+		height = int64(time.Hour * 24 / params.ActiveNetParams.TargetTimePerBlock) // mainnet=2880
+	}
+	if height <= 0 {
+		return 0, nil
+	}
+	bd := api.chain.BlockDAG()
+	if start <= 0 {
+		return bd.GetBluesByDepth(uint(height), nil), nil
+	} else {
+		var endBlock meerdag.IBlock
+		end := start + height
+		for i := uint(end); i < bd.GetBlockTotal(); i++ {
+			block := bd.GetBlockById(i)
+			if block == nil {
+				break
+			}
+			if block.GetHeight() == uint(end) && bd.IsOnMainChain(block.GetID()) {
+				endBlock = block
+				break
+			}
+		}
+		if endBlock == nil {
+			return 0, fmt.Errorf("Invalid input params")
+		}
+		return bd.GetBluesByDepth(uint(height), endBlock), nil
+	}
 }

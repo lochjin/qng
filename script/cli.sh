@@ -807,6 +807,19 @@ function get_subsidy(){
   get_result "$data"
 }
 
+function estimate_blocks_mined(){
+  local start=$1
+  local height=$2
+  if [ "$start" == "" ]; then
+    start=0
+  fi
+  if [ "$height" == "" ]; then
+    height=0
+  fi
+  local data='{"jsonrpc":"2.0","method":"estimateBlocksMined","params":['$start','$height'],"id":1}'
+  get_result "$data"
+}
+
 function dag_info(){
   local data='{"jsonrpc":"2.0","method":"getMeerDAGInfo","params":[],"id":1}'
   get_result "$data"
@@ -921,6 +934,7 @@ function usage(){
   echo "  loglevel [trace, debug, info, warn, error, critical]"
   echo "  timeinfo"
   echo "  subsidy"
+  echo "  estimateBlocksMined <start> <height>"
   echo "  meerinfo"
   echo "  amanainfo"
   echo "  amanapeerinfo"
@@ -1720,6 +1734,10 @@ elif [ "$1" == "importrawkey" ]; then
 elif [ "$1" == "listaccount" ]; then
   shift
   listAccount "$@"
+
+elif [ "$1" == "estimateBlocksMined" ]; then
+  shift
+  estimate_blocks_mined "$@"
 
 elif [ "$1" == "list_command" ]; then
   usage
