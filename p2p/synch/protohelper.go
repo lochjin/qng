@@ -170,8 +170,18 @@ func isLocatorEmpty(locator *pb.Locator) bool {
 		len(locator.Root.Hash) <= 0 {
 		return true
 	}
-	for i := 0; i < len(locator.Block.Hash); i++ {
-		if locator.Block.Hash[i] != 0 {
+	if !isZeroPBHash(locator.Block) {
+		return false
+	}
+	return true
+}
+
+func isZeroPBHash(ha *pb.Hash) bool {
+	if ha == nil || len(ha.Hash) <= 0 {
+		return true
+	}
+	for i := 0; i < len(ha.Hash); i++ {
+		if ha.Hash[i] != 0 {
 			return false
 		}
 	}

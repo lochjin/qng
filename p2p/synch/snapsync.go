@@ -88,12 +88,18 @@ cleanup:
 		}
 		latest, err := ps.Chain().ProcessBlockBySnap(sds)
 		if err != nil {
+			log.Warn(err.Error())
 			break
 		}
 		ps.snapStatus.SetSyncPoint(latest)
 		add += len(sds)
 	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
+	sp := ps.snapStatus.GetSyncPoint()
+	if sp != nil {
+		bestPeer.UpdateSyncPoint(sp.GetHash())
+		log.Debug("Snap-sync update point", "point", sp.GetHash().String())
+	}
 	// ------
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 	if ps.snapStatus.isCompleted() {
@@ -101,11 +107,12 @@ cleanup:
 	} else {
 		log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
 	}
+	ps.snapStatus = nil
 
 	ps.SetSyncPeer(nil)
 	ps.processwg.Done()
 
-	return true
+	return false
 }
 
 func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
@@ -184,7 +191,7 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 			}
 			sd.SetTokenState(ts)
 		}
-		if data.PrevTSHash != nil && len(data.PrevTSHash.Hash) > 0 {
+		if !isZeroPBHash(data.PrevTSHash) {
 			sd.SetPrevTSHash(changePBHashToHash(data.PrevTSHash))
 		}
 		ret = append(ret, sd)
