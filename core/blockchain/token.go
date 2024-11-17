@@ -190,7 +190,6 @@ func (b *BlockChain) addTokenState(id uint, state *token.TokenState, PrevStateHa
 func (b *BlockChain) GetTokenState(bid uint32) *token.TokenState {
 	state, err := token.DBFetchTokenState(b.DB(), uint(bid))
 	if err != nil {
-		log.Error(err.Error())
 		return nil
 	}
 	return state

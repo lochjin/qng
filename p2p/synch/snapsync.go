@@ -3,6 +3,7 @@ package synch
 import (
 	"context"
 	"fmt"
+	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/blockchain/token"
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
@@ -119,6 +120,8 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 			Root:  &pb.Hash{Hash: sp.GetState().Root().Bytes()},
 		})
 	} else {
+		zeroH := &pb.Hash{Hash: hash.ZeroHash.Bytes()}
+		req.Target = &pb.Locator{Block: zeroH, Root: zeroH}
 		point := pe.SyncPoint()
 		mainLocator, mainStateRoot := ps.dagSync.GetMainLocator(point, true)
 		for i := 0; i < len(mainLocator); i++ {
@@ -205,7 +208,7 @@ func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.S
 func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp2pcore.Stream, pe *peers.Peer) *common.Error {
 	m, ok := msg.(*pb.SnapSyncReq)
 	if !ok {
-		err := fmt.Errorf("message is not type *pb.Hash")
+		err := fmt.Errorf("message is not type *pb.SnapSyncReq")
 		return ErrMessage(err)
 	}
 	log.Debug("Received Snap-sync request", "peer", pe.GetID().String())
@@ -255,6 +258,10 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 			data.TokenState = serializedData
 			data.PrevTSHash = &pb.Hash{
 				Hash: prevTSHash.Bytes(),
+			}
+		} else {
+			data.PrevTSHash = &pb.Hash{
+				Hash: hash.ZeroHash.Bytes(),
 			}
 		}
 		if uint64(rsp.SizeSSZ()+data.SizeSSZ()+BLOCKDATA_SSZ_HEAD_SIZE) >= s.p2p.Encoding().GetMaxChunkSize() {
