@@ -55,6 +55,7 @@ type Config struct {
 	Miner             bool     `long:"miner" description:"Enable miner module"`
 	Generate          bool     `long:"generate" description:"Generate (mine) coins using the CPU"`
 	GenerateOnTx      bool     `long:"generateontx" description:"Generate (mine) coins using the CPU when there is a new transaction"`
+	GenerateNoDevGap  bool     `long:"generatenodevgap" description:"Generate (mine) coins using the CPU on develop mode whithout gap"`
 	MiningAddrs       []string `long:"miningaddr" description:"Add the specified payment address to the list of addresses to use for generated blocks -- At least one address is required if the generate option is set"`
 	MiningTimeOffset  int      `long:"miningtimeoffset" description:"Offset the mining timestamp of a block by this many seconds (positive values are in the past)"`
 	BlockMinSize      uint32   `long:"blockminsize" description:"Mininum block size in bytes to be used when creating a block"`
@@ -142,7 +143,7 @@ type Config struct {
 	AutoCollectEvm bool `long:"autocollectevm" description:"auto collect utxo to evm"`
 
 	// TODO: It will soon be discarded in the near future
-	DevSnapSync bool `long:"dev_snapsync" description:"Enable snap sync for P2P that only exist in development mode"`
+	DevSnapSync bool `long:"devsnapsync" description:"Enable snap sync for P2P that only exist in development mode"`
 }
 
 func (c *Config) GetMinningAddrs() []types.Address {
