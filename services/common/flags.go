@@ -640,6 +640,12 @@ var (
 			Usage:       "Build block template timeout by Millisecond.(Can limit the number of transactions included in the block)",
 			Destination: &cfg.GBTTimeOut,
 		},
+		&cli.BoolFlag{
+			Name:        "dev_snapsync",
+			Usage:       "Enable snap sync for P2P that only exist in development mode",
+			Value:       true,
+			Destination: &cfg.DevSnapSync,
+		},
 	}
 )
 

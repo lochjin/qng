@@ -140,6 +140,9 @@ type Config struct {
 	// wallet
 	WalletPass     string
 	AutoCollectEvm bool `long:"autocollectevm" description:"auto collect utxo to evm"`
+
+	// TODO: It will soon be discarded in the near future
+	DevSnapSync bool `long:"dev_snapsync" description:"Enable snap sync for P2P that only exist in development mode"`
 }
 
 func (c *Config) GetMinningAddrs() []types.Address {
