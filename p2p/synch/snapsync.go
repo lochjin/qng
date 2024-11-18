@@ -107,12 +107,18 @@ cleanup:
 	} else {
 		log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
 	}
-	ps.snapStatus = nil
 
 	ps.SetSyncPeer(nil)
 	ps.processwg.Done()
 
-	return false
+	if ps.snapStatus.isCompleted() {
+		ps.snapStatus = nil
+		return false
+	} else {
+		ps.snapStatus = nil
+		go ps.TryAgainUpdateSyncPeer(false)
+		return true
+	}
 }
 
 func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {

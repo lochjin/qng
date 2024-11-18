@@ -643,13 +643,11 @@ var (
 		&cli.BoolFlag{
 			Name:        "dev_snapsync",
 			Usage:       "Enable snap sync for P2P that only exist in development mode",
-			Value:       true,
 			Destination: &cfg.DevSnapSync,
 		},
 		&cli.BoolFlag{
 			Name:        "generatenodevgap",
 			Usage:       "Generate (mine) coins using the CPU on develop mode whithout gap",
-			Value:       true,
 			Destination: &cfg.GenerateNoDevGap,
 		},
 	}
