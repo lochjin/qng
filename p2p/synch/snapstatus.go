@@ -136,5 +136,8 @@ func (s *SnapStatus) isCompleted() bool {
 }
 
 func NewSnapStatus(peid peer.ID) *SnapStatus {
-	return &SnapStatus{peid: peid}
+	return &SnapStatus{
+		peid:   peid,
+		locker: &sync.RWMutex{},
+	}
 }

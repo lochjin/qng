@@ -47,6 +47,7 @@ func DefaultConfig(pb *testprivatekey.Builder) (*config.Config, error) {
 	cfg.SubmitNoSynced = true
 	cfg.AcctMode = true
 	cfg.EVMEnv = "--nodiscover --v5disc=false --rpc.allow-unprotected-txs"
+	cfg.GenerateNoDevGap = true
 
 	params.ActiveNetParams = &params.PrivNetParam
 	coinbasePKHex := pb.GetHex(testprivatekey.CoinbaseIdx)
@@ -177,7 +178,6 @@ func (mn *MockNode) setup() error {
 
 	log.Info("Import default key", "addr", account.String())
 
-	mn.Node().GetQitmeerFull().GetMiner().NoDevelopGap = true
 	params.ActiveNetParams.PowConfig.DifficultyMode = pow.DIFFICULTY_MODE_DEVELOP
 	return nil
 }

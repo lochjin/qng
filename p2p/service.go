@@ -667,7 +667,9 @@ func NewService(cfg *config.Config, consensus model.Consensus, param *params.Par
 	bc := consensus.BlockChain().(*blockchain.BlockChain)
 	services := defaultServices
 	if bc.MeerChain().SyncMode() == downloader.SnapSync {
-		//services |= pv.Snap
+		if cfg.DevSnapSync {
+			services |= pv.Snap
+		}
 	}
 	s := &Service{
 		cfg: &common.Config{

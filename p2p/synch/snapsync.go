@@ -3,12 +3,14 @@ package synch
 import (
 	"context"
 	"fmt"
+	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/blockchain/token"
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
+	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
@@ -86,12 +88,18 @@ cleanup:
 		}
 		latest, err := ps.Chain().ProcessBlockBySnap(sds)
 		if err != nil {
+			log.Warn(err.Error())
 			break
 		}
 		ps.snapStatus.SetSyncPoint(latest)
 		add += len(sds)
 	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
+	sp := ps.snapStatus.GetSyncPoint()
+	if sp != nil {
+		bestPeer.UpdateSyncPoint(sp.GetHash())
+		log.Debug("Snap-sync update point", "point", sp.GetHash().String())
+	}
 	// ------
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 	if ps.snapStatus.isCompleted() {
@@ -103,7 +111,14 @@ cleanup:
 	ps.SetSyncPeer(nil)
 	ps.processwg.Done()
 
-	return true
+	if ps.snapStatus.isCompleted() {
+		ps.snapStatus = nil
+		return false
+	} else {
+		ps.snapStatus = nil
+		go ps.TryAgainUpdateSyncPeer(false)
+		return true
+	}
 }
 
 func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
@@ -112,19 +127,20 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 	targetBlock, stateRoot := ps.snapStatus.GetTarget()
 	if targetBlock != nil {
 		sp := ps.snapStatus.GetSyncPoint()
-		req.TargetBlock = &pb.Hash{Hash: targetBlock.Bytes()}
-		req.StateRoot = &pb.Hash{Hash: stateRoot.Bytes()}
+		req.Target = &pb.Locator{Block: &pb.Hash{Hash: targetBlock.Bytes()}, Root: &pb.Hash{Hash: stateRoot.Bytes()}}
 		req.Locator = append(req.Locator, &pb.Locator{
-			Block:     &pb.Hash{Hash: sp.GetHash().Bytes()},
-			StateRoot: &pb.Hash{Hash: sp.GetState().Root().Bytes()},
+			Block: &pb.Hash{Hash: sp.GetHash().Bytes()},
+			Root:  &pb.Hash{Hash: sp.GetState().Root().Bytes()},
 		})
 	} else {
+		zeroH := &pb.Hash{Hash: hash.ZeroHash.Bytes()}
+		req.Target = &pb.Locator{Block: zeroH, Root: zeroH}
 		point := pe.SyncPoint()
 		mainLocator, mainStateRoot := ps.dagSync.GetMainLocator(point, true)
 		for i := 0; i < len(mainLocator); i++ {
 			req.Locator = append(req.Locator, &pb.Locator{
-				Block:     &pb.Hash{Hash: mainLocator[i].Bytes()},
-				StateRoot: &pb.Hash{Hash: mainStateRoot[i].Bytes()},
+				Block: &pb.Hash{Hash: mainLocator[i].Bytes()},
+				Root:  &pb.Hash{Hash: mainStateRoot[i].Bytes()},
 			})
 		}
 	}
@@ -137,11 +153,11 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 }
 
 func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, error) {
-	if len(ssr.TargetBlock.Hash) <= 0 || len(ssr.StateRoot.Hash) <= 0 {
+	if isLocatorEmpty(ssr.Target) {
 		return nil, fmt.Errorf("No snap sync data")
 	}
-	targetBlock := changePBHashToHash(ssr.TargetBlock)
-	stateRoot := changePBHashToHash(ssr.StateRoot)
+	targetBlock := changePBHashToHash(ssr.Target.Block)
+	stateRoot := changePBHashToHash(ssr.Target.Root)
 	ps.snapStatus.SetTarget(targetBlock, stateRoot)
 
 	log.Trace("Snap-sync receive", "targetBlock", targetBlock.String(), "stateRoot", stateRoot.String(), "dataNum", len(ssr.Datas), "processID", ps.getProcessID())
@@ -181,7 +197,7 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 			}
 			sd.SetTokenState(ts)
 		}
-		if data.PrevTSHash != nil && len(data.PrevTSHash.Hash) > 0 {
+		if !isZeroPBHash(data.PrevTSHash) {
 			sd.SetPrevTSHash(changePBHashToHash(data.PrevTSHash))
 		}
 		ret = append(ret, sd)
@@ -205,12 +221,66 @@ func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.S
 func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp2pcore.Stream, pe *peers.Peer) *common.Error {
 	m, ok := msg.(*pb.SnapSyncReq)
 	if !ok {
-		err := fmt.Errorf("message is not type *pb.Hash")
+		err := fmt.Errorf("message is not type *pb.SnapSyncReq")
 		return ErrMessage(err)
 	}
-	if m.TargetBlock == nil || len(m.TargetBlock.Hash) <= 0 {
-		log.Info("Received Snap-sync request", "peer", pe.GetID().String())
+	log.Debug("Received Snap-sync request", "peer", pe.GetID().String())
+	blocks, target, err := s.peerSync.dagSync.CalcSnapSyncBlocks(changePBLocatorsToLocators(m.Locator), MaxBlockLocatorsPerMsg, changePBLocatorToLocator(m.Target))
+	if err != nil {
+		log.Error(err.Error())
+		return ErrMessage(err)
 	}
+	if len(blocks) <= 0 {
+		return ErrMessage(fmt.Errorf("Can't find blocks for snap-sync"))
+	}
+	rsp := &pb.SnapSyncRsp{Datas: []*pb.TransferData{}}
+	if isLocatorEmpty(m.Target) {
+		rsp.Target = &pb.Locator{
+			Block: &pb.Hash{Hash: target.GetHash().Bytes()},
+			Root:  &pb.Hash{Hash: target.GetState().Root().Bytes()},
+		}
+	} else {
+		rsp.Target = m.Target
+	}
+	for _, block := range blocks {
+		data := &pb.TransferData{}
+		blkBytes, err := s.p2p.BlockChain().FetchBlockBytesByHash(block.GetHash())
+		if err != nil {
+			return ErrMessage(err)
+		}
+		data.Block = blkBytes
 
-	return s.EncodeResponseMsg(stream, m)
+		stxo, err := s.p2p.BlockChain().DB().GetSpendJournal(block.GetHash())
+		if err != nil {
+			return ErrMessage(err)
+		}
+		data.Stxos = stxo
+
+		data.DagBlock = block.Bytes()
+		data.Main = s.p2p.BlockChain().BlockDAG().IsOnMainChain(block.GetID())
+		ts := s.p2p.BlockChain().GetTokenState(uint32(block.GetID()))
+		if ts != nil {
+			prevTSHash, err := meerdag.DBGetDAGBlockHashByID(s.p2p.BlockChain().DB(), uint64(ts.PrevStateID))
+			if err != nil {
+				return ErrMessage(err)
+			}
+			serializedData, err := ts.Serialize()
+			if err != nil {
+				return ErrMessage(err)
+			}
+			data.TokenState = serializedData
+			data.PrevTSHash = &pb.Hash{
+				Hash: prevTSHash.Bytes(),
+			}
+		} else {
+			data.PrevTSHash = &pb.Hash{
+				Hash: hash.ZeroHash.Bytes(),
+			}
+		}
+		if uint64(rsp.SizeSSZ()+data.SizeSSZ()+BLOCKDATA_SSZ_HEAD_SIZE) >= s.p2p.Encoding().GetMaxChunkSize() {
+			break
+		}
+		rsp.Datas = append(rsp.Datas, data)
+	}
+	return s.EncodeResponseMsg(stream, rsp)
 }

@@ -8,7 +8,7 @@ import "message.proto";
 
 message Locator {
   Hash block =1;
-  Hash stateRoot=2;
+  Hash root=2;
 }
 
 message TransferData {
@@ -21,13 +21,11 @@ message TransferData {
 }
 
 message SnapSyncReq {
-  Hash targetBlock =1;
-  Hash stateRoot=2;
-  repeated Locator locator =3 [(gogoproto.moretags) = "ssz-max:\"32\""];
+  Locator target =1;
+  repeated Locator locator =2 [(gogoproto.moretags) = "ssz-max:\"32\""];
 }
 
 message SnapSyncRsp {
-  Hash targetBlock =1;
-  Hash stateRoot=2;
-  repeated TransferData datas =3 [(gogoproto.moretags) = "ssz-max:\"2000\""];
+  Locator target =1;
+  repeated TransferData datas =2 [(gogoproto.moretags) = "ssz-max:\"2000\""];
 }

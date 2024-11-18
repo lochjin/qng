@@ -249,7 +249,7 @@ func (s *Sync) registerRPCHandlers() {
 
 	s.registerRPC(
 		RPCSyncSnap,
-		&pb.SnapSyncRsp{},
+		&pb.SnapSyncReq{},
 		s.snapSyncHandler,
 	)
 }

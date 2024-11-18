@@ -238,44 +238,82 @@ func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) []*hash.H
 	return result
 }
 
-func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, target *SnapLocator) ([]IBlock, error) {
+func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, target *SnapLocator) ([]IBlock, IBlock, error) {
 	ds.bd.stateLock.Lock()
 	defer ds.bd.stateLock.Unlock()
 
 	if target != nil {
-		result := []IBlock{}
 		if len(locator) != 1 {
-			return nil, fmt.Errorf("Locator len error")
+			return nil, nil, fmt.Errorf("Locator len error")
 		}
 		point := ds.bd.getBlock(locator[0].block)
 		if point == nil {
-			return nil, fmt.Errorf("No block:%s", locator[0].block.String())
+			return nil, nil, fmt.Errorf("No block:%s", locator[0].block.String())
 		}
 		if !point.GetState().Root().IsEqual(locator[0].root) {
-			return nil, fmt.Errorf("Target root inconsistent:%s != %s", point.GetState().Root().String(), locator[0].root.String())
+			return nil, nil, fmt.Errorf("Target root inconsistent:%s != %s", point.GetState().Root().String(), locator[0].root.String())
 		}
 		targetBlock := ds.bd.getBlock(target.block)
-		if point == nil {
-			return nil, fmt.Errorf("No target:%s", target.block.String())
+		if targetBlock == nil {
+			return nil, nil, fmt.Errorf("No target:%s", target.block.String())
 		}
-		for i := point.GetOrder() + 1; i <= targetBlock.GetOrder(); i++ {
-			block := ds.bd.getBlockByOrder(i)
-			if block == nil {
-				return result, fmt.Errorf("No block in order:%d", i)
-			}
-			result = append(result, block)
-			if uint(len(result)) >= maxHashes {
-				break
-			}
+		if point.GetOrder() >= targetBlock.GetOrder() {
+			return nil, nil, fmt.Errorf("Start point is invalid:%d >= %d(target)", point.GetOrder(), targetBlock.GetOrder())
 		}
-		return result, nil
+		return ds.getBlockChainForSnapSync(point, targetBlock, maxHashes), nil, nil
 	}
 	// get target
 	mp := ds.bd.getMainChainTip()
 	if mp.GetOrder() <= MaxSnapSyncTargetDepth {
-		return nil, fmt.Errorf("No blocks for snap-sync:%d", mp.GetOrder())
+		return nil, nil, fmt.Errorf("No blocks for snap-sync:%d", mp.GetOrder())
 	}
-	return nil, nil
+	var targetBlock IBlock
+	for targetOrder := mp.GetOrder() - MaxSnapSyncTargetDepth; targetOrder > 0; targetOrder-- {
+		targetID := ds.bd.getBlockIDByOrder(targetOrder)
+		if ds.bd.isOnMainChain(targetID) {
+			targetBlock = ds.bd.getBlockById(targetID)
+			if targetBlock != nil {
+				break
+			}
+		}
+	}
+
+	var point IBlock
+	for i := len(locator) - 1; i >= 0; i-- {
+		mainBlock := ds.bd.getBlock(locator[i].block)
+		if mainBlock == nil {
+			continue
+		}
+		if !mainBlock.GetState().Root().IsEqual(locator[i].root) {
+			continue
+		}
+		point = mainBlock
+		break
+	}
+
+	if point == nil {
+		point = ds.bd.getGenesis()
+	}
+	if point.GetOrder() >= targetBlock.GetOrder() {
+		return nil, nil, fmt.Errorf("Start point is invalid:%d >= %d(target)", point.GetOrder(), targetBlock.GetOrder())
+	}
+	return ds.getBlockChainForSnapSync(point, targetBlock, maxHashes), targetBlock, nil
+}
+
+func (ds *DAGSync) getBlockChainForSnapSync(point IBlock, target IBlock, maxHashes uint) []IBlock {
+	result := []IBlock{}
+	for i := point.GetOrder() + 1; i <= target.GetOrder(); i++ {
+		block := ds.bd.getBlockByOrder(i)
+		if block == nil {
+			log.Warn("No block", "order", i)
+			return result
+		}
+		result = append(result, block)
+		if uint(len(result)) >= maxHashes {
+			break
+		}
+	}
+	return result
 }
 
 // NewDAGSync
@@ -286,4 +324,11 @@ func NewDAGSync(bd *MeerDAG) *DAGSync {
 type SnapLocator struct {
 	block *hash.Hash
 	root  *hash.Hash
+}
+
+func NewSnapLocator(block *hash.Hash, root *hash.Hash) *SnapLocator {
+	return &SnapLocator{
+		block: block,
+		root:  root,
+	}
 }

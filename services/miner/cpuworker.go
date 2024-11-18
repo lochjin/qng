@@ -316,7 +316,7 @@ out:
 		}
 		if params.ActiveNetParams.Params.IsDevelopDiff() {
 			w.miner.updateBlockTemplate(true)
-			if !w.miner.NoDevelopGap {
+			if !w.miner.cfg.GenerateNoDevGap {
 				time.Sleep(params.ActiveNetParams.Params.TargetTimePerBlock)
 			}
 		}

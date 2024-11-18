@@ -213,9 +213,11 @@ func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) (meerdag.IBlock, error)
 			if err != nil {
 				return returnFun(err)
 			}
-			err = b.addTokenState(dblock.GetID(), sd.tokenState, sd.prevTSHash)
-			if err != nil {
-				return returnFun(err)
+			if sd.prevTSHash != nil {
+				err = b.addTokenState(dblock.GetID(), sd.tokenState, sd.prevTSHash)
+				if err != nil {
+					return returnFun(err)
+				}
 			}
 		} else {
 			err := b.indexManager.ConnectBlock(sd.block, dblock, nil)

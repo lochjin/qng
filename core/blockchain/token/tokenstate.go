@@ -247,6 +247,9 @@ func DBRemoveTokenState(db model.DataBase, id uint) error {
 }
 
 func NewTokenStateFromBytes(data []byte) (*TokenState, error) {
+	if len(data) <= 0 {
+		return nil, fmt.Errorf("No token state")
+	}
 	ts := &TokenState{}
 	_, err := ts.Deserialize(data)
 	if err != nil {
