@@ -5,6 +5,7 @@
 package meer
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/consensus/model"
@@ -305,6 +306,11 @@ func (m *MeerPool) RemoveTx(tx *qtypes.Tx) error {
 }
 
 func (m *MeerPool) ResetTemplate() error {
+	if !m.isRunning() {
+		err := errors.New("meer pool is not running")
+		log.Warn(err.Error())
+		return err
+	}
 	log.Debug("Try to reset meer pool")
 	msg := &resetTemplateMsg{reply: make(chan struct{})}
 	m.resetTemplate <- msg
