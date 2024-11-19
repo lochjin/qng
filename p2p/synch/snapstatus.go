@@ -92,6 +92,10 @@ func (s *SnapStatus) SetTarget(targetBlock *hash.Hash, stateRoot *hash.Hash) {
 	s.locker.Lock()
 	defer s.locker.Unlock()
 
+	s.setTarget(targetBlock, stateRoot)
+}
+
+func (s *SnapStatus) setTarget(targetBlock *hash.Hash, stateRoot *hash.Hash) {
 	if s.targetBlock == targetBlock && s.stateRoot == stateRoot {
 		return
 	} else if s.targetBlock != nil && s.targetBlock.IsEqual(targetBlock) &&
@@ -108,6 +112,10 @@ func (s *SnapStatus) GetTarget() (*hash.Hash, *hash.Hash) {
 	s.locker.RLock()
 	defer s.locker.RUnlock()
 
+	return s.getTarget()
+}
+
+func (s *SnapStatus) getTarget() (*hash.Hash, *hash.Hash) {
 	return s.targetBlock, s.stateRoot
 }
 
@@ -115,6 +123,10 @@ func (s *SnapStatus) GetSyncPoint() meerdag.IBlock {
 	s.locker.RLock()
 	defer s.locker.RUnlock()
 
+	return s.getSyncPoint()
+}
+
+func (s *SnapStatus) getSyncPoint() meerdag.IBlock {
 	return s.syncPoint
 }
 
@@ -122,12 +134,21 @@ func (s *SnapStatus) SetSyncPoint(point meerdag.IBlock) {
 	s.locker.Lock()
 	defer s.locker.Unlock()
 
+	s.setSyncPoint(point)
+}
+
+func (s *SnapStatus) setSyncPoint(point meerdag.IBlock) {
 	s.syncPoint = point
 }
 
-func (s *SnapStatus) isCompleted() bool {
+func (s *SnapStatus) IsCompleted() bool {
 	s.locker.RLock()
 	defer s.locker.RUnlock()
+
+	return s.isCompleted()
+}
+
+func (s *SnapStatus) isCompleted() bool {
 
 	if s.syncPoint == nil {
 		return false
