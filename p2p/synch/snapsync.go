@@ -71,6 +71,7 @@ cleanup:
 		return false
 	}
 	add := 0
+	ps.snapStatus.locker.Lock()
 	for !ps.snapStatus.isCompleted() {
 		ret, err := ps.syncSnapStatus(bestPeer)
 		if err != nil {
@@ -91,9 +92,11 @@ cleanup:
 			log.Warn(err.Error())
 			break
 		}
-		ps.snapStatus.SetSyncPoint(latest)
+		ps.snapStatus.setSyncPoint(latest)
 		add += len(sds)
 	}
+	ps.snapStatus.locker.Unlock()
+
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
 	sp := ps.snapStatus.GetSyncPoint()
 	if sp != nil {
@@ -102,7 +105,7 @@ cleanup:
 	}
 	// ------
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
-	if ps.snapStatus.isCompleted() {
+	if ps.snapStatus.IsCompleted() {
 		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
 	} else {
 		log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
@@ -111,7 +114,7 @@ cleanup:
 	ps.SetSyncPeer(nil)
 	ps.processwg.Done()
 
-	if ps.snapStatus.isCompleted() {
+	if ps.snapStatus.IsCompleted() {
 		ps.snapStatus = nil
 		return false
 	} else {
@@ -124,9 +127,9 @@ cleanup:
 func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 	req := &pb.SnapSyncReq{Locator: []*pb.Locator{}}
 
-	targetBlock, stateRoot := ps.snapStatus.GetTarget()
+	targetBlock, stateRoot := ps.snapStatus.getTarget()
 	if targetBlock != nil {
-		sp := ps.snapStatus.GetSyncPoint()
+		sp := ps.snapStatus.getSyncPoint()
 		req.Target = &pb.Locator{Block: &pb.Hash{Hash: targetBlock.Bytes()}, Root: &pb.Hash{Hash: stateRoot.Bytes()}}
 		req.Locator = append(req.Locator, &pb.Locator{
 			Block: &pb.Hash{Hash: sp.GetHash().Bytes()},
@@ -158,7 +161,7 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 	}
 	targetBlock := changePBHashToHash(ssr.Target.Block)
 	stateRoot := changePBHashToHash(ssr.Target.Root)
-	ps.snapStatus.SetTarget(targetBlock, stateRoot)
+	ps.snapStatus.setTarget(targetBlock, stateRoot)
 
 	log.Trace("Snap-sync receive", "targetBlock", targetBlock.String(), "stateRoot", stateRoot.String(), "dataNum", len(ssr.Datas), "processID", ps.getProcessID())
 
