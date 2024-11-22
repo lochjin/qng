@@ -32,10 +32,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/holiman/uint256"
 	"math/big"
 	"reflect"
+	"time"
 )
 
 const (
@@ -658,6 +660,40 @@ func (b *MeerChain) checkMeerChange() error {
 
 func (b *MeerChain) SyncMode() downloader.SyncMode {
 	return b.chain.Config().Eth.SyncMode
+}
+
+func (b *MeerChain) Downloader() *downloader.Downloader {
+	return b.chain.Ether().Downloader()
+}
+
+func (b *MeerChain) Server() *p2p.Server {
+	return b.chain.Node().Server()
+}
+
+func (b *MeerChain) SyncTo(target common.Hash) error {
+	mode := b.SyncMode()
+	quit := make(chan struct{})
+	err := b.Downloader().SyncQngWaitPeers(mode, target, quit)
+	if err != nil {
+		log.Info("Failed to trigger beacon sync", "err", err)
+		return err
+	}
+
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			block := b.chain.Ether().BlockChain().GetBlockByHash(target)
+			if block != nil {
+				log.Info("Sync target reached", "number", block.NumberU64(), "hash", block.Hash())
+				return nil
+			}
+		}
+		if b.IsShutdown() {
+			return nil
+		}
+	}
 }
 
 func (b *MeerChain) APIs() []api.API {
