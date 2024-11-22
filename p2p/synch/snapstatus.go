@@ -17,6 +17,8 @@ type SnapStatus struct {
 	peid        peer.ID
 
 	syncPoint meerdag.IBlock
+
+	evmCompleted bool
 }
 
 func (s *SnapStatus) IsInit() bool {
@@ -149,7 +151,10 @@ func (s *SnapStatus) IsCompleted() bool {
 }
 
 func (s *SnapStatus) isCompleted() bool {
+	return s.isPointCompleted() && s.evmCompleted
+}
 
+func (s *SnapStatus) isPointCompleted() bool {
 	if s.syncPoint == nil {
 		return false
 	}
@@ -158,7 +163,8 @@ func (s *SnapStatus) isCompleted() bool {
 
 func NewSnapStatus(peid peer.ID) *SnapStatus {
 	return &SnapStatus{
-		peid:   peid,
-		locker: &sync.RWMutex{},
+		peid:         peid,
+		locker:       &sync.RWMutex{},
+		evmCompleted: false,
 	}
 }
