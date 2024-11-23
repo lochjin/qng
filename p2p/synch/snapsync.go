@@ -40,6 +40,9 @@ func (ps *PeerSync) startSnapSync() bool {
 	if !ps.IsSnapSync() && gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
 		return false
 	}
+	if ps.Chain().MeerChain().Server().PeerCount() <= 0 {
+		return false
+	}
 	// Start syncing from the best peer if one was selected.
 	ps.processID++
 	ps.processwg.Add(1)
@@ -72,7 +75,7 @@ cleanup:
 	}
 	add := 0
 	ps.snapStatus.locker.Lock()
-	for !ps.snapStatus.isCompleted() {
+	for !ps.snapStatus.isPointCompleted() {
 		ret, err := ps.syncSnapStatus(bestPeer)
 		if err != nil {
 			log.Warn("Snap-sync", "err", err.Error())
@@ -96,7 +99,10 @@ cleanup:
 		add += len(sds)
 	}
 	ps.snapStatus.locker.Unlock()
-
+	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())
+	if err != nil {
+		log.Error(err.Error())
+	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
 	sp := ps.snapStatus.GetSyncPoint()
 	if sp != nil {

@@ -187,14 +187,6 @@ func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) (meerdag.IBlock, error)
 				}
 			}
 
-			err := b.meerCheckConnectBlock(node)
-			if err != nil {
-				return returnFun(err)
-			}
-			_, err = b.meerConnectBlock(node)
-			if err != nil {
-				return returnFun(err)
-			}
 			err = b.dbUpdateUtxoView(view)
 			if err != nil {
 				return returnFun(err)
