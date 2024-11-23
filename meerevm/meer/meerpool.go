@@ -146,6 +146,11 @@ func (m *MeerPool) handler() {
 			return
 		case msg := <-m.resetTemplate:
 			m.updateTemplate(true)
+			select {
+			case <-m.quit:
+				return
+			default:
+			}
 			msg.reply <- struct{}{}
 		case <-stallTicker.C:
 			m.handleStallSample()
@@ -311,10 +316,17 @@ func (m *MeerPool) ResetTemplate() error {
 		log.Warn(err.Error())
 		return err
 	}
-	log.Debug("Try to reset meer pool")
 	msg := &resetTemplateMsg{reply: make(chan struct{})}
-	m.resetTemplate <- msg
-	<-msg.reply
+	go func() {
+		log.Debug("Try to reset meer pool")
+		m.resetTemplate <- msg
+	}()
+	select {
+	case <-m.quit:
+		return errors.New("MeerPool is quit")
+	case <-msg.reply:
+
+	}
 	return nil
 }
 

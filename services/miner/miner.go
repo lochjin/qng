@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	ejson "encoding/json"
+	"errors"
 	"fmt"
+	"github.com/Qitmeer/qng/common/system"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -463,6 +465,10 @@ out:
 			m.handleStallSample()
 
 		case <-m.quit:
+			log.Info("Miner.handler exit because of quit")
+			break out
+		case <-m.consensus.Interrupt():
+			log.Info("Miner.handler exit because of interrupt")
 			break out
 		}
 	}
@@ -485,6 +491,9 @@ cleanup:
 }
 
 func (m *Miner) updateBlockTemplate(force bool) error {
+	if system.InterruptRequested(m.consensus.Interrupt()) {
+		return errors.New("System Interruption")
+	}
 	m.Lock()
 	defer m.Unlock()
 
@@ -523,7 +532,11 @@ func (m *Miner) updateBlockTemplate(force bool) error {
 		m.stats.TotalGbts++ //gbt generates
 		start := time.Now().UnixMilli()
 		totalGbts.Update(m.stats.TotalGbts)
-		m.consensus.BlockChain().MeerChain().(*meer.MeerChain).MeerPool().ResetTemplate()
+		err := m.consensus.BlockChain().MeerChain().(*meer.MeerChain).MeerPool().ResetTemplate()
+		if err != nil {
+			log.Warn(err.Error())
+			return err
+		}
 		template, err := mining.NewBlockTemplate(m.policy, params.ActiveNetParams.Params, m.sigCache, m.txpool, m.timeSource, m.consensus, m.coinbaseAddress, nil, m.powType, m.coinbaseFlags)
 		if err != nil {
 			e := fmt.Errorf("Failed to create new block template: %s", err.Error())
