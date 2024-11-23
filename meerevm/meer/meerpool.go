@@ -146,6 +146,11 @@ func (m *MeerPool) handler() {
 			return
 		case msg := <-m.resetTemplate:
 			m.updateTemplate(true)
+			select {
+			case <-m.quit:
+				return
+			default:
+			}
 			msg.reply <- struct{}{}
 		case <-stallTicker.C:
 			m.handleStallSample()
