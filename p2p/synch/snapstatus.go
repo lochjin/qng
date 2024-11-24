@@ -161,6 +161,12 @@ func (s *SnapStatus) isPointCompleted() bool {
 	return s.syncPoint.GetHash().IsEqual(s.targetBlock)
 }
 
+func (s *SnapStatus) CompleteEVM() {
+	s.locker.Lock()
+	defer s.locker.Unlock()
+	s.evmCompleted = true
+}
+
 func NewSnapStatus(peid peer.ID) *SnapStatus {
 	return &SnapStatus{
 		peid:         peid,

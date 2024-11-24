@@ -96,12 +96,15 @@ cleanup:
 			break
 		}
 		ps.snapStatus.setSyncPoint(latest)
+		log.Trace("Snap-sync status update point", "point", latest.GetHash().String())
 		add += len(sds)
 	}
 	ps.snapStatus.locker.Unlock()
 	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())
 	if err != nil {
 		log.Error(err.Error())
+	} else {
+		ps.snapStatus.CompleteEVM()
 	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
 	sp := ps.snapStatus.GetSyncPoint()
