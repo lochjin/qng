@@ -5,8 +5,10 @@
 package meer
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/consensus/forks"
 	"github.com/Qitmeer/qng/consensus/model"
 	mmeer "github.com/Qitmeer/qng/consensus/model/meer"
@@ -690,8 +692,8 @@ func (b *MeerChain) SyncTo(target common.Hash) error {
 				return nil
 			}
 		}
-		if b.IsShutdown() {
-			return nil
+		if system.InterruptRequested(b.consensus.Interrupt()) {
+			return errors.New("System interrupt")
 		}
 	}
 }
