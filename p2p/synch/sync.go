@@ -376,7 +376,7 @@ func RegisterRPC(rpc peers.P2PRPC, basetopic string, base interface{}, handle rp
 		}
 		common.IngressConnectMeter.Mark(1)
 		pe := rpc.Peers().Get(stream.Conn().RemotePeer())
-		if pe == nil && basetopic != RPCChainState && basetopic != RPCGoodByeTopic {
+		if (pe == nil || pe.ChainState() == nil) && basetopic != RPCChainState && basetopic != RPCGoodByeTopic {
 			log.Debug("Peer is not init, ignore the handling", "protocol", topic, "pe", stream.Conn().RemotePeer())
 			return
 		}
