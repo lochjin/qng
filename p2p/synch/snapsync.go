@@ -11,6 +11,7 @@ import (
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
+	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
@@ -103,6 +104,7 @@ cleanup:
 	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())
 	if err != nil {
 		log.Error(err.Error())
+		meer.Cleanup(ps.Chain().Consensus().Config())
 	} else {
 		ps.snapStatus.CompleteEVM()
 	}
