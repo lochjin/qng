@@ -147,7 +147,8 @@ func (api *PublicRelayAPI) GetNodeInfo() (interface{}, error) {
 	}
 	bSer := api.node.GetBootService()
 	if bSer != nil {
-		ret.Addresss = append(ret.Addresss, fmt.Sprintf("Boot: %s", bSer.Node().URLv4()))
+		ret.Addresss = append(ret.Addresss, fmt.Sprintf("Boot: %s", bSer.Node().Node().URLv4()))
+		ret.Addresss = append(ret.Addresss, fmt.Sprintf("Boot: %s", bSer.Node().Node().String()))
 	}
 	return ret, nil
 }
