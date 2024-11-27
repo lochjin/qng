@@ -17,7 +17,7 @@ type BootService struct {
 	service.Service
 	cfg       *config.Config
 	nodeKey   *ecdsa.PrivateKey
-	localNode *enode.Node
+	localNode *enode.LocalNode
 }
 
 func (s *BootService) Start() error {
@@ -63,10 +63,8 @@ func (s *BootService) Start() error {
 		}
 	}
 
-	s.setLocalNode(&s.nodeKey.PublicKey, *realaddr)
-
-	db, _ := enode.OpenDB("")
-	ln := enode.NewLocalNode(db, s.nodeKey)
+	s.setLocalNode(*realaddr)
+	ln := s.localNode
 	cfg := discover.Config{
 		PrivateKey:  s.nodeKey,
 		NetRestrict: restrictList,
@@ -91,16 +89,24 @@ func (s *BootService) Stop() error {
 	return nil
 }
 
-func (s *BootService) Node() *enode.Node {
+func (s *BootService) Node() *enode.LocalNode {
 	return s.localNode
 }
 
-func (s *BootService) setLocalNode(nodeKey *ecdsa.PublicKey, addr net.UDPAddr) {
+func (s *BootService) setLocalNode(addr net.UDPAddr) {
 	if addr.IP.IsUnspecified() {
 		addr.IP = net.IP{127, 0, 0, 1}
 	}
-	s.localNode = enode.NewV4(nodeKey, addr.IP, 0, addr.Port)
-	log.Info(fmt.Sprintf("Boot:%s", s.localNode.URLv4()))
+
+	db, _ := enode.OpenDB("")
+	ln := enode.NewLocalNode(db, s.nodeKey)
+	ln.SetFallbackIP(addr.IP)
+	ln.SetFallbackUDP(addr.Port)
+
+	s.localNode = ln
+	//s.localNode = enode.NewV4(nodeKey, addr.IP, 0, addr.Port)
+
+	log.Info("local node", "enr", ln.Node().String(), "enode", ln.Node().URLv4())
 }
 
 func NewBootService(cfg *config.Config, nodeKey *ecdsa.PrivateKey) (*BootService, error) {
