@@ -10,6 +10,7 @@ var MainnetBootnodes = []string{
 // the test meer network.
 var TestnetBootnodes = []string{
 	"enr:-KO4QP_dQ15mPTamuOYKchM3DYQuCPyqkG0za8C-5jG10NxBGo-fIPOij3RHxqc_Soo8mUPBKA06tZokwJEUixCz-sGGAZBH2lGKg2V0aMfGhMM2XVOAgmlkgnY0gmlwhHhPWhiJc2VjcDI1NmsxoQMVziJkqN43CMvklSowHF63Zsd9fgXRXTAiqdHvkvpjG4RzbmFwwIN0Y3CCSGqDdWRwgkhq",
+	"enr:-Iq4QBoUclXPuXNOzTjy_QIsNB5DIi5PkALjy88_2MshpwOASelvfObVhr3mUzGabY-5GbGR6CqEdpXCLdGmsvYbkseGAZNtPGkYgmlkgnY0gmlwhC0gC3eJc2VjcDI1NmsxoQMtKjKgDsDUNoxqE30QeWIpU0FESIl922sAigfk4-yIiYN1ZHCCB9M",
 }
 
 // PrivnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
