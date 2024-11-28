@@ -1,11 +1,14 @@
 package crawl
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/cmd/relaynode/config"
+	"github.com/Qitmeer/qng/meerevm/eth"
 	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/services/common"
 	ecommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/p2p/dnsdisc"
 	"github.com/urfave/cli/v2"
 )
 
@@ -75,6 +78,57 @@ func meerNodesCmd() *cli.Command {
 				log.Info("node", "id", id.String(), "ip", n.N.IPAddr().String(), "tcp", n.N.TCP(), "udp", n.N.UDP(), "url", n.N.String())
 			}
 			log.Info("Finished node", "count", len(ns))
+			return nil
+		},
+		After: func(ctx *cli.Context) error {
+			return nil
+		},
+	}
+}
+
+func meerDNSNodesCmd() *cli.Command {
+	return &cli.Command{
+		Name:        "meerdnsnodes",
+		Aliases:     []string{"mdn"},
+		Category:    "crawl",
+		Usage:       "Show meer DNS nodes",
+		Description: "Show meer DNS nodes",
+		Before: func(ctx *cli.Context) error {
+			return config.Conf.Load()
+		},
+		Action: func(ctx *cli.Context) error {
+			cfg := config.Conf
+			qcfg := common.DefaultConfig(".")
+			qcfg.DataDir = cfg.DataDir
+
+			ecfg, err := meer.MakeConfig(qcfg)
+			if err != nil {
+				return err
+			}
+			eth.SetDNSDiscoveryDefaults(ecfg)
+			if len(ecfg.Eth.EthDiscoveryURLs) <= 0 {
+				return errors.New("EthDiscoveryURLs is empty")
+			}
+			var dcfg dnsdisc.Config
+			ddClient := dnsdisc.NewClient(dcfg)
+
+			for _, url := range ecfg.Eth.EthDiscoveryURLs {
+				domain, _, err := dnsdisc.ParseURL(url)
+				if err != nil {
+					return err
+				}
+
+				t, err := ddClient.SyncTree(url)
+				if err != nil {
+					return err
+				}
+				log.Info(domain, "total", len(t.Nodes()))
+				for _, n := range t.Nodes() {
+					fmt.Println(n.String())
+					fmt.Println(n.URLv4())
+					fmt.Println()
+				}
+			}
 			return nil
 		},
 		After: func(ctx *cli.Context) error {
