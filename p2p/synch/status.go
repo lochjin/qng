@@ -82,8 +82,14 @@ func (s *Sync) maintainPeerStatuses() {
 }
 
 func (s *Sync) reValidatePeer(pe *peers.Peer) error {
-	if _, err := s.Send(pe, RPCChainState, s.getChainState()); err != nil {
-		return err
+	if pe.IsSupportChainStateV2() {
+		if _, err := s.Send(pe, RPCChainStateV2, s.getChainStateV2()); err != nil {
+			return err
+		}
+	} else {
+		if _, err := s.Send(pe, RPCChainState, s.getChainState()); err != nil {
+			return err
+		}
 	}
 	if !pe.IsConsensus() {
 		return nil

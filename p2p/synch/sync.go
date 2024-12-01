@@ -11,6 +11,7 @@ import (
 	"github.com/Qitmeer/qng/p2p/encoder"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
+	v2 "github.com/Qitmeer/qng/p2p/proto/v2"
 	"github.com/Qitmeer/qng/params"
 	libp2pcore "github.com/libp2p/go-libp2p/core"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -31,7 +32,8 @@ const (
 	// RPCMetaDataTopic defines the topic for the metadata rpc method.
 	RPCMetaDataTopic = "/qitmeer/req/metadata/1"
 	// RPCChainState defines the topic for the chain state rpc method.
-	RPCChainState = "/qitmeer/req/chainstate/1"
+	RPCChainState   = "/qitmeer/req/chainstate/1"
+	RPCChainStateV2 = "/qitmeer/req/chainstate/2"
 	// RPCGetBlocks defines the topic for the get blocks rpc method.
 	RPCGetBlocks = "/qitmeer/req/getblocks/1"
 	// RPCGetBlockDatas defines the topic for the get blocks rpc method.
@@ -149,6 +151,12 @@ func (s *Sync) registerRPCHandlers() {
 		RPCChainState,
 		&pb.ChainState{},
 		s.chainStateHandler,
+	)
+
+	s.registerRPC(
+		RPCChainStateV2,
+		&v2.ChainState{},
+		s.chainStateV2Handler,
 	)
 
 	s.registerRPC(
@@ -280,6 +288,8 @@ func (s *Sync) Send(pe *peers.Peer, protocol string, message interface{}) (inter
 	switch protocol {
 	case RPCChainState:
 		e = s.sendChainStateRequest(stream, pe)
+	case RPCChainStateV2:
+		e = s.sendChainStateV2Request(stream, pe)
 	case RPCGoodByeTopic:
 		e = s.sendGoodByeMessage(message, pe)
 	case RPCGetBlockDatas:
@@ -376,7 +386,7 @@ func RegisterRPC(rpc peers.P2PRPC, basetopic string, base interface{}, handle rp
 		}
 		common.IngressConnectMeter.Mark(1)
 		pe := rpc.Peers().Get(stream.Conn().RemotePeer())
-		if (pe == nil || pe.ChainState() == nil) && basetopic != RPCChainState && basetopic != RPCGoodByeTopic {
+		if (pe == nil || pe.ChainState() == nil) && basetopic != RPCChainState && basetopic != RPCChainStateV2 && basetopic != RPCGoodByeTopic {
 			log.Debug("Peer is not init, ignore the handling", "protocol", topic, "pe", stream.Conn().RemotePeer())
 			return
 		}
