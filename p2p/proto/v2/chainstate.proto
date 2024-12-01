@@ -5,6 +5,7 @@ package qitmeer.p2p.v2;
 import "github.com/Qitmeer/qng/p2p/proto/v1/gogo.proto";
 import "github.com/Qitmeer/qng/p2p/proto/v1/message.proto";
 import "github.com/Qitmeer/qng/p2p/proto/v1/graphstate.proto";
+import "github.com/Qitmeer/qng/p2p/proto/v2/meerevm.proto";
 
 message ChainState {
   v1.Hash genesisHash =1;
@@ -14,4 +15,5 @@ message ChainState {
   bool disableRelayTx =5;
   v1.GraphState graphState = 6;
   bytes  userAgent = 7 [(gogoproto.moretags) = "ssz-max:\"256\""];
+  MeerState meerState =8;
 }
