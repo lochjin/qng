@@ -391,7 +391,10 @@ func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
 		if snap {
-			if !sp.IsSnap() {
+			if !sp.IsSnap() || sp.GetMeerState() == nil {
+				continue
+			}
+			if sp.GetMeerState().Number <= MinSnapSyncNumber {
 				continue
 			}
 			if ps.IsSnapSync() && sp.GetID() == ps.snapStatus.PeerID() {

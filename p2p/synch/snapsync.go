@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+const (
+	MinSnapSyncNumber = 200
+)
+
 func (ps *PeerSync) IsSnapSync() bool {
 	return ps.snapStatus != nil
 }
