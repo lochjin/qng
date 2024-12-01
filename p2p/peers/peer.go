@@ -766,6 +766,16 @@ func (p *Peer) IsSupportChainStateV2() bool {
 	return p.chainState.ProtocolVersion >= protocol.ChainStateV2ProtocolVersion
 }
 
+func (p *Peer) GetMeerState() *v2.MeerState {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return nil
+	}
+	return p.chainState.MeerState
+}
+
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
 	return &Peer{
 		peerStatus: &peerStatus{
