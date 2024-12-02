@@ -75,6 +75,7 @@ func (ps *PeerSync) immediatelyConnected(pe *peers.Peer) {
 }
 
 func (ps *PeerSync) Connection(pe *peers.Peer) {
+	ps.connectMeerEVM(pe)
 	if pe.ConnectionState().IsConnected() {
 		return
 	}
@@ -276,7 +277,7 @@ func (s *Sync) IsInboundPeerAtLimit() bool {
 	return len(s.Peers().DirInbound()) >= s.p2p.Config().MaxInbound
 }
 
-func (s *Sync) ConnectionGater(pid *peer.ID,addr ma.Multiaddr, dir network.Direction) bool {
+func (s *Sync) ConnectionGater(pid *peer.ID, addr ma.Multiaddr, dir network.Direction) bool {
 
 	var pe *peers.Peer
 	if pid != nil {
@@ -285,8 +286,8 @@ func (s *Sync) ConnectionGater(pid *peer.ID,addr ma.Multiaddr, dir network.Direc
 			return true
 		}
 		pe = s.peers.Get(*pid)
-	}else if addr != nil {
-		pe =s.peers.GetByAddress(addr)
+	} else if addr != nil {
+		pe = s.peers.GetByAddress(addr)
 	}
 
 	if pe != nil {
