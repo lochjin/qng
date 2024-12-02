@@ -52,7 +52,7 @@ func (s *Sync) chainStateV2Handler(ctx context.Context, msg interface{}, stream 
 		if e.Code.IsDAGConsensus() {
 			// Respond with our status and disconnect with the peer.
 			s.UpdateChainState(pe, m, false)
-			if err := s.EncodeResponseMsgPro(stream, s.getChainState(), e.Code); err != nil {
+			if err := s.EncodeResponseMsgPro(stream, s.getChainStateV2(), e.Code); err != nil {
 				return err
 			}
 		}
@@ -60,13 +60,13 @@ func (s *Sync) chainStateV2Handler(ctx context.Context, msg interface{}, stream 
 	}
 	if !s.bidirectionalChannelCapacity(pe, stream.Conn()) {
 		s.UpdateChainState(pe, m, false)
-		if err := s.EncodeResponseMsgPro(stream, s.getChainState(), common.ErrDAGConsensus); err != nil {
+		if err := s.EncodeResponseMsgPro(stream, s.getChainStateV2(), common.ErrDAGConsensus); err != nil {
 			return err
 		}
 		return ErrMessage(fmt.Errorf("bidirectional channel capacity"))
 	}
 	s.UpdateChainState(pe, m, true)
-	return s.EncodeResponseMsg(stream, s.getChainState())
+	return s.EncodeResponseMsg(stream, s.getChainStateV2())
 }
 
 func (s *Sync) UpdateChainState(pe *peers.Peer, chainState *v2.ChainState, action bool) {

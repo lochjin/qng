@@ -567,7 +567,7 @@ func EncodeResponseMsg(rpc peers.P2PRPC, stream libp2pcore.Stream, msg interface
 }
 
 func getTopic(baseTopic string) string {
-	if baseTopic == RPCChainState || baseTopic == RPCGoodByeTopic {
+	if baseTopic == RPCChainState || baseTopic == RPCChainStateV2 || baseTopic == RPCGoodByeTopic {
 		return baseTopic
 	}
 	return baseTopic + "/" + params.ActiveNetParams.Name
