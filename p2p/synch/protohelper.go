@@ -12,6 +12,7 @@ import (
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
+	v2 "github.com/Qitmeer/qng/p2p/proto/v2"
 	"reflect"
 )
 
@@ -186,4 +187,17 @@ func isZeroPBHash(ha *pb.Hash) bool {
 		}
 	}
 	return true
+}
+
+func ChangeChainStateV1ToV2(cs *pb.ChainState) *v2.ChainState {
+	return &v2.ChainState{
+		GenesisHash:     cs.GenesisHash,
+		ProtocolVersion: cs.ProtocolVersion,
+		Timestamp:       cs.Timestamp,
+		Services:        cs.Services,
+		DisableRelayTx:  cs.DisableRelayTx,
+		GraphState:      cs.GraphState,
+		UserAgent:       cs.UserAgent,
+		MeerState:       nil,
+	}
 }

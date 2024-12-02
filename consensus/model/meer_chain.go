@@ -4,6 +4,7 @@ import (
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/p2p"
 )
@@ -15,4 +16,5 @@ type MeerChain interface {
 	Downloader() *downloader.Downloader
 	SyncTo(target common.Hash) error
 	Server() *p2p.Server
+	GetCurHeader() *types.Header
 }

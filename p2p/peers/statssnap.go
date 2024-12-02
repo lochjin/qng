@@ -4,6 +4,7 @@ import (
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/meerdag"
+	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/params"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -39,6 +40,7 @@ type StatsSnap struct {
 	MempoolReqTime time.Time
 	Tasks          int
 	Broadcast      int
+	MeerState      *common.MeerState
 }
 
 func (p *StatsSnap) IsRelay() bool {

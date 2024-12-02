@@ -10,6 +10,7 @@ import (
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/common"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
+	v2 "github.com/Qitmeer/qng/p2p/proto/v2"
 	"github.com/Qitmeer/qng/p2p/qnode"
 	"github.com/Qitmeer/qng/p2p/qnr"
 	"github.com/Qitmeer/qng/params"
@@ -276,7 +277,7 @@ func (p *Peer) SetConnectionState(state PeerConnectionState) {
 }
 
 // SetChainState sets the chain state of the given remote peer.
-func (p *Peer) SetChainState(chainState *pb.ChainState) {
+func (p *Peer) SetChainState(chainState *v2.ChainState) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -285,13 +286,17 @@ func (p *Peer) SetChainState(chainState *pb.ChainState) {
 	p.timeOffset = int64(p.chainState.Timestamp) - roughtime.Now().Unix()
 	p.graphStateTime = time.Now()
 	p.stateRootOrder = uint64(chainState.GraphState.MainOrder)
-	log.Trace(fmt.Sprintf("SetChainState(%s) : MainHeight=%d", p.pid.ShortString(), chainState.GraphState.MainHeight))
+	if chainState.MeerState != nil {
+		log.Trace(fmt.Sprintf("SetChainState(%s) : MainHeight=%d MeerNumber=%d", p.pid.ShortString(), chainState.GraphState.MainHeight, chainState.MeerState.Number))
+	} else {
+		log.Trace(fmt.Sprintf("SetChainState(%s) : MainHeight=%d", p.pid.ShortString(), chainState.GraphState.MainHeight))
+	}
 }
 
 // ChainState gets the chain state of the given remote peer.
 // This can return nil if there is no known chain state for the peer.
 // This will error if the peer does not exist.
-func (p *Peer) ChainState() *pb.ChainState {
+func (p *Peer) ChainState() *v2.ChainState {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -374,6 +379,9 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 	if p.isConsensus() {
 		ss.GraphState = p.graphState()
 		ss.GraphStateDur = time.Since(p.graphStateTime)
+	}
+	if p.getMeerState() != nil {
+		ss.MeerState = common.NewMeerState(p.getMeerState())
 	}
 	return ss, nil
 }
@@ -485,7 +493,7 @@ func (p *Peer) UpdateGraphState(gs *pb.GraphState) {
 	defer p.lock.Unlock()
 
 	if p.chainState == nil {
-		p.chainState = &pb.ChainState{}
+		p.chainState = &v2.ChainState{}
 		//per.chainState.GraphState=&pb.GraphState{}
 	}
 	p.chainState.GraphState = gs
@@ -749,6 +757,30 @@ func (p *Peer) IsSnap() bool {
 		return false
 	}
 	return protocol.HasServices(protocol.ServiceFlag(p.chainState.Services), protocol.Snap)
+}
+
+func (p *Peer) IsSupportChainStateV2() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return p.chainState.ProtocolVersion >= protocol.ChainStateV2ProtocolVersion
+}
+
+func (p *Peer) GetMeerState() *v2.MeerState {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.getMeerState()
+}
+
+func (p *Peer) getMeerState() *v2.MeerState {
+	if p.chainState == nil {
+		return nil
+	}
+	return p.chainState.MeerState
 }
 
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {

@@ -7,9 +7,7 @@ package synch
 import (
 	"context"
 	"fmt"
-	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/common/roughtime"
-	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
@@ -31,11 +29,11 @@ func (s *Sync) sendChainStateRequest(stream network.Stream, pe *peers.Peer) *com
 	if err := DecodeMessage(stream, s.p2p, msg); err != nil {
 		return common.NewError(common.ErrStreamRead, err)
 	}
-	s.UpdateChainState(pe, msg, !e.Code.IsDAGConsensus())
+	s.UpdateChainState(pe, ChangeChainStateV1ToV2(msg), !e.Code.IsDAGConsensus())
 	if !e.Code.IsSuccess() {
 		return e
 	}
-	e = s.validateChainStateMessage(msg, pe)
+	e = s.validateChainStateMessage(ChangeChainStateV1ToV2(msg), pe)
 	if e != nil {
 		if e.Code.IsDAGConsensus() {
 			go s.sendGoodByeAndDisconnect(common.ErrDAGConsensus, pe)
@@ -50,11 +48,11 @@ func (s *Sync) chainStateHandler(ctx context.Context, msg interface{}, stream li
 	if !ok {
 		return ErrMessage(fmt.Errorf("message is not type *pb.ChainState"))
 	}
-	e := s.validateChainStateMessage(m, pe)
+	e := s.validateChainStateMessage(ChangeChainStateV1ToV2(m), pe)
 	if e != nil {
 		if e.Code.IsDAGConsensus() {
 			// Respond with our status and disconnect with the peer.
-			s.UpdateChainState(pe, m, false)
+			s.UpdateChainState(pe, ChangeChainStateV1ToV2(m), false)
 			if err := s.EncodeResponseMsgPro(stream, s.getChainState(), e.Code); err != nil {
 				return err
 			}
@@ -62,64 +60,14 @@ func (s *Sync) chainStateHandler(ctx context.Context, msg interface{}, stream li
 		return e
 	}
 	if !s.bidirectionalChannelCapacity(pe, stream.Conn()) {
-		s.UpdateChainState(pe, m, false)
+		s.UpdateChainState(pe, ChangeChainStateV1ToV2(m), false)
 		if err := s.EncodeResponseMsgPro(stream, s.getChainState(), common.ErrDAGConsensus); err != nil {
 			return err
 		}
 		return ErrMessage(fmt.Errorf("bidirectional channel capacity"))
 	}
-	s.UpdateChainState(pe, m, true)
+	s.UpdateChainState(pe, ChangeChainStateV1ToV2(m), true)
 	return s.EncodeResponseMsg(stream, s.getChainState())
-}
-
-func (s *Sync) UpdateChainState(pe *peers.Peer, chainState *pb.ChainState, action bool) {
-	pe.SetChainState(chainState)
-	if !action {
-		go s.peerSync.immediatelyDisconnected(pe)
-		return
-	}
-	go s.peerSync.immediatelyConnected(pe)
-}
-
-func (s *Sync) validateChainStateMessage(msg *pb.ChainState, pe *peers.Peer) *common.Error {
-	if msg == nil {
-		return common.NewErrorStr(common.ErrGeneric, "msg is nil")
-	}
-	if protocol.HasServices(protocol.ServiceFlag(msg.Services), protocol.Relay) {
-		return nil
-	}
-	if protocol.HasServices(protocol.ServiceFlag(msg.Services), protocol.Observer) {
-		return nil
-	}
-	genesisHash := s.p2p.GetGenesisHash()
-	msgGenesisHash, err := hash.NewHash(msg.GenesisHash.Hash)
-	if err != nil {
-		return common.NewErrorStr(common.ErrGeneric, "invalid genesis")
-	}
-	if !msgGenesisHash.IsEqual(genesisHash) {
-		return common.NewErrorStr(common.ErrDAGConsensus, "invalid genesis")
-	}
-	// Notify and disconnect clients that have a protocol version that is
-	// too old.
-	if msg.ProtocolVersion < uint32(protocol.InitialProcotolVersion) {
-		return common.NewError(common.ErrDAGConsensus, fmt.Errorf("protocol version must be %d or greater",
-			protocol.InitialProcotolVersion))
-	}
-	if msg.GraphState.Total <= 0 {
-		return common.NewErrorStr(common.ErrDAGConsensus, "invalid graph state")
-	}
-	if pe.Direction() == network.DirInbound {
-		// Reject outbound peers that are not full nodes.
-		wantServices := protocol.Full
-		if !protocol.HasServices(protocol.ServiceFlag(msg.Services), wantServices) {
-			// missingServices := wantServices & ^msg.Services
-			missingServices := protocol.MissingServices(protocol.ServiceFlag(msg.Services), wantServices)
-			return common.NewErrorStr(common.ErrDAGConsensus, fmt.Sprintf("Rejecting peer %s with services %v "+
-				"due to not providing desired services %v\n", pe.GetID().String(), msg.Services, missingServices))
-		}
-	}
-
-	return nil
 }
 
 func (s *Sync) getChainState() *pb.ChainState {

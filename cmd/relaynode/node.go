@@ -20,6 +20,7 @@ import (
 	"github.com/Qitmeer/qng/p2p/encoder"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
+	v2 "github.com/Qitmeer/qng/p2p/proto/v2"
 	"github.com/Qitmeer/qng/p2p/synch"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/rpc"
@@ -266,6 +267,13 @@ func (node *Node) registerHandlers() error {
 		node.chainStateHandler,
 	)
 
+	synch.RegisterRPC(
+		node,
+		synch.RPCChainStateV2,
+		&v2.ChainState{},
+		node.chainStateV2Handler,
+	)
+
 	return nil
 }
 
@@ -340,6 +348,17 @@ func (node *Node) IncreaseBytesRecv(pid peer.ID, size int) {
 
 func (node *Node) chainStateHandler(ctx context.Context, msg interface{}, stream libp2pcore.Stream, pe *peers.Peer) *common.Error {
 	m, ok := msg.(*pb.ChainState)
+	if !ok {
+		return synch.ErrMessage(fmt.Errorf("message is not type *pb.ChainState"))
+	}
+
+	pe.SetChainState(synch.ChangeChainStateV1ToV2(m))
+
+	return synch.EncodeResponseMsg(node, stream, node.getChainState(), common.ErrNone)
+}
+
+func (node *Node) chainStateV2Handler(ctx context.Context, msg interface{}, stream libp2pcore.Stream, pe *peers.Peer) *common.Error {
+	m, ok := msg.(*v2.ChainState)
 	if !ok {
 		return synch.ErrMessage(fmt.Errorf("message is not type *pb.ChainState"))
 	}

@@ -212,7 +212,9 @@ func (ps *PeerSync) OnPeerConnected(pe *peers.Peer) {
 		// the local clock to keep the network time in sync.
 		ps.sy.p2p.TimeSource().AddTimeSample(pe.GetID().String(), ti)
 	}
-
+	if pe.IsSupportChainStateV2() && pe.GetMeerState() == nil {
+		return
+	}
 	ps.updateSyncPeer(false)
 }
 
@@ -256,6 +258,9 @@ func (ps *PeerSync) PeerUpdate(pe *peers.Peer, immediately bool) {
 
 func (ps *PeerSync) OnPeerUpdate(pe *peers.Peer) {
 	log.Trace(fmt.Sprintf("OnPeerUpdate peer=%v", pe.GetID()))
+	if pe.IsSupportChainStateV2() && pe.GetMeerState() == nil {
+		return
+	}
 	ps.updateSyncPeer(false)
 }
 
@@ -386,7 +391,10 @@ func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
 		if snap {
-			if !sp.IsSnap() {
+			if !sp.IsSnap() || sp.GetMeerState() == nil {
+				continue
+			}
+			if sp.GetMeerState().Number <= MinSnapSyncNumber {
 				continue
 			}
 			if ps.IsSnapSync() && sp.GetID() == ps.snapStatus.PeerID() {

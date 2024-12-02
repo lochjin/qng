@@ -59,6 +59,7 @@ type GetPeerInfoResult struct {
 	Tasks          int                  `json:"tasks,omitempty"`
 	Broadcast      int                  `json:"broadcast,omitempty"`
 	Snap           bool                 `json:"snap,omitempty"`
+	MeerState      *MeerState           `json:"meerstate,omitempty"`
 }
 
 // GetGraphStateResult data
@@ -67,6 +68,14 @@ type GetGraphStateResult struct {
 	MainOrder  uint32   `json:"mainorder"`
 	MainHeight uint32   `json:"mainheight"`
 	Layer      uint32   `json:"layer"`
+}
+
+// GetGraphStateResult data
+type MeerState struct {
+	Id     string `json:"id"`
+	Number uint64 `json:"number"`
+	Enode  string `json:"enode"`
+	Enr    string `json:"enr"`
 }
 
 type GetBanlistResult struct {
