@@ -380,6 +380,9 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 		ss.GraphState = p.graphState()
 		ss.GraphStateDur = time.Since(p.graphStateTime)
 	}
+	if p.getMeerState() != nil {
+		ss.MeerState = common.NewMeerState(p.getMeerState())
+	}
 	return ss, nil
 }
 
@@ -770,6 +773,10 @@ func (p *Peer) GetMeerState() *v2.MeerState {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
+	return p.getMeerState()
+}
+
+func (p *Peer) getMeerState() *v2.MeerState {
 	if p.chainState == nil {
 		return nil
 	}

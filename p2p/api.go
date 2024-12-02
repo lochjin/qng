@@ -123,6 +123,14 @@ func (api *PublicP2PAPI) GetPeerInfo(verbose *bool, pid *string) (interface{}, e
 		if len(p.QNR) > 0 {
 			info.QNR = p.QNR
 		}
+		if p.MeerState != nil {
+			info.MeerState = &json.MeerState{
+				Id:     p.MeerState.Id.String(),
+				Number: p.MeerState.Number,
+				Enode:  p.MeerState.Enode,
+				Enr:    p.MeerState.ENR,
+			}
+		}
 		infos = append(infos, info)
 	}
 	return infos, nil
