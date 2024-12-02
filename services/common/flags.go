@@ -641,7 +641,7 @@ var (
 			Destination: &cfg.GBTTimeOut,
 		},
 		&cli.BoolFlag{
-			Name:        "dev_snapsync",
+			Name:        "devsnapsync",
 			Usage:       "Enable snap sync for P2P that only exist in development mode",
 			Destination: &cfg.DevSnapSync,
 		},
