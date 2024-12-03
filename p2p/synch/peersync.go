@@ -347,7 +347,7 @@ func (ps *PeerSync) startConsensusSync() {
 		refresh := true
 		add := 0
 		for {
-			if ps.IsInterrupt() {
+			if ps.IsInterrupt() || bestPeer.IsSnapSync() {
 				break
 			}
 			ret := ps.IntellectSyncBlocks(refresh, bestPeer)
@@ -390,6 +390,9 @@ func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 	var bestPeer *peers.Peer
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
+		if sp.IsSnapSync() {
+			continue
+		}
 		if snap {
 			if !sp.IsSnap() || sp.GetMeerState() == nil {
 				continue

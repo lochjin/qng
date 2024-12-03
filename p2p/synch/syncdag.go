@@ -89,7 +89,7 @@ func debugSyncDAG(m *pb.SyncDAG) string {
 
 func (ps *PeerSync) processSyncDAGBlocks(pe *peers.Peer) *ProcessResult {
 	log.Trace(fmt.Sprintf("processSyncDAGBlocks peer=%v ", pe.GetID()), "processID", ps.getProcessID())
-	if !ps.isSyncPeer(pe) || !pe.IsConnected() {
+	if !ps.isSyncPeer(pe) || !pe.IsConnected() || pe.IsSnapSync() {
 		return nil
 	}
 	point := pe.SyncPoint()

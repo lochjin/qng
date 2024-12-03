@@ -111,7 +111,7 @@ func (s *Sync) getMerkleBlockDataHandler(ctx context.Context, msg interface{}, s
 }
 
 func (ps *PeerSync) processGetBlockDatas(pe *peers.Peer, blocks []*hash.Hash) *ProcessResult {
-	if !ps.isSyncPeer(pe) || !pe.IsConnected() {
+	if !ps.isSyncPeer(pe) || !pe.IsConnected() || pe.IsSnapSync() {
 		err := fmt.Errorf("no sync peer:%v", pe.GetID())
 		log.Trace(err.Error(), "processID", ps.getProcessID())
 		return nil
