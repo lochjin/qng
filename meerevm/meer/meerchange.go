@@ -41,7 +41,7 @@ func (m *MeerPool) checkMeerChangeTxs(block *types.Block, receipts types.Receipt
 					if err != nil {
 						return err
 					}
-					err = m.checkMeerChangeExportTx(tx, ccExportEvent, nil)
+					err = m.CheckMeerChangeExportTx(tx, ccExportEvent, nil)
 					if err != nil {
 						m.ethTxPool.RemoveTx(tx.Hash(), true)
 						return err
@@ -65,7 +65,7 @@ func (m *MeerPool) HasUtxo(txid *hash.Hash, idx uint32) bool {
 	return err == nil && ue != nil
 }
 
-func (m *MeerPool) checkMeerChangeExportTx(tx *types.Transaction, ced *meerchange.MeerchangeExportData, utxoView *utxo.UtxoViewpoint) error {
+func (m *MeerPool) CheckMeerChangeExportTx(tx *types.Transaction, ced *meerchange.MeerchangeExportData, utxoView *utxo.UtxoViewpoint) error {
 	ops, err := ced.GetOutPoints()
 	if err != nil {
 		return err
