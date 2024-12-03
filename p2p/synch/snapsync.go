@@ -85,8 +85,19 @@ cleanup:
 	}
 	add := 0
 	ps.snapStatus.locker.Lock()
+	tryReq := 10
+	var ret *pb.SnapSyncRsp
+
 	for !ps.snapStatus.isPointCompleted() {
-		ret, err := ps.syncSnapStatus(bestPeer)
+		for i := 0; i < tryReq; i++ {
+			ret, err = ps.syncSnapStatus(bestPeer)
+			if err != nil {
+				log.Warn("Snap-sync waiting for next try", "err", err.Error(), "cur", i, "max", tryReq)
+				time.Sleep(time.Second * 5)
+				continue
+			}
+			break
+		}
 		if err != nil {
 			log.Warn("Snap-sync", "err", err.Error())
 			break
@@ -106,8 +117,8 @@ cleanup:
 			break
 		}
 		ps.snapStatus.setSyncPoint(latest)
-		log.Trace("Snap-sync status update point", "point", latest.GetHash().String())
 		add += len(sds)
+		log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 	}
 	ps.snapStatus.locker.Unlock()
 	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())

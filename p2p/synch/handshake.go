@@ -70,7 +70,6 @@ func (ps *PeerSync) processConnected(msg *ConnectedMsg) {
 func (ps *PeerSync) immediatelyConnected(pe *peers.Peer) {
 	pe.HSlock.Lock()
 	defer pe.HSlock.Unlock()
-
 	ps.Connection(pe)
 }
 

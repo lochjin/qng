@@ -695,6 +695,9 @@ func (b *MeerChain) SyncTo(target common.Hash) error {
 		if system.InterruptRequested(b.consensus.Interrupt()) {
 			return errors.New("System interrupt")
 		}
+		if b.IsShutdown() {
+			return errors.New("MeerChain is shutdown")
+		}
 	}
 }
 

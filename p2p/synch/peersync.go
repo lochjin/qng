@@ -172,13 +172,10 @@ func (ps *PeerSync) handleStallSample() {
 		return
 	}
 	lbid := ps.Chain().BlockDAG().GetLastBlockID()
-	if ps.lastBlockID <= 0 {
-		ps.lastBlockID = lbid
-		return
-	}
 	if ps.lastBlockID != lbid {
 		return
 	}
+	ps.lastBlockID = lbid
 	ps.TryAgainUpdateSyncPeer(true)
 }
 
@@ -734,11 +731,12 @@ func (ps *PeerSync) getProcessID() string {
 
 func NewPeerSync(sy *Sync) *PeerSync {
 	peerSync := &PeerSync{
-		sy:        sy,
-		msgChan:   make(chan interface{}),
-		quit:      make(chan struct{}),
-		pause:     false,
-		interrupt: make(chan struct{}),
+		sy:          sy,
+		msgChan:     make(chan interface{}),
+		quit:        make(chan struct{}),
+		pause:       false,
+		interrupt:   make(chan struct{}),
+		lastBlockID: meerdag.MaxId,
 	}
 
 	return peerSync
