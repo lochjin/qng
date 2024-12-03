@@ -9,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
+	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/meerevm/meer"
@@ -36,17 +37,21 @@ func (ps *PeerSync) GetSnapSyncInfo() *json.SnapSyncInfo {
 }
 
 func (ps *PeerSync) startSnapSync() bool {
+	snap := protocol.HasServices(ps.sy.p2p.Config().Services, protocol.Snap)
+	if !snap {
+		return false
+	}
 	best := ps.Chain().BestSnapshot()
 	bestPeer := ps.getBestPeer(true)
 	if bestPeer == nil {
-		return false
+		return true
 	}
 	gs := bestPeer.GraphState()
 	if !ps.IsSnapSync() && gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
 		return false
 	}
 	if ps.Chain().MeerChain().Server().PeerCount() <= 0 {
-		return false
+		return true
 	}
 	// Start syncing from the best peer if one was selected.
 	ps.processID++
@@ -76,7 +81,7 @@ cleanup:
 	// ------
 	err := ps.Chain().BeginSnapSyncing()
 	if err != nil {
-		return false
+		return true
 	}
 	add := 0
 	ps.snapStatus.locker.Lock()
