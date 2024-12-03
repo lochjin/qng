@@ -9,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
+	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/meerevm/meer"
@@ -36,17 +37,21 @@ func (ps *PeerSync) GetSnapSyncInfo() *json.SnapSyncInfo {
 }
 
 func (ps *PeerSync) startSnapSync() bool {
+	snap := protocol.HasServices(ps.sy.p2p.Config().Services, protocol.Snap)
+	if !snap {
+		return false
+	}
 	best := ps.Chain().BestSnapshot()
 	bestPeer := ps.getBestPeer(true)
 	if bestPeer == nil {
-		return false
+		return true
 	}
 	gs := bestPeer.GraphState()
 	if !ps.IsSnapSync() && gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
 		return false
 	}
 	if ps.Chain().MeerChain().Server().PeerCount() <= 0 {
-		return false
+		return true
 	}
 	// Start syncing from the best peer if one was selected.
 	ps.processID++
@@ -76,12 +81,23 @@ cleanup:
 	// ------
 	err := ps.Chain().BeginSnapSyncing()
 	if err != nil {
-		return false
+		return true
 	}
 	add := 0
 	ps.snapStatus.locker.Lock()
+	tryReq := 10
+	var ret *pb.SnapSyncRsp
+
 	for !ps.snapStatus.isPointCompleted() {
-		ret, err := ps.syncSnapStatus(bestPeer)
+		for i := 0; i < tryReq; i++ {
+			ret, err = ps.syncSnapStatus(bestPeer)
+			if err != nil {
+				log.Warn("Snap-sync waiting for next try", "err", err.Error(), "cur", i, "max", tryReq)
+				time.Sleep(time.Second * 5)
+				continue
+			}
+			break
+		}
 		if err != nil {
 			log.Warn("Snap-sync", "err", err.Error())
 			break
@@ -101,8 +117,8 @@ cleanup:
 			break
 		}
 		ps.snapStatus.setSyncPoint(latest)
-		log.Trace("Snap-sync status update point", "point", latest.GetHash().String())
 		add += len(sds)
+		log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 	}
 	ps.snapStatus.locker.Unlock()
 	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())

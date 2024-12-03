@@ -16,4 +16,5 @@ message ChainState {
   v1.GraphState graphState = 6;
   bytes  userAgent = 7 [(gogoproto.moretags) = "ssz-max:\"256\""];
   MeerState meerState =8;
+  bool snapSync = 9;
 }

@@ -41,6 +41,7 @@ type StatsSnap struct {
 	Tasks          int
 	Broadcast      int
 	MeerState      *common.MeerState
+	SnapSync       bool
 }
 
 func (p *StatsSnap) IsRelay() bool {

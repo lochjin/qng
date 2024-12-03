@@ -383,6 +383,9 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 	if p.getMeerState() != nil {
 		ss.MeerState = common.NewMeerState(p.getMeerState())
 	}
+	if p.chainState != nil {
+		ss.SnapSync = p.chainState.SnapSync
+	}
 	return ss, nil
 }
 
@@ -774,6 +777,16 @@ func (p *Peer) GetMeerState() *v2.MeerState {
 	defer p.lock.RUnlock()
 
 	return p.getMeerState()
+}
+
+func (p *Peer) IsSnapSync() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return p.chainState.SnapSync
 }
 
 func (p *Peer) getMeerState() *v2.MeerState {

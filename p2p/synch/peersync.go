@@ -172,13 +172,10 @@ func (ps *PeerSync) handleStallSample() {
 		return
 	}
 	lbid := ps.Chain().BlockDAG().GetLastBlockID()
-	if ps.lastBlockID <= 0 {
-		ps.lastBlockID = lbid
-		return
-	}
 	if ps.lastBlockID != lbid {
 		return
 	}
+	ps.lastBlockID = lbid
 	ps.TryAgainUpdateSyncPeer(true)
 }
 
@@ -347,7 +344,7 @@ func (ps *PeerSync) startConsensusSync() {
 		refresh := true
 		add := 0
 		for {
-			if ps.IsInterrupt() {
+			if ps.IsInterrupt() || bestPeer.IsSnapSync() {
 				break
 			}
 			ret := ps.IntellectSyncBlocks(refresh, bestPeer)
@@ -390,6 +387,9 @@ func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 	var bestPeer *peers.Peer
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
+		if sp.IsSnapSync() {
+			continue
+		}
 		if snap {
 			if !sp.IsSnap() || sp.GetMeerState() == nil {
 				continue
@@ -731,11 +731,12 @@ func (ps *PeerSync) getProcessID() string {
 
 func NewPeerSync(sy *Sync) *PeerSync {
 	peerSync := &PeerSync{
-		sy:        sy,
-		msgChan:   make(chan interface{}),
-		quit:      make(chan struct{}),
-		pause:     false,
-		interrupt: make(chan struct{}),
+		sy:          sy,
+		msgChan:     make(chan interface{}),
+		quit:        make(chan struct{}),
+		pause:       false,
+		interrupt:   make(chan struct{}),
+		lastBlockID: meerdag.MaxId,
 	}
 
 	return peerSync

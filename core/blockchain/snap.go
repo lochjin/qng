@@ -174,10 +174,13 @@ func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) (meerdag.IBlock, error)
 						}
 						tx.Object = vtx
 					}
-					_, err = b.MeerVerifyTx(vtx, view)
-					if err != nil {
-						return returnFun(err)
+					if vtx.ExportData != nil {
+						err = b.meerChain.MeerPool().CheckMeerChangeExportTx(vtx.ETx, vtx.ExportData, view)
+						if err != nil {
+							return returnFun(err)
+						}
 					}
+
 					err = b.connectVMTransaction(tx, vtx, nil, view)
 					if err != nil {
 						return returnFun(err)

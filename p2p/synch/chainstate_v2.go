@@ -131,6 +131,7 @@ func (s *Sync) getChainStateV2() *v2.ChainState {
 		UserAgent:       []byte(s.p2p.Config().UserAgent),
 		DisableRelayTx:  s.p2p.Config().DisableRelayTx,
 		MeerState:       s.getMeerState(),
+		SnapSync:        s.peerSync.IsSnapSync(),
 	}
 
 	return cs
