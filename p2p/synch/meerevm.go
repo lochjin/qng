@@ -25,12 +25,12 @@ func (ps *PeerSync) connectMeerEVM(pe *peers.Peer) {
 		if err != nil {
 			log.Error("invalid enode: %v", err)
 		}
-		meerP2P.AddTrustedPeer(node)
+		meerP2P.AddPeer(node)
 	} else if len(meers.ENR) > 0 {
 		node, err := enode.Parse(enode.ValidSchemes, meers.ENR)
 		if err != nil {
 			log.Error("invalid enr: %v", err)
 		}
-		meerP2P.AddTrustedPeer(node)
+		meerP2P.AddPeer(node)
 	}
 }
