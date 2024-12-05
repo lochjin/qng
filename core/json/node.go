@@ -116,8 +116,13 @@ type NetworkInfo struct {
 }
 
 type SnapSyncInfo struct {
-	TargetBlock string `json:"targetblock"`
-	StateRoot   string `json:"stateroot"`
+	PeerID       string `json:"peerid"`
+	TargetBlock  string `json:"targetblock"`
+	StateRoot    string `json:"stateroot"`
+	Point        string `json:"point,omitempty"`
+	PointOrder   uint64 `json:"pointorder,omitempty"`
+	EVMCompleted bool   `json:"evmcompleted,omitempty"`
+	Completed    bool   `json:"completed,omitempty"`
 }
 
 type SubsidyInfo struct {

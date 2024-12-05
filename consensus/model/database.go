@@ -83,4 +83,7 @@ type DataBase interface {
 	DBEngine() string
 	StartTrack(info string) error
 	StopTrack() error
+	GetSnapSync() ([]byte, error)
+	PutSnapSync(data []byte) error
+	DeleteSnapSync() error
 }

@@ -77,6 +77,8 @@ func (ps *PeerSync) Stop() error {
 	close(ps.quit)
 	ps.processwg.Wait()
 	ps.wg.Wait()
+
+	ps.saveSnapSync()
 	log.Info("P2P PeerSync Stoped")
 	return nil
 }
@@ -294,6 +296,10 @@ func (ps *PeerSync) startSync() {
 }
 
 func (ps *PeerSync) startConsensusSync() {
+	if ps.IsSnapSync() {
+		log.Trace("There is an unfinished snap-sync")
+		return
+	}
 	best := ps.Chain().BestSnapshot()
 	bestPeer := ps.getBestPeer(false)
 	// Start syncing from the best peer if one was selected.
@@ -391,10 +397,7 @@ func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 			continue
 		}
 		if snap {
-			if !sp.IsSnap() || sp.GetMeerState() == nil {
-				continue
-			}
-			if sp.GetMeerState().Number <= MinSnapSyncNumber {
+			if !isValidSnapPeer(sp) {
 				continue
 			}
 			if ps.IsSnapSync() && sp.GetID() == ps.snapStatus.PeerID() {
@@ -738,6 +741,6 @@ func NewPeerSync(sy *Sync) *PeerSync {
 		interrupt:   make(chan struct{}),
 		lastBlockID: meerdag.MaxId,
 	}
-
+	peerSync.loadSnapSync()
 	return peerSync
 }

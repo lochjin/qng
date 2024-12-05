@@ -84,7 +84,7 @@ func (b *BlockChain) BeginSnapSyncing() error {
 			log.Trace("Try to snap syncing", "size", size)
 		case <-b.quit:
 			b.SetSnapSyncing(false)
-			return fmt.Errorf("shutdown")
+			return fmt.Errorf("blockchain shutdown")
 		}
 	}
 	return nil

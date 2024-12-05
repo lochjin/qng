@@ -719,6 +719,30 @@ func (cdb *LegacyChainDB) StopTrack() error {
 	return cdb.shutdownTracker.Done()
 }
 
+func (cdb *LegacyChainDB) GetSnapSync() ([]byte, error) {
+	data := []byte{}
+	err := cdb.db.View(func(dbTx legacydb.Tx) error {
+		metadata := dbTx.Metadata()
+		data = metadata.Get(rawdb.SnapshotSyncStatusKey)
+		return nil
+	})
+	return data, err
+}
+
+func (cdb *LegacyChainDB) PutSnapSync(data []byte) error {
+	return cdb.db.Update(func(dbTx legacydb.Tx) error {
+		metadata := dbTx.Metadata()
+		return metadata.Put(rawdb.SnapshotSyncStatusKey, data)
+	})
+}
+
+func (cdb *LegacyChainDB) DeleteSnapSync() error {
+	return cdb.db.Update(func(dbTx legacydb.Tx) error {
+		metadata := dbTx.Metadata()
+		return metadata.Delete(rawdb.SnapshotSyncStatusKey)
+	})
+}
+
 func New(cfg *config.Config, interrupt <-chan struct{}) (*LegacyChainDB, error) {
 	// Load the block database.
 	db, err := LoadBlockDB(cfg)

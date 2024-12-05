@@ -12,7 +12,6 @@ import (
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
-	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
@@ -22,8 +21,54 @@ import (
 )
 
 const (
-	MinSnapSyncNumber = 200
+	MinSnapSyncNumber   = 200
+	SnapSyncReqInterval = time.Second * 5
 )
+
+func (ps *PeerSync) loadSnapSync() {
+	data, err := ps.sy.p2p.Consensus().DatabaseContext().GetSnapSync()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	if len(data) <= 0 {
+		return
+	}
+
+	snapStatus := NewSnapStatusFromBytes(data)
+	if snapStatus == nil {
+		return
+	}
+	snapStatus.syncPoint = ps.Chain().BlockDAG().GetBlockById(uint(snapStatus.PointID))
+	if snapStatus.syncPoint == nil {
+		return
+	}
+	ps.snapStatus = snapStatus
+	log.Info("Load snap sync info", "data", ps.snapStatus.ToInfo())
+	err = ps.Chain().BeginSnapSyncing()
+	if err != nil {
+		log.Info("End snap-sync", "err", err.Error())
+		return
+	}
+
+}
+
+func (ps *PeerSync) saveSnapSync() {
+	if !ps.IsSnapSync() {
+		return
+	}
+	data, err := ps.snapStatus.Bytes()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	err = ps.sy.p2p.Consensus().DatabaseContext().PutSnapSync(data)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	log.Info("Save snap sync info")
+}
 
 func (ps *PeerSync) IsSnapSync() bool {
 	return ps.snapStatus != nil
@@ -39,24 +84,53 @@ func (ps *PeerSync) GetSnapSyncInfo() *json.SnapSyncInfo {
 func (ps *PeerSync) startSnapSync() bool {
 	snap := protocol.HasServices(ps.sy.p2p.Config().Services, protocol.Snap)
 	if !snap {
+		if ps.IsSnapSync() {
+			log.Error("There is an unfinished snap-sync, please enable the snap service")
+		}
 		return false
 	}
+
+	if ps.IsSnapSync() {
+		return ps.continueSnapSync()
+	}
+
 	best := ps.Chain().BestSnapshot()
-	bestPeer := ps.getBestPeer(true)
+	bestPeer := ps.getBestPeer(false)
 	if bestPeer == nil {
-		return true
+		return false
 	}
 	gs := bestPeer.GraphState()
-	if !ps.IsSnapSync() && gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
+	if gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
 		return false
 	}
-	if ps.Chain().MeerChain().Server().PeerCount() <= 0 {
+	tryStart := time.Now()
+	if !isValidSnapPeer(bestPeer) {
+		snapPeer := ps.getSnapSyncPeer()
+		if snapPeer == nil {
+			return true
+		}
+		bestPeer = snapPeer
+	}
+	tryStart = time.Now()
+	for ps.Chain().MeerChain().Server().PeerCount() <= 0 {
+		log.Debug("Try to wait for meerevm peer", "try", time.Since(tryStart).String())
+		time.Sleep(SnapSyncReqInterval)
+		if !ps.IsRunning() {
+			return true
+		}
+	}
+	if !ps.IsRunning() {
 		return true
 	}
 	// Start syncing from the best peer if one was selected.
 	ps.processID++
 	ps.processwg.Add(1)
 	ps.SetSyncPeer(bestPeer)
+
+	defer func() {
+		defer ps.processwg.Done()
+		ps.SetSyncPeer(nil)
+	}()
 
 cleanup:
 	for {
@@ -70,42 +144,47 @@ cleanup:
 	startTime := time.Now()
 	ps.lastSync = startTime
 
-	if ps.IsSnapSync() {
-		ps.snapStatus.Reset(bestPeer.GetID())
-	} else {
-		ps.snapStatus = NewSnapStatus(bestPeer.GetID())
-	}
+	ps.snapStatus = NewSnapStatus(bestPeer.GetID())
 
-	log.Info("Snap syncing", "cur", best.GraphState.String(), "target", ps.snapStatus.ToString(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
+	log.Info("Snap syncing", "cur", best.GraphState.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 	// ------
 	err := ps.Chain().BeginSnapSyncing()
 	if err != nil {
+		log.Info("End snap-sync", "err", err.Error())
 		return true
 	}
 	add := 0
-	ps.snapStatus.locker.Lock()
-	tryReq := 10
-	var ret *pb.SnapSyncRsp
-
-	for !ps.snapStatus.isPointCompleted() {
-		for i := 0; i < tryReq; i++ {
-			ret, err = ps.syncSnapStatus(bestPeer)
-			if err != nil {
-				log.Warn("Snap-sync waiting for next try", "err", err.Error(), "cur", i, "max", tryReq)
-				time.Sleep(time.Second * 5)
-				continue
-			}
-			break
+	endSnapSyncing := func() {
+		ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
+		if ps.snapStatus.IsCompleted() {
+			log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
+		} else {
+			log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
 		}
-		if err != nil {
-			log.Warn("Snap-sync", "err", err.Error())
-			break
+		sp := ps.snapStatus.GetSyncPoint()
+		if sp != nil {
+			bestPeer.UpdateSyncPoint(sp.GetHash())
+			log.Debug("Snap-sync update sync point", "point", sp.GetHash().String())
+		}
+		if ps.snapStatus.IsCompleted() {
+			ps.snapStatus = nil
+		} else {
+			go ps.TryAgainUpdateSyncPeer(false)
+		}
+	}
+
+	for !ps.snapStatus.IsPointCompleted() {
+		ret := ps.trySyncSnapStatus(bestPeer)
+		if ret == nil {
+			log.Warn("Snap-sync no rsp data")
+			endSnapSyncing()
+			return true //Exit midway
 		}
 		sds, err := ps.processRsp(ret)
 		if err != nil {
 			log.Warn(err.Error())
-			break
+			continue
 		}
 		if len(sds) <= 0 {
 			log.Warn("No process snap sync data")
@@ -113,54 +192,145 @@ cleanup:
 		}
 		latest, err := ps.Chain().ProcessBlockBySnap(sds)
 		if err != nil {
-			log.Warn(err.Error())
-			break
+			panic(err.Error())
 		}
-		ps.snapStatus.setSyncPoint(latest)
+		ps.snapStatus.SetSyncPoint(latest)
 		add += len(sds)
 		log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 	}
-	ps.snapStatus.locker.Unlock()
+
 	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())
 	if err != nil {
 		log.Error(err.Error())
-		meer.Cleanup(ps.Chain().Consensus().Config())
 	} else {
 		ps.snapStatus.CompleteEVM()
 	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
+	endSnapSyncing()
+	return true
+}
+
+func (ps *PeerSync) continueSnapSync() bool {
+	if ps.snapStatus.IsEVMCompleted() {
+		log.Warn("No need continue snap-sync")
+		return false
+	}
+	log.Info("Continue snap-sync", "point", ps.snapStatus.syncPoint.GetHash().String(), "point_order", ps.snapStatus.GetSyncPoint().GetOrder(), "status", fmt.Sprintf("%v", ps.snapStatus.ToInfo()))
+
+	best := ps.Chain().BestSnapshot()
+	tryStart := time.Now()
+	bestPeer := ps.getSnapSyncPeer()
+	if bestPeer == nil {
+		return true
+	}
+	tryStart = time.Now()
+	for ps.Chain().MeerChain().Server().PeerCount() <= 0 {
+		log.Debug("Try to wait for meerevm peer", "try", time.Since(tryStart).String())
+		time.Sleep(SnapSyncReqInterval)
+		if !ps.IsRunning() {
+			return true
+		}
+	}
+	if !ps.IsRunning() {
+		return true
+	}
+	// Start syncing from the best peer if one was selected.
+	ps.processID++
+	ps.processwg.Add(1)
+	ps.SetSyncPeer(bestPeer)
+
+	defer func() {
+		defer ps.processwg.Done()
+		ps.SetSyncPeer(nil)
+	}()
+
+cleanup:
+	for {
+		select {
+		case <-ps.interrupt:
+		default:
+			break cleanup
+		}
+	}
+	ps.interrupt = make(chan struct{})
+	startTime := time.Now()
+	ps.lastSync = startTime
+
+	ps.snapStatus.ResetPeer(bestPeer.GetID())
+
+	log.Info("Snap syncing", "cur", best.GraphState.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
+	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
+
+	err := ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())
+	if err != nil {
+		log.Error(err.Error())
+		return true
+	} else {
+		ps.snapStatus.CompleteEVM()
+	}
+	ps.sy.p2p.BlockChain().EndSnapSyncing()
+
+	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
+
 	sp := ps.snapStatus.GetSyncPoint()
 	if sp != nil {
 		bestPeer.UpdateSyncPoint(sp.GetHash())
-		log.Debug("Snap-sync update point", "point", sp.GetHash().String())
+		log.Debug("Snap-sync update sync point", "point", sp.GetHash().String())
 	}
-	// ------
-	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 	if ps.snapStatus.IsCompleted() {
-		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
-	} else {
-		log.Warn("Snap-sync illegal ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
-	}
-
-	ps.SetSyncPeer(nil)
-	ps.processwg.Done()
-
-	if ps.snapStatus.IsCompleted() {
+		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
 		ps.snapStatus = nil
-		return false
 	} else {
-		ps.snapStatus = nil
-		go ps.TryAgainUpdateSyncPeer(false)
-		return true
+		log.Error("snapStatus is not completed")
 	}
+	return true
+}
+
+func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
+	var ret *pb.SnapSyncRsp
+	for ret == nil {
+		tryReq := 10
+		for i := 0; i < tryReq; i++ {
+			if !ps.IsRunning() {
+				return nil
+			}
+			rsp, err := ps.syncSnapStatus(pe)
+			if err != nil {
+				log.Warn("Snap-sync waiting for next try", "err", err.Error(), "cur", i, "max", tryReq)
+				time.Sleep(SnapSyncReqInterval)
+				continue
+			}
+			ret = rsp
+			break
+		}
+		if ret != nil {
+			return ret
+		}
+		log.Warn("Try change snap peer")
+		newPeer := ps.getSnapSyncPeer()
+		if newPeer == nil {
+			return nil
+		}
+		pe = newPeer
+		ps.snapStatus.ResetPeer(pe.GetID())
+		start := time.Now()
+		for ps.Chain().MeerChain().Server().PeerCount() <= 0 {
+			log.Debug("Try to wait for meerevm peer", "cost", time.Since(start).String())
+			time.Sleep(SnapSyncReqInterval)
+			if !ps.IsRunning() {
+				return nil
+			}
+		}
+	}
+	return ret
 }
 
 func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 	req := &pb.SnapSyncReq{Locator: []*pb.Locator{}}
 
-	targetBlock, stateRoot := ps.snapStatus.getTarget()
+	targetBlock, stateRoot := ps.snapStatus.GetTarget()
 	if targetBlock != nil {
-		sp := ps.snapStatus.getSyncPoint()
+		sp := ps.snapStatus.GetSyncPoint()
 		req.Target = &pb.Locator{Block: &pb.Hash{Hash: targetBlock.Bytes()}, Root: &pb.Hash{Hash: stateRoot.Bytes()}}
 		req.Locator = append(req.Locator, &pb.Locator{
 			Block: &pb.Hash{Hash: sp.GetHash().Bytes()},
@@ -192,7 +362,7 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 	}
 	targetBlock := changePBHashToHash(ssr.Target.Block)
 	stateRoot := changePBHashToHash(ssr.Target.Root)
-	ps.snapStatus.setTarget(targetBlock, stateRoot)
+	ps.snapStatus.SetTarget(targetBlock, stateRoot)
 
 	log.Trace("Snap-sync receive", "targetBlock", targetBlock.String(), "stateRoot", stateRoot.String(), "dataNum", len(ssr.Datas), "processID", ps.getProcessID())
 
@@ -237,6 +407,22 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 		ret = append(ret, sd)
 	}
 	return ret, nil
+}
+
+func (ps *PeerSync) getSnapSyncPeer() *peers.Peer {
+	start := time.Now()
+	var pe *peers.Peer
+	for pe == nil {
+		pe = ps.getBestPeer(true)
+		if pe == nil {
+			log.Debug("Try to get snap-sync peer", "cost", time.Since(start).String())
+			time.Sleep(SnapSyncReqInterval)
+		}
+		if !ps.IsRunning() {
+			return nil
+		}
+	}
+	return pe
 }
 
 func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {
