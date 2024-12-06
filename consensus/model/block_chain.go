@@ -28,4 +28,5 @@ type BlockChain interface {
 	ForeachBlueBlocks(start Block, depth uint, powType pow.PowType, fn func(block Block, header *types.BlockHeader) error) error
 	GetUtxo(outpoint types.TxOutPoint) (interface{}, error)
 	VerifyMeerTx(tx Tx) error
+	IsSnapSyncing() bool
 }

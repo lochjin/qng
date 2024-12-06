@@ -173,11 +173,15 @@ func (ps *PeerSync) handleStallSample() {
 	if atomic.LoadInt32(&ps.shutdown) != 0 {
 		return
 	}
-	lbid := ps.Chain().BlockDAG().GetLastBlockID()
-	if ps.lastBlockID != lbid {
+	if ps.IsSnapSync() {
 		return
 	}
-	ps.lastBlockID = lbid
+	lbid := ps.Chain().BlockDAG().GetLastBlockID()
+	if ps.lastBlockID != lbid {
+		ps.lastBlockID = lbid
+		return
+	}
+	ps.Chain().MeerChain().Downloader().Progress()
 	ps.TryAgainUpdateSyncPeer(true)
 }
 
