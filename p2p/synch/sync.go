@@ -359,8 +359,12 @@ func (s *Sync) EncodeResponseMsgPro(stream libp2pcore.Stream, msg interface{}, r
 }
 
 func NewSync(p2p peers.P2P) *Sync {
+	peerInterval := ReqTimeout
+	if peerInterval < params.ActiveNetParams.TargetTimePerBlock*2 {
+		peerInterval = params.ActiveNetParams.TargetTimePerBlock * 2
+	}
 	sy := &Sync{p2p: p2p, peers: peers.NewStatus(p2p),
-		PeerInterval: params.ActiveNetParams.TargetTimePerBlock * 2,
+		PeerInterval: peerInterval,
 		LANPeers:     map[peer.ID]struct{}{}}
 	sy.peerSync = NewPeerSync(sy)
 

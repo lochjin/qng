@@ -16,6 +16,7 @@ import (
 
 const (
 	MaxRegainMempoolSize = 1000
+	MinMempoolRegainTime = time.Second * 30
 )
 
 type broadcastInventoryAdd relayMsg
@@ -72,7 +73,7 @@ func (r *Rebroadcast) Stop() error {
 }
 
 func (r *Rebroadcast) mempoolHandler() {
-	timer := time.NewTicker(params.ActiveNetParams.TargetTimePerBlock)
+	timer := time.NewTicker(getRegainMempoolSpace())
 out:
 	for {
 		select {
@@ -190,7 +191,7 @@ func (r *Rebroadcast) onRegainMempool() {
 	}
 	canPeers := []*peers.Peer{}
 	for _, pe := range r.s.Peers().CanSyncPeers() {
-		if time.Since(pe.GetMempoolReqTime()) <= params.ActiveNetParams.TargetTimePerBlock {
+		if time.Since(pe.GetMempoolReqTime()) <= getRegainMempoolSpace() {
 			continue
 		}
 		canPeers = append(canPeers, pe)
@@ -213,4 +214,12 @@ func NewRebroadcast(s *Service) *Rebroadcast {
 	}
 
 	return &r
+}
+
+func getRegainMempoolSpace() time.Duration {
+	dur := MinMempoolRegainTime
+	if dur < params.ActiveNetParams.TargetTimePerBlock {
+		dur = params.ActiveNetParams.TargetTimePerBlock
+	}
+	return dur
 }

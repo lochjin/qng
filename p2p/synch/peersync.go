@@ -397,9 +397,6 @@ func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
 	var bestPeer *peers.Peer
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
-		if sp.IsSnapSync() {
-			continue
-		}
 		if snap {
 			if !isValidSnapPeer(sp) {
 				continue
