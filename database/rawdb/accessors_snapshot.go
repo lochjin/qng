@@ -156,15 +156,29 @@ func DeleteSnapshotRecoveryNumber(db ethdb.KeyValueWriter) {
 
 // ReadSnapshotSyncStatus retrieves the serialized sync status saved at shutdown.
 func ReadSnapshotSyncStatus(db ethdb.KeyValueReader) []byte {
-	data, _ := db.Get(snapshotSyncStatusKey)
+	data, _ := db.Get(SnapshotSyncStatusKey)
 	return data
 }
 
 // WriteSnapshotSyncStatus stores the serialized sync status to save at shutdown.
-func WriteSnapshotSyncStatus(db ethdb.KeyValueWriter, status []byte) {
-	if err := db.Put(snapshotSyncStatusKey, status); err != nil {
-		log.Error("Failed to store snapshot sync status", "err", err)
+func WriteSnapshotSyncStatus(db ethdb.KeyValueWriter, status []byte) error {
+	if len(status) <= 0 {
+		return nil
 	}
+	err := db.Put(SnapshotSyncStatusKey, status)
+	if err != nil {
+		log.Error("Failed to store snapshot sync status", "err", err)
+		return err
+	}
+	return nil
+}
+
+func DeleteSnapshotSyncStatus(db ethdb.KeyValueWriter) error {
+	if err := db.Delete(SnapshotSyncStatusKey); err != nil {
+		log.Error("Failed to remove snapshot sync status", "err", err)
+		return err
+	}
+	return nil
 }
 
 // snaputxo

@@ -200,6 +200,10 @@ func (cdb *ChainDB) Rebuild(mgr model.IndexManager) error {
 	if err != nil {
 		return err
 	}
+	err = cdb.DeleteSnapSync()
+	if err != nil {
+		return err
+	}
 
 	err = rawdb.CleanSpendJournal(cdb.db)
 	if err != nil {
@@ -625,6 +629,18 @@ func (cdb *ChainDB) StopTrack() error {
 		return cdb.shutdownTracker.Done()
 	}
 	return nil
+}
+
+func (cdb *ChainDB) GetSnapSync() ([]byte, error) {
+	return rawdb.ReadSnapshotSyncStatus(cdb.db), nil
+}
+
+func (cdb *ChainDB) PutSnapSync(data []byte) error {
+	return rawdb.WriteSnapshotSyncStatus(cdb.db, data)
+}
+
+func (cdb *ChainDB) DeleteSnapSync() error {
+	return rawdb.DeleteSnapshotSyncStatus(cdb.db)
 }
 
 func New(cfg *config.Config) (*ChainDB, error) {

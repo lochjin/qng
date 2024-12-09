@@ -42,8 +42,8 @@ var (
 	// snapshotRecoveryKey tracks the snapshot recovery marker across restarts.
 	snapshotRecoveryKey = []byte("SnapshotRecovery")
 
-	// snapshotSyncStatusKey tracks the snapshot sync status across restarts.
-	snapshotSyncStatusKey = []byte("SnapshotSyncStatus")
+	// SnapshotSyncStatusKey tracks the snapshot sync status across restarts.
+	SnapshotSyncStatusKey = []byte("SnapshotSyncStatus")
 
 	// badBlockKey tracks the list of bad blocks seen by local
 	badBlockKey = []byte("InvalidBlock")

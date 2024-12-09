@@ -73,3 +73,13 @@ const (
 	PeerUpdate       = "PeerUpdate"
 	PeerUpdateOrphan = "PeerUpdateOrphan"
 )
+
+func isValidSnapPeer(pe *peers.Peer) bool {
+	if !pe.IsSnap() || pe.GetMeerState() == nil {
+		return false
+	}
+	if pe.GetMeerState().Number <= MinSnapSyncNumber {
+		return false
+	}
+	return true
+}

@@ -323,6 +323,9 @@ func (b *MeerChain) OnStateChange(header *types.Header, state *state.StateDB, bo
 		return
 	}
 	if b.block == nil {
+		if b.consensus.BlockChain().IsSnapSyncing() {
+			return
+		}
 		log.Error("No meer block for state change", "hash", header.Hash().String())
 		return
 	}
