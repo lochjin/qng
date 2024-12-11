@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"path/filepath"
@@ -143,19 +142,4 @@ func Genesis(net *qparams.Params, alloc types.GenesisAlloc) *core.Genesis {
 
 func CurrentGenesis() *core.Genesis {
 	return Genesis(qparams.ActiveNetParams.Params, nil)
-}
-
-func getBootstrapNodes(port int) []*enode.Node {
-	urls := []string{}
-	switch qparams.ActiveNetParams.Net {
-	case protocol.MainNet:
-		urls = MainnetBootnodes
-	case protocol.TestNet:
-		urls = TestnetBootnodes
-	case protocol.MixNet:
-		urls = MixnetBootnodes
-	case protocol.PrivNet:
-		urls = PrivnetBootnodes
-	}
-	return eth.GetBootstrapNodes(port, urls)
 }
