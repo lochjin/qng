@@ -10,9 +10,10 @@ type MeerState struct {
 	Number uint64
 	Enode  string
 	ENR    string
+	Conn   bool
 }
 
-func NewMeerState(ms *v2.MeerState) *MeerState {
+func NewMeerState(ms *v2.MeerState, conn bool) *MeerState {
 	var id enode.ID
 	copy(id[:], ms.Id.Hash)
 
@@ -21,5 +22,6 @@ func NewMeerState(ms *v2.MeerState) *MeerState {
 		Number: ms.Number,
 		Enode:  string(ms.Enode),
 		ENR:    string(ms.Enr),
+		Conn:   conn,
 	}
 }

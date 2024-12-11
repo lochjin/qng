@@ -26,6 +26,7 @@ import (
 	"github.com/Qitmeer/qng/services/notifymgr/notify"
 	"github.com/dgraph-io/ristretto"
 	"github.com/ethereum/go-ethereum/eth/downloader"
+	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/gogo/protobuf/proto"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-kad-dht"
@@ -87,6 +88,8 @@ type Service struct {
 	rebroadcast *Rebroadcast
 
 	consensus model.Consensus
+
+	meerServer *p2p.QngServer
 }
 
 func (s *Service) Start() error {
@@ -94,8 +97,11 @@ func (s *Service) Start() error {
 		return err
 	}
 	log.Info("P2P Service Start")
-
-	err := s.sy.Start()
+	err := s.meerServer.Start(s.blockChain.MeerChain().Server())
+	if err != nil {
+		return err
+	}
+	err = s.sy.Start()
 	if err != nil {
 		return err
 	}
@@ -616,6 +622,10 @@ func (s *Service) IsSnapSync() bool {
 	return s.PeerSync().IsSnapSync()
 }
 
+func (s *Service) MeerServer() *p2p.QngServer {
+	return s.meerServer
+}
+
 func NewService(cfg *config.Config, consensus model.Consensus, param *params.Params) (*Service, error) {
 	rand.Seed(roughtime.Now().UnixNano())
 
@@ -707,6 +717,7 @@ func NewService(cfg *config.Config, consensus model.Consensus, param *params.Par
 		events:        consensus.Events(),
 		consensus:     consensus,
 		blockChain:    bc,
+		meerServer:    p2p.NewQngServer(),
 	}
 	s.InitContext()
 

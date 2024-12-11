@@ -68,6 +68,8 @@ const (
 	RPCBroadcastBlock = "/qitmeer/req/broadcastblock/1"
 	// RPCSyncSnap defines the topic for the snap sync rpc method.
 	RPCSyncSnap = "/qitmeer/req/syncsnap/1"
+	// RPC defines the topic for the meer connection rpc method.
+	RPCMeerConn = "/qitmeer/req/meerconn/1"
 )
 
 // Time to first byte timeout. The maximum time to wait for first byte of
@@ -260,6 +262,8 @@ func (s *Sync) registerRPCHandlers() {
 		&pb.SnapSyncReq{},
 		s.snapSyncHandler,
 	)
+
+	s.registerMeerConnection()
 }
 
 // registerRPC for a given topic with an expected protobuf message type.

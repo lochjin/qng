@@ -1,5 +1,7 @@
 package json
 
+import "github.com/ethereum/go-ethereum/p2p"
+
 // for pow diff
 type PowDiff struct {
 	CurrentDiff float64 `json:"current_diff"`
@@ -73,10 +75,11 @@ type GetGraphStateResult struct {
 
 // GetGraphStateResult data
 type MeerState struct {
-	Id     string `json:"id"`
-	Number uint64 `json:"number"`
-	Enode  string `json:"enode"`
-	Enr    string `json:"enr"`
+	Id     string        `json:"id"`
+	Number uint64        `json:"number"`
+	Enode  string        `json:"enode"`
+	Enr    string        `json:"enr"`
+	Info   *p2p.PeerInfo `json:"info,omitempty"`
 }
 
 type GetBanlistResult struct {
