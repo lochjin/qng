@@ -824,6 +824,11 @@ func (p *Peer) SetMeerConn(value bool) {
 	defer p.lock.Unlock()
 
 	p.meerConn = value
+	if value {
+		log.Debug("Peer connect to meer", "id", p.pid.String())
+	} else {
+		log.Debug("Peer disconnect to meer", "id", p.pid.String())
+	}
 }
 
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {

@@ -22,7 +22,7 @@ func (mc *MeerConn) Write(b []byte) (n int, err error) {
 }
 
 func (mc *MeerConn) Close() error {
-	return mc.Close()
+	return mc.stream.Close()
 }
 
 func (mc *MeerConn) LocalAddr() net.Addr {

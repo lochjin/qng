@@ -183,7 +183,7 @@ func (s *Service) Stop() error {
 	if err := s.Service.Stop(); err != nil {
 		return err
 	}
-
+	s.meerServer.Stop()
 	if s.dv5Listener != nil {
 		s.dv5Listener.Close()
 	}
