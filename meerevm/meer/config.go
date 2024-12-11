@@ -64,27 +64,21 @@ func MakeConfig(cfg *config.Config) (*eth.Config, error) {
 		nodeConf.KeyStoreDir = filepath.Join(datadir, "keystore")
 	}
 
-	nodeConf.HTTPPort, nodeConf.WSPort, nodeConf.AuthPort, _ = getDefaultPort()
-	if !cfg.DisableListen {
-		nodeConf.P2P.ListenAddr = ""
-		nodeConf.P2P.NoDial = true
-		nodeConf.P2P.NoDiscovery = true
-		nodeConf.P2P.DiscoveryV4 = false
-		nodeConf.P2P.DiscoveryV5 = false
-		nodeConf.P2P.NAT = nil
+	nodeConf.HTTPPort, nodeConf.WSPort, nodeConf.AuthPort = getDefaultPort()
+	nodeConf.P2P.ListenAddr = ""
+	nodeConf.P2P.NoDial = true
+	nodeConf.P2P.NoDiscovery = true
+	nodeConf.P2P.DiscoveryV4 = false
+	nodeConf.P2P.DiscoveryV5 = false
+	nodeConf.P2P.NAT = nil
 
-		pk, err := common.PrivateKey(cfg.DataDir, "", 0600)
-		if err != nil {
-			return nil, err
-		}
-		nodeConf.P2P.PrivateKey, err = common.ToECDSAPrivKey(pk)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		nodeConf.P2P.ListenAddr = ""
-		nodeConf.P2P.MaxPeers = 0
-		nodeConf.P2P.NAT = nil
+	pk, err := common.PrivateKey(cfg.DataDir, "", 0600)
+	if err != nil {
+		return nil, err
+	}
+	nodeConf.P2P.PrivateKey, err = common.ToECDSAPrivKey(pk)
+	if err != nil {
+		return nil, err
 	}
 
 	return &eth.Config{
@@ -103,16 +97,16 @@ func MakeParams(cfg *config.Config) (*eth.Config, []string, error) {
 	return ecfg, args, err
 }
 
-func getDefaultPort() (int, int, int, int) {
+func getDefaultPort() (int, int, int) {
 	switch qparams.ActiveNetParams.Net {
 	case protocol.MainNet:
-		return 8535, 8536, 8537, 8538
+		return 8535, 8536, 8537
 	case protocol.TestNet:
-		return 18535, 18536, 18537, 18538
+		return 18535, 18536, 18537
 	case protocol.MixNet:
-		return 28535, 28536, 28537, 28538
+		return 28535, 28536, 28537
 	default:
-		return 38535, 38536, 38537, 38538
+		return 38535, 38536, 38537
 	}
 }
 
