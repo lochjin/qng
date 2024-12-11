@@ -30,8 +30,11 @@ const (
 	// Support chainstate v2
 	ChainStateV2ProtocolVersion uint32 = 47
 
+	// Support bridging Meer EVM p2p to QNG libp2p
+	MeerP2PBridgingProtocolVersion uint32 = 48
+
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = ChainStateV2ProtocolVersion
+	ProtocolVersion uint32 = MeerP2PBridgingProtocolVersion
 )
 
 // Network represents which qitmeer network a message belongs to.

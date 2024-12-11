@@ -378,6 +378,7 @@ func (ps *PeerSync) startConsensusSync() {
 			if longSyncMod && !ps.IsInterrupt() {
 				if ps.IsCurrent() {
 					log.Info("You're up to date now.")
+					ps.Chain().MeerChain().SetSynced()
 				}
 			}
 		}
@@ -388,6 +389,7 @@ func (ps *PeerSync) startConsensusSync() {
 		ps.processwg.Done()
 	} else {
 		log.Trace("You're already up to date, no synchronization is required.")
+		ps.Chain().MeerChain().SetSynced()
 	}
 }
 

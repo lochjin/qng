@@ -671,6 +671,17 @@ func (b *MeerChain) Downloader() *downloader.Downloader {
 	return b.chain.Ether().Downloader()
 }
 
+func (b *MeerChain) SetSynced() {
+	if b.chain.Ether().Synced() {
+		return
+	}
+	b.chain.Ether().SetSynced()
+}
+
+func (b *MeerChain) Synced() bool {
+	return b.chain.Ether().Synced()
+}
+
 func (b *MeerChain) Server() *p2p.Server {
 	return b.chain.Node().Server()
 }

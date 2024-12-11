@@ -1,7 +1,6 @@
 package meer
 
 import (
-	"fmt"
 	"github.com/Qitmeer/qng/config"
 	"github.com/Qitmeer/qng/core/protocol"
 	mcommon "github.com/Qitmeer/qng/meerevm/common"
@@ -66,11 +65,14 @@ func MakeConfig(cfg *config.Config) (*eth.Config, error) {
 		nodeConf.KeyStoreDir = filepath.Join(datadir, "keystore")
 	}
 
-	var p2pPort int
-	nodeConf.HTTPPort, nodeConf.WSPort, nodeConf.AuthPort, p2pPort = getDefaultPort()
+	nodeConf.HTTPPort, nodeConf.WSPort, nodeConf.AuthPort, _ = getDefaultPort()
 	if !cfg.DisableListen {
-		nodeConf.P2P.ListenAddr = fmt.Sprintf(":%d", p2pPort)
-		nodeConf.P2P.BootstrapNodes = getBootstrapNodes(p2pPort)
+		nodeConf.P2P.ListenAddr = ""
+		nodeConf.P2P.NoDial = true
+		nodeConf.P2P.NoDiscovery = true
+		nodeConf.P2P.DiscoveryV4 = false
+		nodeConf.P2P.DiscoveryV5 = false
+		nodeConf.P2P.NAT = nil
 
 		pk, err := common.PrivateKey(cfg.DataDir, "", 0600)
 		if err != nil {
