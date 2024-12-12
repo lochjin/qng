@@ -144,6 +144,8 @@ type Config struct {
 
 	// TODO: It will soon be discarded in the near future
 	DevSnapSync bool `long:"devsnapsync" description:"Enable snap sync for P2P that only exist in development mode"`
+
+	SnapTimeout int `long:"snaptimeout" description:"Unable to find a peer that supports snap-sync service for setting IBD timeout(seconds), it will switch to the normal sync method"`
 }
 
 func (c *Config) GetMinningAddrs() []types.Address {

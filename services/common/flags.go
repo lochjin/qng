@@ -650,6 +650,11 @@ var (
 			Usage:       "Generate (mine) coins using the CPU on develop mode whithout gap",
 			Destination: &cfg.GenerateNoDevGap,
 		},
+		&cli.IntFlag{
+			Name:        "snaptimeout",
+			Usage:       "Unable to find a peer that supports snap-sync service for setting IBD timeout(seconds), it will switch to the normal sync method",
+			Destination: &cfg.SnapTimeout,
+		},
 	}
 )
 
@@ -686,6 +691,7 @@ func DefaultConfig(homeDir string) *config.Config {
 		SubmitNoSynced:       false,
 		DevNextGDB:           true,
 		GBTTimeOut:           defaultGBTTimeout,
+		SnapTimeout:          300,
 	}
 	if len(homeDir) > 0 {
 		hd, err := filepath.Abs(homeDir)
