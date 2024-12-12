@@ -9,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/p2p/encoder"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	"github.com/Qitmeer/qng/p2p/qnode"
+	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -38,6 +39,7 @@ type P2P interface {
 	Peers() *Status
 	IsRunning() bool
 	Consensus() model.Consensus
+	MeerServer() *p2p.QngServer
 }
 
 type P2PRPC interface {

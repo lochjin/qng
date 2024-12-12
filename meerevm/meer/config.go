@@ -1,7 +1,6 @@
 package meer
 
 import (
-	"fmt"
 	"github.com/Qitmeer/qng/config"
 	"github.com/Qitmeer/qng/core/protocol"
 	mcommon "github.com/Qitmeer/qng/meerevm/common"
@@ -18,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"path/filepath"
@@ -66,24 +64,21 @@ func MakeConfig(cfg *config.Config) (*eth.Config, error) {
 		nodeConf.KeyStoreDir = filepath.Join(datadir, "keystore")
 	}
 
-	var p2pPort int
-	nodeConf.HTTPPort, nodeConf.WSPort, nodeConf.AuthPort, p2pPort = getDefaultPort()
-	if !cfg.DisableListen {
-		nodeConf.P2P.ListenAddr = fmt.Sprintf(":%d", p2pPort)
-		nodeConf.P2P.BootstrapNodes = getBootstrapNodes(p2pPort)
+	nodeConf.HTTPPort, nodeConf.WSPort, nodeConf.AuthPort = getDefaultPort()
+	nodeConf.P2P.ListenAddr = ""
+	nodeConf.P2P.NoDial = true
+	nodeConf.P2P.NoDiscovery = true
+	nodeConf.P2P.DiscoveryV4 = false
+	nodeConf.P2P.DiscoveryV5 = false
+	nodeConf.P2P.NAT = nil
 
-		pk, err := common.PrivateKey(cfg.DataDir, "", 0600)
-		if err != nil {
-			return nil, err
-		}
-		nodeConf.P2P.PrivateKey, err = common.ToECDSAPrivKey(pk)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		nodeConf.P2P.ListenAddr = ""
-		nodeConf.P2P.MaxPeers = 0
-		nodeConf.P2P.NAT = nil
+	pk, err := common.PrivateKey(cfg.DataDir, "", 0600)
+	if err != nil {
+		return nil, err
+	}
+	nodeConf.P2P.PrivateKey, err = common.ToECDSAPrivKey(pk)
+	if err != nil {
+		return nil, err
 	}
 
 	return &eth.Config{
@@ -102,16 +97,16 @@ func MakeParams(cfg *config.Config) (*eth.Config, []string, error) {
 	return ecfg, args, err
 }
 
-func getDefaultPort() (int, int, int, int) {
+func getDefaultPort() (int, int, int) {
 	switch qparams.ActiveNetParams.Net {
 	case protocol.MainNet:
-		return 8535, 8536, 8537, 8538
+		return 8535, 8536, 8537
 	case protocol.TestNet:
-		return 18535, 18536, 18537, 18538
+		return 18535, 18536, 18537
 	case protocol.MixNet:
-		return 28535, 28536, 28537, 28538
+		return 28535, 28536, 28537
 	default:
-		return 38535, 38536, 38537, 38538
+		return 38535, 38536, 38537
 	}
 }
 
@@ -141,19 +136,4 @@ func Genesis(net *qparams.Params, alloc types.GenesisAlloc) *core.Genesis {
 
 func CurrentGenesis() *core.Genesis {
 	return Genesis(qparams.ActiveNetParams.Params, nil)
-}
-
-func getBootstrapNodes(port int) []*enode.Node {
-	urls := []string{}
-	switch qparams.ActiveNetParams.Net {
-	case protocol.MainNet:
-		urls = MainnetBootnodes
-	case protocol.TestNet:
-		urls = TestnetBootnodes
-	case protocol.MixNet:
-		urls = MixnetBootnodes
-	case protocol.PrivNet:
-		urls = PrivnetBootnodes
-	}
-	return eth.GetBootstrapNodes(port, urls)
 }

@@ -103,21 +103,12 @@ func (ps *PeerSync) startSnapSync() bool {
 	if gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
 		return false
 	}
-	tryStart := time.Now()
 	if !isValidSnapPeer(bestPeer) {
 		snapPeer := ps.getSnapSyncPeer()
 		if snapPeer == nil {
 			return true
 		}
 		bestPeer = snapPeer
-	}
-	tryStart = time.Now()
-	for ps.Chain().MeerChain().Server().PeerCount() <= 0 {
-		log.Debug("Try to wait for meerevm peer", "try", time.Since(tryStart).String())
-		time.Sleep(SnapSyncReqInterval)
-		if !ps.IsRunning() {
-			return true
-		}
 	}
 	if !ps.IsRunning() {
 		return true
@@ -313,14 +304,6 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
 		}
 		pe = newPeer
 		ps.snapStatus.ResetPeer(pe.GetID())
-		start := time.Now()
-		for ps.Chain().MeerChain().Server().PeerCount() <= 0 {
-			log.Debug("Try to wait for meerevm peer", "cost", time.Since(start).String())
-			time.Sleep(SnapSyncReqInterval)
-			if !ps.IsRunning() {
-				return nil
-			}
-		}
 	}
 	return ret
 }

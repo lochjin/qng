@@ -51,6 +51,9 @@ func (ps *PeerSync) processConnected(msg *ConnectedMsg) {
 	pe.IncreaseReConnect()
 	// Handle the various pre-existing conditions that will result in us not handshaking.
 	if pe.IsConnected() {
+		if conn.Stat().Direction == network.DirOutbound {
+			ps.establishMeerConnection(pe)
+		}
 		log.Trace(fmt.Sprintf("%s currentState:%s reason:already connected, Ignoring connection request", pe.IDWithAddress(), pe.ConnectionState().String()))
 		return
 	}
@@ -65,6 +68,7 @@ func (ps *PeerSync) processConnected(msg *ConnectedMsg) {
 		return
 	}
 	ps.Connection(pe)
+	ps.establishMeerConnection(pe)
 }
 
 func (ps *PeerSync) immediatelyConnected(pe *peers.Peer) {
@@ -74,7 +78,6 @@ func (ps *PeerSync) immediatelyConnected(pe *peers.Peer) {
 }
 
 func (ps *PeerSync) Connection(pe *peers.Peer) {
-	ps.connectMeerEVM(pe)
 	if pe.ConnectionState().IsConnected() {
 		return
 	}
@@ -322,4 +325,17 @@ func (s *Sync) ConnectionGater(pid *peer.ID, addr ma.Multiaddr, dir network.Dire
 		}
 	}
 	return true
+}
+
+func (ps *PeerSync) establishMeerConnection(pe *peers.Peer) {
+	if pe.GetMeerConn() {
+		return
+	}
+	if !pe.IsSupportMeerP2PBridging() {
+		return
+	}
+	err := ps.sy.establishMeerConnection(pe)
+	if err != nil {
+		log.Error(err.Error())
+	}
 }

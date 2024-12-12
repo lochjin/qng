@@ -139,6 +139,9 @@ func NewETHChain(config *Config, args []string) (*ETHChain, error) {
 func prepare(ctx *cli.Context, cfg *Config) {
 	log.Info(fmt.Sprintf("Prepare %s on NetWork(%d)...", cfg.Node.Name, cfg.Eth.NetworkId))
 
+	if cfg.Node.P2P.NoDiscovery {
+		ctx.Set(utils.NoDiscoverFlag.Name, "true")
+	}
 	if !ctx.IsSet(utils.NoDiscoverFlag.Name) {
 		SetDNSDiscoveryDefaults(cfg)
 	}

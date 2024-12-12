@@ -82,7 +82,8 @@ func (p *Status) CanSyncPeers() []*Peer {
 	peers := make([]*Peer, 0)
 	for _, pe := range p.peers {
 		if !p.IsActive(pe) ||
-			!pe.IsConsensus() {
+			!pe.IsConsensus() ||
+			pe.IsSnapSync() {
 			continue
 		}
 		peers = append(peers, pe)

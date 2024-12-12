@@ -131,6 +131,12 @@ func (api *PublicP2PAPI) GetPeerInfo(verbose *bool, pid *string) (interface{}, e
 				Enode:  p.MeerState.Enode,
 				Enr:    p.MeerState.ENR,
 			}
+			if p.MeerState.Conn {
+				pe := ps.MeerServer().GetPeer(p.MeerState.Id)
+				if pe != nil {
+					info.MeerState.Info = pe.Info()
+				}
+			}
 		}
 		infos = append(infos, info)
 	}

@@ -62,6 +62,8 @@ type Peer struct {
 	reconnect uint64
 
 	mempoolreq time.Time
+
+	meerConn bool
 }
 
 func (p *Peer) GetID() peer.ID {
@@ -381,7 +383,7 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 		ss.GraphStateDur = time.Since(p.graphStateTime)
 	}
 	if p.getMeerState() != nil {
-		ss.MeerState = common.NewMeerState(p.getMeerState())
+		ss.MeerState = common.NewMeerState(p.getMeerState(), p.meerConn)
 	}
 	if p.chainState != nil {
 		ss.SnapSync = p.chainState.SnapSync
@@ -772,11 +774,15 @@ func (p *Peer) IsSupportChainStateV2() bool {
 	return p.chainState.ProtocolVersion >= protocol.ChainStateV2ProtocolVersion
 }
 
-func (p *Peer) GetMeerState() *v2.MeerState {
+func (p *Peer) GetMeerState() *common.MeerState {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	return p.getMeerState()
+	ms := p.getMeerState()
+	if ms == nil {
+		return nil
+	}
+	return common.NewMeerState(ms, p.meerConn)
 }
 
 func (p *Peer) IsSnapSync() bool {
@@ -796,6 +802,35 @@ func (p *Peer) getMeerState() *v2.MeerState {
 	return p.chainState.MeerState
 }
 
+func (p *Peer) IsSupportMeerP2PBridging() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return p.chainState.ProtocolVersion >= protocol.MeerP2PBridgingProtocolVersion
+}
+
+func (p *Peer) GetMeerConn() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.meerConn
+}
+
+func (p *Peer) SetMeerConn(value bool) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.meerConn = value
+	if value {
+		log.Debug("Peer connect to meer", "id", p.pid.String())
+	} else {
+		log.Debug("Peer disconnect to meer", "id", p.pid.String())
+	}
+}
+
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
 	return &Peer{
 		peerStatus: &peerStatus{
@@ -808,5 +843,6 @@ func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
 		filter:    bloom.LoadFilter(nil),
 		rateTasks: map[string]*time.Timer{},
 		broadcast: map[string]interface{}{},
+		meerConn:  false,
 	}
 }

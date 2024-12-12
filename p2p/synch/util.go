@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
+	"github.com/ethereum/go-ethereum/p2p/enode"
 	libp2pcore "github.com/libp2p/go-libp2p/core"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"strconv"
 	"time"
 )
 
@@ -75,11 +79,28 @@ const (
 )
 
 func isValidSnapPeer(pe *peers.Peer) bool {
-	if !pe.IsSnap() || pe.GetMeerState() == nil {
+	if !pe.IsSnap() || pe.GetMeerState() == nil || !pe.GetMeerConn() {
 		return false
 	}
 	if pe.GetMeerState().Number <= MinSnapSyncNumber {
 		return false
 	}
 	return true
+}
+
+func CreateMeerNode(addr ma.Multiaddr, url string) (*enode.Node, error) {
+	en := enode.MustParse(url)
+	ip, err := manet.ToIP(addr)
+	if err != nil {
+		return nil, err
+	}
+	tcpstr, err := addr.ValueForProtocol(ma.P_TCP)
+	if err != nil {
+		return nil, err
+	}
+	tcp, err := strconv.Atoi(tcpstr)
+	if err != nil {
+		return nil, err
+	}
+	return enode.NewV4(en.Pubkey(), ip, tcp, 0), nil
 }

@@ -17,4 +17,6 @@ type MeerChain interface {
 	SyncTo(target common.Hash) error
 	Server() *p2p.Server
 	GetCurHeader() *types.Header
+	Synced() bool
+	SetSynced()
 }
