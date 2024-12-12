@@ -41,6 +41,7 @@ const (
 	defaultMinRelayTxFee          = int64(1e4)
 	defaultObsoleteHeight         = 5
 	defaultGBTTimeout             = 800 // default gbt timeout 800 ms
+	defaultSnapTimeout            = 300
 )
 const (
 	defaultSigCacheMaxSize = 100000
@@ -652,7 +653,7 @@ var (
 		},
 		&cli.IntFlag{
 			Name:        "snaptimeout",
-			Usage:       "Unable to find a peer that supports snap-sync service for setting IBD timeout(seconds), it will switch to the normal sync method",
+			Usage:       "During the IBD phase, if no peer node with snap-sync service enabled is found after the timeout (seconds), the node will switch to using the normal sync method.",
 			Destination: &cfg.SnapTimeout,
 		},
 	}
@@ -691,7 +692,7 @@ func DefaultConfig(homeDir string) *config.Config {
 		SubmitNoSynced:       false,
 		DevNextGDB:           true,
 		GBTTimeOut:           defaultGBTTimeout,
-		SnapTimeout:          300,
+		SnapTimeout:          defaultSnapTimeout,
 	}
 	if len(homeDir) > 0 {
 		hd, err := filepath.Abs(homeDir)
