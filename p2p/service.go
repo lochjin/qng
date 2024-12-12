@@ -618,6 +618,10 @@ func (s *Service) Consensus() model.Consensus {
 	return s.consensus
 }
 
+func (s *Service) IsSnap() bool {
+	return pv.HasServices(s.cfg.Services, pv.Snap)
+}
+
 func (s *Service) IsSnapSync() bool {
 	return s.PeerSync().IsSnapSync()
 }
