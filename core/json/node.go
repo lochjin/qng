@@ -105,6 +105,8 @@ type NetworkStat struct {
 	TotalConnected int            `json:"totalconnected"`
 	TotalRelays    int            `json:"totalrelays"`
 	Infos          []*NetworkInfo `json:"infos"`
+	Services       string         `json:"services"`
+	Snap           bool           `json:"snap"`
 	SnapSync       *SnapSyncInfo  `json:"snapsync,omitempty"`
 }
 

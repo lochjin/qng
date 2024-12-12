@@ -161,6 +161,8 @@ func (api *PublicP2PAPI) GetNetworkInfo() (interface{}, error) {
 		MaxConnected: ps.Config().MaxPeers,
 		MaxInbound:   ps.Config().MaxInbound,
 		Infos:        []*json.NetworkInfo{},
+		Services:     ps.Config().Services.String(),
+		Snap:         ps.IsSnap(),
 	}
 	ss := ps.PeerSync().GetSnapSyncInfo()
 	if ss != nil {
