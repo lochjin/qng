@@ -9,7 +9,6 @@ import (
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
-	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/common"
@@ -83,8 +82,7 @@ func (ps *PeerSync) GetSnapSyncInfo() *json.SnapSyncInfo {
 }
 
 func (ps *PeerSync) startSnapSync() bool {
-	snap := protocol.HasServices(ps.sy.p2p.Config().Services, protocol.Snap)
-	if !snap {
+	if !ps.sy.p2p.IsSnap() {
 		if ps.IsSnapSync() {
 			log.Error("There is an unfinished snap-sync, please enable the snap service")
 		}
@@ -105,8 +103,11 @@ func (ps *PeerSync) startSnapSync() bool {
 		return false
 	}
 	if !isValidSnapPeer(bestPeer) {
-		snapPeer := ps.getSnapSyncPeer()
+		snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout)
 		if snapPeer == nil {
+			if change {
+				return false
+			}
 			return true
 		}
 		bestPeer = snapPeer
@@ -210,7 +211,7 @@ func (ps *PeerSync) continueSnapSync() bool {
 	log.Info("Continue snap-sync", "point", ps.snapStatus.syncPoint.GetHash().String(), "point_order", ps.snapStatus.GetSyncPoint().GetOrder(), "status", fmt.Sprintf("%v", ps.snapStatus.ToInfo()))
 
 	best := ps.Chain().BestSnapshot()
-	bestPeer := ps.getSnapSyncPeer()
+	bestPeer, _ := ps.getSnapSyncPeer(0)
 	if bestPeer == nil {
 		return true
 	}
@@ -291,7 +292,7 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
 			return ret
 		}
 		log.Warn("Try change snap peer")
-		newPeer := ps.getSnapSyncPeer()
+		newPeer, _ := ps.getSnapSyncPeer(0)
 		if newPeer == nil {
 			return nil
 		}
@@ -385,20 +386,25 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 	return ret, nil
 }
 
-func (ps *PeerSync) getSnapSyncPeer() *peers.Peer {
+func (ps *PeerSync) getSnapSyncPeer(timeout int) (*peers.Peer, bool) {
 	start := time.Now()
 	var pe *peers.Peer
 	for pe == nil {
 		pe = ps.getBestPeer(true)
 		if pe == nil {
+			if timeout > 0 {
+				if time.Since(start) > time.Duration(timeout)*time.Second {
+					return nil, true
+				}
+			}
 			log.Debug("Try to get snap-sync peer", "cost", time.Since(start).String())
 			time.Sleep(SnapSyncReqInterval)
 		}
 		if !ps.IsRunning() {
-			return nil
+			return nil, false
 		}
 	}
-	return pe
+	return pe, false
 }
 
 func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {

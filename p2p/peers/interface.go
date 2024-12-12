@@ -40,6 +40,7 @@ type P2P interface {
 	IsRunning() bool
 	Consensus() model.Consensus
 	MeerServer() *p2p.QngServer
+	IsSnap() bool
 }
 
 type P2PRPC interface {

@@ -41,6 +41,7 @@ const (
 	defaultMinRelayTxFee          = int64(1e4)
 	defaultObsoleteHeight         = 5
 	defaultGBTTimeout             = 800 // default gbt timeout 800 ms
+	defaultSnapTimeout            = 300
 )
 const (
 	defaultSigCacheMaxSize = 100000
@@ -650,42 +651,48 @@ var (
 			Usage:       "Generate (mine) coins using the CPU on develop mode whithout gap",
 			Destination: &cfg.GenerateNoDevGap,
 		},
+		&cli.IntFlag{
+			Name:        "nosnapsyncpeertimeout",
+			Usage:       "During the IBD phase, if no peer node with snap-sync service enabled is found after the timeout (seconds), the node will switch to using the normal sync method.",
+			Destination: &cfg.NoSnapSyncPeerTimeout,
+		},
 	}
 )
 
 func DefaultConfig(homeDir string) *config.Config {
 	cfg := &config.Config{
-		HomeDir:              defaultHomeDir,
-		ConfigFile:           defaultConfigFile,
-		DebugLevel:           defaultLogLevel,
-		DebugPrintOrigins:    defaultDebugPrintOrigins,
-		DataDir:              defaultDataDir,
-		LogDir:               defaultLogDir,
-		DbType:               defaultDbType,
-		RPCKey:               defaultRPCKeyFile,
-		RPCCert:              defaultRPCCertFile,
-		RPCMaxClients:        defaultMaxRPCClients,
-		RPCMaxWebsockets:     defaultMaxRPCWebsockets,
-		RPCMaxConcurrentReqs: defaultMaxRPCConcurrentReqs,
-		Generate:             defaultGenerate,
-		MaxPeers:             defaultMaxPeers,
-		MinTxFee:             defaultMinRelayTxFee,
-		BlockMinSize:         defaultBlockMinSize,
-		BlockMaxSize:         defaultBlockMaxSize,
-		SigCacheMaxSize:      defaultSigCacheMaxSize,
-		Banning:              true,
-		MaxInbound:           defaultMaxInboundPeersPerHost,
-		InvalidTxIndex:       defaultInvalidTxIndex,
-		TxHashIndex:          defaultTxhashIndex,
-		NTP:                  false,
-		MempoolExpiry:        defaultMempoolExpiry,
-		AcceptNonStd:         true,
-		RPCUser:              defaultRPCUser,
-		RPCPass:              defaultRPCPass,
-		ObsoleteHeight:       defaultObsoleteHeight,
-		SubmitNoSynced:       false,
-		DevNextGDB:           true,
-		GBTTimeOut:           defaultGBTTimeout,
+		HomeDir:               defaultHomeDir,
+		ConfigFile:            defaultConfigFile,
+		DebugLevel:            defaultLogLevel,
+		DebugPrintOrigins:     defaultDebugPrintOrigins,
+		DataDir:               defaultDataDir,
+		LogDir:                defaultLogDir,
+		DbType:                defaultDbType,
+		RPCKey:                defaultRPCKeyFile,
+		RPCCert:               defaultRPCCertFile,
+		RPCMaxClients:         defaultMaxRPCClients,
+		RPCMaxWebsockets:      defaultMaxRPCWebsockets,
+		RPCMaxConcurrentReqs:  defaultMaxRPCConcurrentReqs,
+		Generate:              defaultGenerate,
+		MaxPeers:              defaultMaxPeers,
+		MinTxFee:              defaultMinRelayTxFee,
+		BlockMinSize:          defaultBlockMinSize,
+		BlockMaxSize:          defaultBlockMaxSize,
+		SigCacheMaxSize:       defaultSigCacheMaxSize,
+		Banning:               true,
+		MaxInbound:            defaultMaxInboundPeersPerHost,
+		InvalidTxIndex:        defaultInvalidTxIndex,
+		TxHashIndex:           defaultTxhashIndex,
+		NTP:                   false,
+		MempoolExpiry:         defaultMempoolExpiry,
+		AcceptNonStd:          true,
+		RPCUser:               defaultRPCUser,
+		RPCPass:               defaultRPCPass,
+		ObsoleteHeight:        defaultObsoleteHeight,
+		SubmitNoSynced:        false,
+		DevNextGDB:            true,
+		GBTTimeOut:            defaultGBTTimeout,
+		NoSnapSyncPeerTimeout: defaultSnapTimeout,
 	}
 	if len(homeDir) > 0 {
 		hd, err := filepath.Abs(homeDir)
