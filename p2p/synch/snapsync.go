@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	MinSnapSyncNumber   = 200
-	SnapSyncReqInterval = time.Second * 5
+	MinSnapSyncNumber     = 200
+	SnapSyncReqInterval   = time.Second * 5
+	MinSnapSyncChainDepth = 20000
 )
 
 func (ps *PeerSync) loadSnapSync() {
@@ -100,7 +101,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		return false
 	}
 	gs := bestPeer.GraphState()
-	if gs.GetTotal() < best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
+	if gs.GetTotal() < best.GraphState.GetTotal()+MinSnapSyncChainDepth {
 		return false
 	}
 	if !isValidSnapPeer(bestPeer) {
@@ -209,19 +210,11 @@ func (ps *PeerSync) continueSnapSync() bool {
 	log.Info("Continue snap-sync", "point", ps.snapStatus.syncPoint.GetHash().String(), "point_order", ps.snapStatus.GetSyncPoint().GetOrder(), "status", fmt.Sprintf("%v", ps.snapStatus.ToInfo()))
 
 	best := ps.Chain().BestSnapshot()
-	tryStart := time.Now()
 	bestPeer := ps.getSnapSyncPeer()
 	if bestPeer == nil {
 		return true
 	}
-	tryStart = time.Now()
-	for ps.Chain().MeerChain().Server().PeerCount() <= 0 {
-		log.Debug("Try to wait for meerevm peer", "try", time.Since(tryStart).String())
-		time.Sleep(SnapSyncReqInterval)
-		if !ps.IsRunning() {
-			return true
-		}
-	}
+
 	if !ps.IsRunning() {
 		return true
 	}
