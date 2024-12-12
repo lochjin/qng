@@ -103,7 +103,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		return false
 	}
 	if !isValidSnapPeer(bestPeer) {
-		snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().SnapTimeout)
+		snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout)
 		if snapPeer == nil {
 			if change {
 				return false
