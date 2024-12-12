@@ -78,7 +78,6 @@ func (ps *PeerSync) immediatelyConnected(pe *peers.Peer) {
 }
 
 func (ps *PeerSync) Connection(pe *peers.Peer) {
-	ps.connectMeerEVM(pe)
 	if pe.ConnectionState().IsConnected() {
 		return
 	}
