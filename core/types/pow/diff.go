@@ -23,8 +23,8 @@ var (
 const (
 	// MEER difficulty adjustment
 	DIFFICULTY_MODE_MEER = 0
-	// KASPAD difficulty adjustment
-	DIFFICULTY_MODE_KASPAD = 1
+	// GHOSTDAG difficulty adjustment
+	DIFFICULTY_MODE_GHOSTDAG = 1
 	// DEVELOP difficulty adjustment
 	DIFFICULTY_MODE_DEVELOP = 2
 )

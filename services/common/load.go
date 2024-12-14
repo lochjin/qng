@@ -240,6 +240,9 @@ func SetupConfig(cfg *config.Config) error {
 	if err := params.ActiveNetParams.PowConfig.Check(); err != nil {
 		return err
 	}
+	if cfg.PowDiffMode != defaultPowDiffMode {
+		params.ActiveNetParams.PowConfig.DifficultyMode = cfg.PowDiffMode
+	}
 
 	// Add default port to all rpc listener addresses if needed and remove
 	// duplicate addresses.

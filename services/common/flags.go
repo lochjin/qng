@@ -42,6 +42,7 @@ const (
 	defaultObsoleteHeight         = 5
 	defaultGBTTimeout             = 800 // default gbt timeout 800 ms
 	defaultSnapTimeout            = 300
+	defaultPowDiffMode            = -1
 )
 const (
 	defaultSigCacheMaxSize = 100000
@@ -654,7 +655,14 @@ var (
 		&cli.IntFlag{
 			Name:        "nosnapsyncpeertimeout",
 			Usage:       "During the IBD phase, if no peer node with snap-sync service enabled is found after the timeout (seconds), the node will switch to using the normal sync method.",
+			Value:       defaultSnapTimeout,
 			Destination: &cfg.NoSnapSyncPeerTimeout,
+		},
+		&cli.IntFlag{
+			Name:        "powdiffmode",
+			Usage:       "Pow difficult mode:(0:meer,1:ghostdag,2:develop)",
+			Value:       defaultPowDiffMode,
+			Destination: &cfg.PowDiffMode,
 		},
 	}
 )
@@ -693,6 +701,7 @@ func DefaultConfig(homeDir string) *config.Config {
 		DevNextGDB:            true,
 		GBTTimeOut:            defaultGBTTimeout,
 		NoSnapSyncPeerTimeout: defaultSnapTimeout,
+		PowDiffMode:           defaultPowDiffMode,
 	}
 	if len(homeDir) > 0 {
 		hd, err := filepath.Abs(homeDir)

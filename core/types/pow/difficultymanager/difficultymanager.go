@@ -8,8 +8,8 @@ import (
 
 func NewDiffManager(con model.Consensus, cfg *params.Params) model.DifficultyManager {
 	switch cfg.PowConfig.DifficultyMode {
-	case pow.DIFFICULTY_MODE_KASPAD:
-		return &kaspadDiff{
+	case pow.DIFFICULTY_MODE_GHOSTDAG:
+		return &ghostdagDiff{
 			con:                            con,
 			b:                              con.BlockChain(),
 			powMax:                         cfg.PowConfig.MeerXKeccakV1PowLimit,
