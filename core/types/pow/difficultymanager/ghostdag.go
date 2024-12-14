@@ -59,7 +59,7 @@ func (window blockWindow) AverageTarget() *big.Int {
 
 // DifficultyManager provides a method to resolve the
 // difficulty value of a block
-type kaspadDiff struct {
+type ghostdagDiff struct {
 	powMax                         *big.Int
 	difficultyAdjustmentWindowSize int
 	disableDifficultyAdjustment    bool
@@ -74,7 +74,7 @@ type kaspadDiff struct {
 // can have given starting difficulty bits and a duration.  It is mainly used to
 // verify that claimed proof of work by a block is sane as compared to a
 // known good checkpoint.
-func (m *kaspadDiff) CalcEasiestDifficulty(bits uint32, duration time.Duration, powInstance pow.IPow) uint32 {
+func (m *ghostdagDiff) CalcEasiestDifficulty(bits uint32, duration time.Duration, powInstance pow.IPow) uint32 {
 	// Convert types used in the calculations below.
 	durationVal := int64(duration)
 	adjustmentFactor := big.NewInt(m.cfg.RetargetAdjustmentFactor)
@@ -109,19 +109,19 @@ func (m *kaspadDiff) CalcEasiestDifficulty(bits uint32, duration time.Duration, 
 	return pow.BigToCompact(newTarget)
 }
 
-func (m *kaspadDiff) RequiredDifficulty(block model.Block, newBlockTime time.Time, powInstance pow.IPow) (uint32, error) {
+func (m *ghostdagDiff) RequiredDifficulty(block model.Block, newBlockTime time.Time, powInstance pow.IPow) (uint32, error) {
 	return m.RequiredDifficultyByWindows(m.getblockWindows(block, powInstance.GetPowType(), int(m.cfg.WorkDiffWindowSize)))
 }
 
 // RequiredDifficultyByWindows returns the difficulty required for some block
-func (dm *kaspadDiff) RequiredDifficultyByWindows(targetsWindow blockWindow) (uint32, error) {
+func (dm *ghostdagDiff) RequiredDifficultyByWindows(targetsWindow blockWindow) (uint32, error) {
 	if len(targetsWindow) < 1 {
 		return dm.genesisBits, nil
 	}
 	return dm.requiredDifficultyFromTargetsWindow(targetsWindow)
 }
 
-func (dm *kaspadDiff) requiredDifficultyFromTargetsWindow(targetsWindow blockWindow) (uint32, error) {
+func (dm *ghostdagDiff) requiredDifficultyFromTargetsWindow(targetsWindow blockWindow) (uint32, error) {
 	if dm.disableDifficultyAdjustment {
 		return dm.genesisBits, nil
 	}
@@ -163,7 +163,7 @@ func (dm *kaspadDiff) requiredDifficultyFromTargetsWindow(targetsWindow blockWin
 // blocks in the past of startingNode, the sorting is unspecified.
 // If the number of blocks in the past of startingNode is less then windowSize,
 // the window will be padded by genesis blocks to achieve a size of windowSize.
-func (dm *kaspadDiff) getblockWindows(oldBlock model.Block, powType pow.PowType, windowSize int) blockWindow {
+func (dm *ghostdagDiff) getblockWindows(oldBlock model.Block, powType pow.PowType, windowSize int) blockWindow {
 	windows := make(blockWindow, 0, windowSize)
 	dm.b.ForeachBlueBlocks(oldBlock, uint(windowSize), powType, func(block model.Block, header *types.BlockHeader) error {
 		windows = append(windows, DifficultyBlock{
@@ -179,7 +179,7 @@ func (dm *kaspadDiff) getblockWindows(oldBlock model.Block, powType pow.PowType,
 }
 
 // find block node by pow type
-func (m *kaspadDiff) GetCurrentPowDiff(ib model.Block, powType pow.PowType) *big.Int {
+func (m *ghostdagDiff) GetCurrentPowDiff(ib model.Block, powType pow.PowType) *big.Int {
 	instance := pow.GetInstance(powType, 0, []byte{})
 	instance.SetParams(m.cfg.PowConfig)
 	safeBigDiff := instance.GetSafeDiff(0)

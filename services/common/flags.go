@@ -660,7 +660,7 @@ var (
 		},
 		&cli.IntFlag{
 			Name:        "powdiffmode",
-			Usage:       "Pow difficult mode:(0:meer,1:kaspad,2:develop)",
+			Usage:       "Pow difficult mode:(0:meer,1:ghostdag,2:develop)",
 			Value:       defaultPowDiffMode,
 			Destination: &cfg.PowDiffMode,
 		},
