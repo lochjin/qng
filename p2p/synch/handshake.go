@@ -334,6 +334,9 @@ func (ps *PeerSync) establishMeerConnection(pe *peers.Peer) {
 	if !pe.IsSupportMeerP2PBridging() {
 		return
 	}
+	if !pe.IsSnap() {
+		return
+	}
 	err := ps.sy.establishMeerConnection(pe)
 	if err != nil {
 		log.Error(err.Error())

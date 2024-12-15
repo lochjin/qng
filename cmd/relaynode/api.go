@@ -81,6 +81,7 @@ func (api *PublicRelayAPI) GetPeerInfo(verbose *bool, network *string) (interfac
 			ReConnect: p.ReConnect,
 			Active:    active,
 			Snap:      p.IsSnap(),
+			SnapSync:  p.SnapSync,
 		}
 		info.Protocol = p.Protocol
 		info.Services = p.Services.String()
@@ -116,8 +117,19 @@ func (api *PublicRelayAPI) GetPeerInfo(verbose *bool, network *string) (interfac
 		if !p.LastRecv.IsZero() {
 			info.LastRecv = p.LastRecv.String()
 		}
+		if !p.MempoolReqTime.IsZero() {
+			info.MempoolReqTime = p.MempoolReqTime.String()
+		}
 		if len(p.QNR) > 0 {
 			info.QNR = p.QNR
+		}
+		if p.MeerState != nil {
+			info.MeerState = &json.MeerState{
+				Id:     p.MeerState.Id.String(),
+				Number: p.MeerState.Number,
+				Enode:  p.MeerState.Enode,
+				Enr:    p.MeerState.ENR,
+			}
 		}
 		infos = append(infos, info)
 	}
@@ -155,7 +167,10 @@ func (api *PublicRelayAPI) GetNodeInfo() (interface{}, error) {
 
 func (api *PublicRelayAPI) GetNetworkInfo() (interface{}, error) {
 	peers := api.node.peerStatus.StatsSnapshots()
-	nstat := &json.NetworkStat{Infos: []*json.NetworkInfo{}}
+	nstat := &json.NetworkStat{
+		Infos:    []*json.NetworkInfo{},
+		Services: protocol.Relay.String(),
+	}
 	infos := map[string]*json.NetworkInfo{}
 
 	for _, p := range peers {
