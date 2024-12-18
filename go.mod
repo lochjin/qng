@@ -79,7 +79,6 @@ require (
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -205,4 +204,4 @@ require (
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
 
-replace github.com/ethereum/go-ethereum v1.11.5 => github.com/Qitmeer/go-ethereum v1.11.5-q.4
+replace github.com/ethereum/go-ethereum v1.11.5 => github.com/Qitmeer/go-ethereum v1.11.5-q.5
