@@ -11,6 +11,7 @@ import (
 	"github.com/Qitmeer/qng/meerevm/cmd"
 	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/p2p"
+	"github.com/Qitmeer/qng/services/acct"
 	"github.com/Qitmeer/qng/services/common"
 	"github.com/Qitmeer/qng/version"
 	"github.com/urfave/cli/v2"
@@ -177,7 +178,7 @@ func cleanupCmd() *cli.Command {
 				}
 				log.Info(fmt.Sprintf("Finished cleanup:%s", cfg.LogDir))
 			}
-			return nil
+			return acct.RemoveDB(cfg)
 		},
 	}
 }
