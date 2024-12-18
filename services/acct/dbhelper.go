@@ -69,6 +69,10 @@ func removeDB(dbPath string) error {
 	return nil
 }
 
+func RemoveDB(cfg *config.Config) error {
+	return removeDB(getDBPath(getDataDir(cfg)))
+}
+
 func getDBPath(dataDir string) string {
 	return filepath.Join(dataDir, dbNamePrefix)
 }

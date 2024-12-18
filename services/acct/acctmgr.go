@@ -198,7 +198,7 @@ func (a *AccountManager) cleanDB() {
 		}
 	}
 
-	err := removeDB(getDBPath(getDataDir(a.cfg)))
+	err := RemoveDB(a.cfg)
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -260,7 +260,7 @@ func (a *AccountManager) rebuild(addrs []string) error {
 
 		for i := 0; i < len(ops); i++ {
 			if system.InterruptRequested(a.chain.Consensus().Interrupt()) {
-				err := removeDB(getDBPath(getDataDir(a.cfg)))
+				err := RemoveDB(a.cfg)
 				if err != nil {
 					return err
 				}
