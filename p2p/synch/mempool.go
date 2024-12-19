@@ -60,7 +60,7 @@ func (ps *PeerSync) OnMemPool(sp *peers.Peer, msg *MsgMemPool) error {
 	// per message.  The NewMsgInvSizeHint function automatically limits
 	// the passed hint to the maximum allowed, so it's safe to pass it
 	// without double checking it here.
-	txDescs := ps.sy.p2p.TxMemPool().TxDescs(false)
+	txDescs := ps.sy.p2p.TxMemPool().TxDescs(!sp.IsSupportMeerpoolTransmission())
 
 	invs := []*pb.InvVect{}
 	for _, txDesc := range txDescs {

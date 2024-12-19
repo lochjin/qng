@@ -128,12 +128,13 @@ func (m *MeerPool) handler() {
 				}
 				continue
 			}
-			if !m.prepareMeerChangeTxs(ev.Txs) {
+			ret := m.prepareMeerChangeTxs(ev.Txs)
+			if len(ret) <= 0 {
 				continue
 			}
 
 			m.qTxPool.TriggerDirty()
-			m.p2pSer.Notify().AnnounceNewTransactions(nil, ev.Txs, nil)
+			m.AnnounceNewTransactions(ev.Txs)
 			m.dirty.Store(true)
 		// System stopped
 		case <-m.quit:
@@ -158,32 +159,26 @@ func (m *MeerPool) handler() {
 	}
 }
 
-func (m *MeerPool) prepareMeerChangeTxs(txs []*types.Transaction) bool {
-	remove := 0
-	all := 0
+func (m *MeerPool) prepareMeerChangeTxs(txs []*types.Transaction) []*types.Transaction {
+	remaining := []*types.Transaction{}
 	for _, tx := range txs {
-		if tx == nil {
-			continue
-		}
-		all++
 		if meerchange.IsMeerChangeTx(tx) {
 			vmtx, err := meer.NewVMTx(qcommon.ToQNGTx(tx, true).Tx, nil)
 			if err != nil {
 				log.Error(err.Error())
 				m.ethTxPool.RemoveTx(tx.Hash(), true)
-				remove++
 				continue
 			}
 			err = m.consensus.BlockChain().VerifyMeerTx(vmtx)
 			if err != nil {
 				log.Error(err.Error())
 				m.ethTxPool.RemoveTx(tx.Hash(), true)
-				remove++
 				continue
 			}
 		}
+		remaining = append(remaining, tx)
 	}
-	return remove != all
+	return remaining
 }
 
 func (m *MeerPool) handleStallSample() {
@@ -295,6 +290,32 @@ func (m *MeerPool) GetSize() int64 {
 	return 0
 }
 
+func (m *MeerPool) AddTx(tx *qtypes.Tx) (int64, error) {
+	h := qcommon.ToEVMHash(&tx.Tx.TxIn[0].PreviousOut.Hash)
+	if m.eth.TxPool().Has(h) {
+		return 0, fmt.Errorf("already exists:%s (evm:%s)", tx.Hash().String(), h.String())
+	}
+	txb := qcommon.ToTxHex(tx.Tx.TxIn[0].SignScript)
+	var txmb = &types.Transaction{}
+	err := txmb.UnmarshalBinary(txb)
+	if err != nil {
+		return 0, err
+	}
+
+	errs := m.ethTxPool.AddRemotesSync(types.Transactions{txmb})
+	if len(errs) > 0 && errs[0] != nil {
+		return 0, errs[0]
+	}
+
+	log.Debug("Meer pool:add", "hash", tx.Hash(), "eHash", txmb.Hash())
+
+	//
+	cost := txmb.Cost()
+	cost = cost.Sub(cost, txmb.Value())
+	cost = cost.Div(cost, qcommon.Precision)
+	return cost.Int64(), nil
+}
+
 func (m *MeerPool) RemoveTx(tx *qtypes.Tx) error {
 	if !m.isRunning() {
 		return fmt.Errorf("meer pool is not running")
@@ -366,6 +387,38 @@ func (m *MeerPool) subscribe() {
 			}
 		}
 	}()
+}
+
+func (m *MeerPool) AnnounceNewTransactions(txs []*types.Transaction) error {
+	txds := []*qtypes.TxDesc{}
+
+	for _, tx := range txs {
+		m.snapshotMu.RLock()
+		qtx, ok := m.snapshotTxsM[tx.Hash().String()]
+		m.snapshotMu.RUnlock()
+		if !ok || qtx == nil {
+			qtx = &snapshotTx{tx: qcommon.ToQNGTx(tx, true), eHash: tx.Hash()}
+			if qtx.tx == nil {
+				continue
+			}
+		}
+		cost := tx.Cost()
+		cost = cost.Sub(cost, tx.Value())
+		cost = cost.Div(cost, qcommon.Precision)
+		fee := cost.Int64()
+
+		td := &qtypes.TxDesc{
+			Tx:       qtx.tx,
+			Added:    time.Now(),
+			Height:   m.qTxPool.GetMainHeight(),
+			Fee:      fee,
+			FeePerKB: fee * 1000 / int64(qtx.tx.Tx.SerializeSize()),
+		}
+
+		txds = append(txds, td)
+	}
+	m.p2pSer.Notify().AnnounceNewTransactions(nil, txds, nil)
+	return nil
 }
 
 func newMeerPool(consensus model.Consensus, eth *eth.Ethereum) *MeerPool {

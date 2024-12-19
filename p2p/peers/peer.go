@@ -812,6 +812,16 @@ func (p *Peer) IsSupportMeerP2PBridging() bool {
 	return p.chainState.ProtocolVersion >= protocol.MeerP2PBridgingProtocolVersion
 }
 
+func (p *Peer) IsSupportMeerpoolTransmission() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return p.chainState.ProtocolVersion >= protocol.MeerPoolProtocolVersion
+}
+
 func (p *Peer) GetMeerConn() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
