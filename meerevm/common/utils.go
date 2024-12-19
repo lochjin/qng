@@ -24,7 +24,6 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func ReverseBytes(bs *[]byte) *[]byte {
@@ -84,7 +83,7 @@ func FromEVMHash(h common.Hash) *hash.Hash {
 	return th
 }
 
-func ToQNGTx(tx *types.Transaction, timestamp int64, newEncoding bool) *qtypes.Tx {
+func ToQNGTx(tx *types.Transaction, newEncoding bool) *qtypes.Tx {
 	txmb, err := tx.MarshalBinary()
 	if err != nil {
 		log.Error(err.Error())
@@ -101,10 +100,7 @@ func ToQNGTx(tx *types.Transaction, timestamp int64, newEncoding bool) *qtypes.T
 	qtxh := hash.MustBytesToHash(qtxhb)
 
 	mtx := qtypes.NewTransaction()
-
-	if timestamp > 0 {
-		mtx.Timestamp = time.Unix(timestamp, 0)
-	}
+	mtx.Timestamp = tx.Time()
 
 	mtx.AddTxIn(&qtypes.TxInput{
 		PreviousOut: *qtypes.NewOutPoint(&qtxh, qtypes.SupperPrevOutIndex),

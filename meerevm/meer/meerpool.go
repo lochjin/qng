@@ -167,7 +167,7 @@ func (m *MeerPool) prepareMeerChangeTxs(txs []*types.Transaction) bool {
 		}
 		all++
 		if meerchange.IsMeerChangeTx(tx) {
-			vmtx, err := meer.NewVMTx(qcommon.ToQNGTx(tx, 0, true).Tx, nil)
+			vmtx, err := meer.NewVMTx(qcommon.ToQNGTx(tx, true).Tx, nil)
 			if err != nil {
 				log.Error(err.Error())
 				m.ethTxPool.RemoveTx(tx.Hash(), true)
@@ -244,7 +244,7 @@ func (m *MeerPool) updateTemplate(force bool) error {
 	txsNum := len(block.Transactions())
 	if txsNum > 0 {
 		for _, tx := range block.Transactions() {
-			mtx := qcommon.ToQNGTx(tx, 0, true)
+			mtx := qcommon.ToQNGTx(tx, true)
 			stx := &snapshotTx{tx: mtx, eHash: tx.Hash()}
 			m.snapshotQTxsM[mtx.Hash().String()] = stx
 			m.snapshotTxsM[tx.Hash().String()] = stx
