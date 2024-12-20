@@ -664,6 +664,12 @@ var (
 			Value:       defaultPowDiffMode,
 			Destination: &cfg.PowDiffMode,
 		},
+		&cli.BoolFlag{
+			Name:        "transferver1txs",
+			Usage:       "Transmission of txs sent by first generation peers",
+			Value:       false,
+			Destination: &cfg.TransferVer1Txs,
+		},
 	}
 )
 
@@ -702,6 +708,7 @@ func DefaultConfig(homeDir string) *config.Config {
 		GBTTimeOut:            defaultGBTTimeout,
 		NoSnapSyncPeerTimeout: defaultSnapTimeout,
 		PowDiffMode:           defaultPowDiffMode,
+		TransferVer1Txs:       false,
 	}
 	if len(homeDir) > 0 {
 		hd, err := filepath.Abs(homeDir)

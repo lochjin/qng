@@ -597,8 +597,11 @@ func (ps *PeerSync) RelayInventory(nds []*notify.NotifyData) {
 
 			switch value := nd.Data.(type) {
 			case *types.TxDesc:
-				if types.IsCrossChainVMTx(value.Tx.Tx) && pe.IsSupportMeerpoolTransmission() {
-					continue
+				if types.IsCrossChainVMTx(value.Tx.Tx) {
+					if !ps.sy.p2p.Consensus().Config().TransferVer1Txs ||
+						pe.IsSupportMeerpoolTransmission() {
+						continue
+					}
 				}
 				if pe.HasBroadcast(value.Tx.Hash().String()) {
 					continue

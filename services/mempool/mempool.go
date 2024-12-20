@@ -508,6 +508,9 @@ func (mp *TxPool) maybeAcceptTransaction(tx *types.Tx, isNew, rateLimit, allowHi
 		log.Debug(fmt.Sprintf("Accepted import transaction ,txHash(qng):%s ,pool size:%d , fee:%d", txHash, len(mp.pool), fee))
 		return nil, txD, nil
 	} else if opreturn.IsMeerEVMTx(tx.Tx) {
+		if !mp.cfg.BC.Consensus().Config().TransferVer1Txs {
+			return nil, nil, fmt.Errorf("Unsupported this MeerEVMTx %v", txHash)
+		}
 		if mp.cfg.BC.HasTx(txHash) {
 			return nil, nil, fmt.Errorf("Already have transaction %v", txHash)
 		}

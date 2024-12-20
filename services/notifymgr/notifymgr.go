@@ -180,6 +180,10 @@ func (ntmgr *NotifyMgr) handleStallSample() {
 		case *types.TxDesc:
 			log.Trace(fmt.Sprintf("Announce new transaction :hash=%s height=%d add=%s", value.Tx.Hash().String(), value.Height, value.Added.String()))
 			txds = append(txds, value.Tx)
+			if types.IsCrossChainVMTx(value.Tx.Tx) &&
+				!ntmgr.Server.Consensus().Config().TransferVer1Txs {
+				continue
+			}
 			nds = append(nds, nd)
 		case types.BlockHeader:
 			nds = append(nds, nd)
