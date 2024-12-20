@@ -149,7 +149,7 @@ type Config struct {
 
 	PowDiffMode int `long:"powdiffmode" description:"Pow difficult mode:(0:meer,1:ghostdag,2:develop)"`
 
-	TransferVer1Txs bool `long:"transferver1txs" description:"Transmission of txs sent by first generation peers"`
+	TranferTxLegacyMode bool `long:"tranfertxlegacymode" description:"Support transaction transmission mode compatible with older versions before the snapsync P2P"`
 }
 
 func (c *Config) GetMinningAddrs() []types.Address {

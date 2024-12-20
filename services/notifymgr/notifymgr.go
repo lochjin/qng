@@ -181,7 +181,7 @@ func (ntmgr *NotifyMgr) handleStallSample() {
 			log.Trace(fmt.Sprintf("Announce new transaction :hash=%s height=%d add=%s", value.Tx.Hash().String(), value.Height, value.Added.String()))
 			txds = append(txds, value.Tx)
 			if types.IsCrossChainVMTx(value.Tx.Tx) &&
-				!ntmgr.Server.Consensus().Config().TransferVer1Txs {
+				!ntmgr.Server.Consensus().Config().TranferTxLegacyMode {
 				continue
 			}
 			nds = append(nds, nd)
