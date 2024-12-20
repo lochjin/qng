@@ -664,6 +664,12 @@ var (
 			Value:       defaultPowDiffMode,
 			Destination: &cfg.PowDiffMode,
 		},
+		&cli.BoolFlag{
+			Name:        "tranfertxlegacymode",
+			Usage:       "Support transaction transmission mode compatible with older versions before the snapsync P2P",
+			Value:       true,
+			Destination: &cfg.TranferTxLegacyMode,
+		},
 	}
 )
 
@@ -702,6 +708,7 @@ func DefaultConfig(homeDir string) *config.Config {
 		GBTTimeOut:            defaultGBTTimeout,
 		NoSnapSyncPeerTimeout: defaultSnapTimeout,
 		PowDiffMode:           defaultPowDiffMode,
+		TranferTxLegacyMode:   true,
 	}
 	if len(homeDir) > 0 {
 		hd, err := filepath.Abs(homeDir)

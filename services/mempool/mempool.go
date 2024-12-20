@@ -508,7 +508,21 @@ func (mp *TxPool) maybeAcceptTransaction(tx *types.Tx, isNew, rateLimit, allowHi
 		log.Debug(fmt.Sprintf("Accepted import transaction ,txHash(qng):%s ,pool size:%d , fee:%d", txHash, len(mp.pool), fee))
 		return nil, txD, nil
 	} else if opreturn.IsMeerEVMTx(tx.Tx) {
-		return nil, nil, fmt.Errorf("Unsupported this MeerEVMTx %v", txHash)
+		if !mp.cfg.BC.Consensus().Config().TranferTxLegacyMode {
+			return nil, nil, fmt.Errorf("Unsupported this MeerEVMTx %v", txHash)
+		}
+		if mp.cfg.BC.HasTx(txHash) {
+			return nil, nil, fmt.Errorf("Already have transaction %v", txHash)
+		}
+		fee, err := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().AddTx(tx)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		txD := mp.addTransaction(nil, tx, nextBlockHeight, fee)
+
+		log.Debug(fmt.Sprintf("Accepted meerevm transaction ,txHash(qng):%s ,pool size:%d , fee:%d", txHash, len(mp.pool), fee))
+		return nil, txD, nil
 	}
 	// Fetch all of the unspent transaction outputs referenced by the inputs
 	// to this transaction.  This function also attempts to fetch the
@@ -1170,7 +1184,7 @@ func (mp *TxPool) HaveTransaction(hash *hash.Hash) bool {
 
 func (mp *TxPool) haveTransaction(hash *hash.Hash) bool {
 	// Protect concurrent access.
-	haveTx := mp.isTransactionInPool(hash, false) || mp.isOrphanInPool(hash)
+	haveTx := mp.isTransactionInPool(hash, true) || mp.isOrphanInPool(hash)
 	return haveTx
 }
 

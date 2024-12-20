@@ -148,6 +148,8 @@ type Config struct {
 	NoSnapSyncPeerTimeout int `long:"nosnapsyncpeertimeout" description:"During the IBD phase, if no peer node with snap-sync service enabled is found after the timeout (seconds), the node will switch to using the normal sync method."`
 
 	PowDiffMode int `long:"powdiffmode" description:"Pow difficult mode:(0:meer,1:ghostdag,2:develop)"`
+
+	TranferTxLegacyMode bool `long:"tranfertxlegacymode" description:"Support transaction transmission mode compatible with older versions before the snapsync P2P"`
 }
 
 func (c *Config) GetMinningAddrs() []types.Address {

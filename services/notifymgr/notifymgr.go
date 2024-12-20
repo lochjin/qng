@@ -12,7 +12,6 @@ import (
 	"github.com/Qitmeer/qng/rpc"
 	"github.com/Qitmeer/qng/services/notifymgr/notify"
 	"github.com/Qitmeer/qng/services/zmq"
-	etypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"sync"
 	"time"
@@ -47,7 +46,7 @@ type NotifyMgr struct {
 // both websocket and getblocktemplate long poll clients of the passed
 // transactions.  This function should be called whenever new transactions
 // are added to the mempool.
-func (ntmgr *NotifyMgr) AnnounceNewTransactions(newTxs []*types.TxDesc, meerTxs []*etypes.Transaction, filters []peer.ID) {
+func (ntmgr *NotifyMgr) AnnounceNewTransactions(newTxs []*types.TxDesc, meerTxs []*types.TxDesc, filters []peer.ID) {
 	if ntmgr.IsShutdown() {
 		return
 	}
@@ -181,17 +180,20 @@ func (ntmgr *NotifyMgr) handleStallSample() {
 		case *types.TxDesc:
 			log.Trace(fmt.Sprintf("Announce new transaction :hash=%s height=%d add=%s", value.Tx.Hash().String(), value.Height, value.Added.String()))
 			txds = append(txds, value.Tx)
+			if types.IsCrossChainVMTx(value.Tx.Tx) &&
+				!ntmgr.Server.Consensus().Config().TranferTxLegacyMode {
+				continue
+			}
 			nds = append(nds, nd)
 		case types.BlockHeader:
 			nds = append(nds, nd)
-		case *etypes.Transaction:
-			txds = append(txds, value)
 		}
 
 	}
 	ntmgr.Server.RelayInventory(nds)
 
 	if len(txds) > 0 {
+
 		if ntmgr.RpcServer != nil && ntmgr.RpcServer.IsStarted() && !ntmgr.RpcServer.IsShutdown() {
 			ntmgr.RpcServer.NotifyNewTransactions(txds)
 		}
