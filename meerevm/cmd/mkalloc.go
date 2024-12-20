@@ -103,7 +103,7 @@ func main() {
 			params.ActiveNetParams = &params.MainNetParam
 			networkTag = "mainAllocData"
 		}
-		genesis := meer.DefaultGenesisBlock(meer.ChainConfig())
+		genesis := meer.CurrentGenesis()
 		genesis.Alloc = ngd.Data.Genesis.Alloc
 		if _, ok := genesis.Alloc[common.HexToAddress(RELEASE_CONTRACT_ADDR)]; ok {
 			releaseAccount := genesis.Alloc[common.HexToAddress(RELEASE_CONTRACT_ADDR)]
@@ -121,7 +121,7 @@ func main() {
 			}
 		}
 		alloc := makealloc(genesis)
-		log.Printf("network=%s genesisHash=%s\n", networkTag, hex.EncodeToString(crypto.Keccak256([]byte(alloc))))
+		log.Printf("network=%s genesisHash=%s\n", networkTag, genesis.ToBlock().Hash())
 		fileContent += fmt.Sprintf("\nconst %s = %s", networkTag, alloc)
 	}
 
