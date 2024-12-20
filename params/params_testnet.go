@@ -22,10 +22,10 @@ var testNetPowLimit = new(big.Int).Sub(new(big.Int).Lsh(common.Big1, 242), commo
 var maxNetPowLimit = new(big.Int).Sub(new(big.Int).Lsh(common.Big1, 0), common.Big1)
 
 // target time per block unit second(s)
-const testTargetTimePerBlock = 15
+const testTargetTimePerBlock = 3
 
-// Difficulty check interval is about 15*30 = 7.5 mins
-const testWorkDiffWindowSize = 30
+// Difficulty check interval is about 3*60 = 3 mins
+const testWorkDiffWindowSize = 60
 
 // TestNetParams defines the network parameters for the test network.
 var TestNetParams = Params{
@@ -73,14 +73,7 @@ var TestNetParams = Params{
 		// after this height the big graph will be the main pow graph
 		AdjustmentStartMainHeight: 365 * 1440 * 60 / testTargetTimePerBlock,
 	},
-	CoinbaseConfig: CoinbaseConfigs{
-		{
-			Height:                    61279,
-			Version:                   "0.10.4",
-			ExtraDataIncludedVer:      true,
-			ExtraDataIncludedNodeInfo: true,
-		},
-	},
+	CoinbaseConfig:           CoinbaseConfigs{},
 	ReduceMinDifficulty:      false,
 	MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
 	GenerateSupported:        true,
