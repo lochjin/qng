@@ -16,6 +16,7 @@ import (
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	libp2pcore "github.com/libp2p/go-libp2p/core"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"time"
 )
 
@@ -94,7 +95,7 @@ func (ps *PeerSync) startSnapSync() bool {
 	}
 
 	best := ps.Chain().BestSnapshot()
-	bestPeer := ps.getBestPeer(false)
+	bestPeer := ps.getBestPeer(false, nil)
 	if bestPeer == nil {
 		return false
 	}
@@ -103,7 +104,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		return false
 	}
 	if !isValidSnapPeer(bestPeer) {
-		snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout)
+		snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil)
 		if snapPeer == nil {
 			if change {
 				return false
@@ -211,7 +212,7 @@ func (ps *PeerSync) continueSnapSync() bool {
 	log.Info("Continue snap-sync", "point", ps.snapStatus.syncPoint.GetHash().String(), "point_order", ps.snapStatus.GetSyncPoint().GetOrder(), "status", fmt.Sprintf("%v", ps.snapStatus.ToInfo()))
 
 	best := ps.Chain().BestSnapshot()
-	bestPeer, _ := ps.getSnapSyncPeer(0)
+	bestPeer, _ := ps.getSnapSyncPeer(0, nil)
 	if bestPeer == nil {
 		return true
 	}
@@ -281,14 +282,15 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
 		go ps.syncSnapStatus(pe, rsp)
 		select {
 		case ret = <-rsp:
+			log.Debug("SnapSyncRsp", "peer", pe.GetID().String(), "result", ret != nil)
 		case <-ps.quit:
 			return nil
 		}
 		if ret != nil {
 			return ret
 		}
-		log.Warn("Try change snap peer")
-		newPeer, _ := ps.getSnapSyncPeer(0)
+		log.Warn("Try change snap peer", "processID", ps.getProcessID())
+		newPeer, _ := ps.getSnapSyncPeer(0, map[peer.ID]struct{}{pe.GetID(): struct{}{}})
 		if newPeer == nil {
 			return nil
 		}
@@ -384,11 +386,11 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 	return ret, nil
 }
 
-func (ps *PeerSync) getSnapSyncPeer(timeout int) (*peers.Peer, bool) {
+func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}) (*peers.Peer, bool) {
 	start := time.Now()
 	var pe *peers.Peer
 	for pe == nil {
-		pe = ps.getBestPeer(true)
+		pe = ps.getBestPeer(true, exclude)
 		if pe == nil {
 			if timeout > 0 {
 				if time.Since(start) > time.Duration(timeout)*time.Second {

@@ -15,6 +15,7 @@ import (
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	"github.com/Qitmeer/qng/services/notifymgr/notify"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -304,7 +305,7 @@ func (ps *PeerSync) startConsensusSync() {
 		return
 	}
 	best := ps.Chain().BestSnapshot()
-	bestPeer := ps.getBestPeer(false)
+	bestPeer := ps.getBestPeer(false, nil)
 	// Start syncing from the best peer if one was selected.
 	if bestPeer != nil {
 		ps.processID++
@@ -393,11 +394,17 @@ func (ps *PeerSync) startConsensusSync() {
 }
 
 // getBestPeer
-func (ps *PeerSync) getBestPeer(snap bool) *peers.Peer {
+func (ps *PeerSync) getBestPeer(snap bool, exclude map[peer.ID]struct{}) *peers.Peer {
 	best := ps.Chain().BestSnapshot()
 	var bestPeer *peers.Peer
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
+		if len(exclude) > 0 {
+			_, ok := exclude[sp.GetID()]
+			if ok {
+				continue
+			}
+		}
 		if snap {
 			if !isValidSnapPeer(sp) {
 				continue
@@ -571,7 +578,7 @@ func (ps *PeerSync) checkContinueSync() bool {
 			go ps.TryAgainUpdateSyncPeer(true)
 			return false
 		}
-		bestPeer := ps.getBestPeer(false)
+		bestPeer := ps.getBestPeer(false, nil)
 		if bestPeer == nil {
 			go ps.TryAgainUpdateSyncPeer(true)
 			return false

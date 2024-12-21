@@ -82,10 +82,11 @@ func (s *SnapStatus) ResetPeer(peid peer.ID) {
 	defer s.locker.Unlock()
 
 	if peid == s.peid {
+		log.Info("No need reset peer", "peid", peid.String())
 		return
 	}
+	log.Info("Reset peer", "peid", s.peid.String(), "new peid", peid.String())
 	s.peid = peid
-	log.Info("Reset peer", "peid", peid.String())
 }
 
 func (s *SnapStatus) GetTargetBlock() *hash.Hash {
