@@ -293,10 +293,6 @@ func (s *Sync) ConnectionGater(pid *peer.ID, addr ma.Multiaddr, dir network.Dire
 	}
 
 	if pe != nil {
-		if pe.IsBad() {
-			log.Trace("connectionGater reason:you are bad")
-			return false
-		}
 		delay := time.Since(pe.ChainStateLastUpdated())
 		if delay <= time.Hour*24 && !pe.CanConnectWithNetwork() {
 			log.Trace("connectionGater reason:CanConnectWithNetwork")
