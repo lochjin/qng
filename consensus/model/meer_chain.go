@@ -14,7 +14,7 @@ type MeerChain interface {
 	GetBlockIDByTxHash(txhash *hash.Hash) uint64
 	SyncMode() downloader.SyncMode
 	Downloader() *downloader.Downloader
-	SyncTo(target common.Hash) error
+	SyncTo(target common.Hash, stop chan struct{}) error
 	Server() *p2p.Server
 	GetCurHeader() *types.Header
 	Synced() bool
