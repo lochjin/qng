@@ -274,22 +274,15 @@ cleanup:
 func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
 	var ret *pb.SnapSyncRsp
 	for ret == nil {
-		tryReq := 10
-		for i := 0; i < tryReq; i++ {
-			if !ps.IsRunning() {
-				return nil
-			}
-			if !pe.IsActive() {
-				break
-			}
-			rsp, err := ps.syncSnapStatus(pe)
-			if err != nil {
-				log.Warn("Snap-sync waiting for next try", "err", err.Error(), "cur", i, "max", tryReq)
-				time.Sleep(SnapSyncReqInterval)
-				continue
-			}
-			ret = rsp
-			break
+		if !ps.IsRunning() {
+			return nil
+		}
+		rsp := make(chan *pb.SnapSyncRsp)
+		go ps.syncSnapStatus(pe, rsp)
+		select {
+		case ret = <-rsp:
+		case <-ps.quit:
+			return nil
 		}
 		if ret != nil {
 			return ret
@@ -305,7 +298,7 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
 	return ret
 }
 
-func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
+func (ps *PeerSync) syncSnapStatus(pe *peers.Peer, rsp chan *pb.SnapSyncRsp) {
 	req := &pb.SnapSyncReq{Locator: []*pb.Locator{}}
 
 	targetBlock, stateRoot := ps.snapStatus.GetTarget()
@@ -331,9 +324,11 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, error) {
 
 	ret, err := ps.sy.Send(pe, RPCSyncSnap, req)
 	if err != nil {
-		return nil, err
+		log.Error(err.Error())
+		rsp <- nil
+		return
 	}
-	return ret.(*pb.SnapSyncRsp), nil
+	rsp <- ret.(*pb.SnapSyncRsp)
 }
 
 func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, error) {
