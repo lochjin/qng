@@ -279,6 +279,9 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
 			if !ps.IsRunning() {
 				return nil
 			}
+			if !pe.IsActive() {
+				break
+			}
 			rsp, err := ps.syncSnapStatus(pe)
 			if err != nil {
 				log.Warn("Snap-sync waiting for next try", "err", err.Error(), "cur", i, "max", tryReq)
