@@ -192,7 +192,7 @@ cleanup:
 		log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 	}
 
-	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())
+	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash(), ps.quit)
 	if err != nil {
 		log.Error(err.Error())
 	} else {
@@ -246,7 +246,7 @@ cleanup:
 	log.Info("Snap syncing", "cur", best.GraphState.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 
-	err := ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash())
+	err := ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash(), ps.quit)
 	if err != nil {
 		log.Error(err.Error())
 		return true

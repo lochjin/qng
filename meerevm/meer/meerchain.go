@@ -686,10 +686,9 @@ func (b *MeerChain) Server() *p2p.Server {
 	return b.chain.Node().Server()
 }
 
-func (b *MeerChain) SyncTo(target common.Hash) error {
+func (b *MeerChain) SyncTo(target common.Hash, stop chan struct{}) error {
 	mode := b.SyncMode()
-	quit := make(chan struct{})
-	err := b.Downloader().SyncQngWaitPeers(mode, target, quit)
+	err := b.Downloader().SyncQngWaitPeers(mode, target, stop)
 	if err != nil {
 		log.Info("Failed to trigger beacon sync", "err", err)
 		return err
