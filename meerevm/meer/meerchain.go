@@ -424,6 +424,9 @@ func (b *MeerChain) prepareEnvironment(state model.BlockState) (*types.Header, e
 	list := []model.BlockState{state}
 	startState := b.consensus.BlockChain().GetBlockState(state.GetOrder() - 1)
 	for startState != nil && startState.GetEVMNumber() >= curBlockHeader.Number.Uint64() {
+		if system.InterruptRequested(b.consensus.Interrupt()) {
+			return nil, getError("shutdown interrupt")
+		}
 		if startState.GetEVMNumber() == curBlockHeader.Number.Uint64() &&
 			startState.GetEVMHash() == curBlockHeader.Hash() {
 			curBlockState = startState
@@ -440,6 +443,9 @@ func (b *MeerChain) prepareEnvironment(state model.BlockState) (*types.Header, e
 	}
 	log.Info("Find cur block state", "state.order", curBlockState.GetOrder(), "evm.Number", curBlockState.GetEVMNumber())
 	for i := len(list) - 1; i >= 0; i-- {
+		if system.InterruptRequested(b.consensus.Interrupt()) {
+			return nil, getError("shutdown interrupt")
+		}
 		if list[i].GetStatus().KnownInvalid() {
 			continue
 		}
