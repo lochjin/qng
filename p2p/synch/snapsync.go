@@ -86,6 +86,7 @@ func (ps *PeerSync) startSnapSync() bool {
 	if !ps.sy.p2p.IsSnap() {
 		if ps.IsSnapSync() {
 			log.Error("There is an unfinished snap-sync, please enable the snap service")
+			return true
 		}
 		return false
 	}
@@ -263,6 +264,7 @@ cleanup:
 		bestPeer.UpdateSyncPoint(sp.GetHash())
 		log.Debug("Snap-sync update sync point", "point", sp.GetHash().String())
 	}
+	ps.snapStatus.SetTarget(sp.GetHash(), sp.GetState().Root())
 	if ps.snapStatus.IsCompleted() {
 		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
 		ps.snapStatus = nil
@@ -410,7 +412,7 @@ func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}) (
 func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {
 	e := ReadRspCode(stream, s.p2p)
 	if !e.Code.IsSuccess() {
-		e.Add("get block date request rsp")
+		e.Add("snap-sync request rsp")
 		return nil, e
 	}
 	msg := &pb.SnapSyncRsp{}

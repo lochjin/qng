@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/common/roughtime"
@@ -780,6 +781,12 @@ func NewService(cfg *config.Config, consensus model.Consensus, param *params.Par
 
 	s.sy = synch.NewSync(s)
 	s.rebroadcast = NewRebroadcast(s)
+
+	if !s.IsSnap() {
+		if s.sy.PeerSync().IsSnapSync() {
+			return nil, errors.New("There is an unfinished snap-sync, please enable the snap service")
+		}
+	}
 	return s, nil
 }
 
