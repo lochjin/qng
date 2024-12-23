@@ -264,6 +264,7 @@ cleanup:
 		bestPeer.UpdateSyncPoint(sp.GetHash())
 		log.Debug("Snap-sync update sync point", "point", sp.GetHash().String())
 	}
+	ps.snapStatus.SetTarget(sp.GetHash(), sp.GetState().Root())
 	if ps.snapStatus.IsCompleted() {
 		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
 		ps.snapStatus = nil
