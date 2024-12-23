@@ -47,7 +47,6 @@ func (s *Sync) establishMeerConnection(pe *peers.Peer) error {
 	if err != nil {
 		return common.NewErrorStr(common.ErrStreamBase, fmt.Sprintf("open stream on topic %v failed", topic)).ToError()
 	}
-	defer stream.Close()
 
 	common.EgressConnectMeter.Mark(1)
 	qc, err := NewMeerConn(stream)
@@ -62,6 +61,10 @@ func (s *Sync) establishMeerConnection(pe *peers.Peer) error {
 			log.Error(err.Error())
 		}
 		pe.SetMeerConn(false)
+		err = stream.Close()
+		if err != nil {
+			log.Error("Close meer conn", "err", err.Error())
+		}
 	}()
 	return err
 }
