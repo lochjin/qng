@@ -255,7 +255,7 @@ func (ss *SnapStatus) Decode(data []byte) error {
 	if err != nil {
 		return err
 	}
-	ss.peid, err = peer.Decode(string(peid))
+	ss.peid, err = peer.IDFromBytes(peid)
 	if err != nil {
 		return err
 	}

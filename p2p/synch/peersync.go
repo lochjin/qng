@@ -80,6 +80,7 @@ func (ps *PeerSync) Stop() error {
 	ps.wg.Wait()
 
 	log.Info("P2P PeerSync Stoped")
+	ps.saveSnapSync()
 	return nil
 }
 
@@ -399,12 +400,6 @@ func (ps *PeerSync) getBestPeer(snap bool, exclude map[peer.ID]struct{}) *peers.
 	var bestPeer *peers.Peer
 	equalPeers := []*peers.Peer{}
 	for _, sp := range ps.sy.peers.CanSyncPeers() {
-		if len(exclude) > 0 {
-			_, ok := exclude[sp.GetID()]
-			if ok {
-				continue
-			}
-		}
 		if snap {
 			if !isValidSnapPeer(sp) {
 				continue
@@ -444,6 +439,21 @@ func (ps *PeerSync) getBestPeer(snap bool, exclude map[peer.ID]struct{}) *peers.
 	}
 	if len(equalPeers) == 1 {
 		return equalPeers[0]
+	}
+	if len(exclude) > 0 {
+		filter := []*peers.Peer{}
+		for _, sp := range equalPeers {
+			_, ok := exclude[sp.GetID()]
+			if ok {
+				continue
+			}
+			filter = append(filter, sp)
+		}
+		if len(filter) == 1 {
+			return filter[0]
+		} else if len(filter) > 1 {
+			equalPeers = filter
+		}
 	}
 
 	index := int(rand.Int63n(int64(len(equalPeers))))
@@ -756,5 +766,6 @@ func NewPeerSync(sy *Sync) *PeerSync {
 		interrupt:   make(chan struct{}),
 		lastBlockID: meerdag.MaxId,
 	}
+	peerSync.loadSnapSync()
 	return peerSync
 }
