@@ -55,10 +55,14 @@ func (s *Sync) establishMeerConnection(pe *peers.Peer) error {
 		return err
 	}
 	pe.SetMeerConn(true)
-	defer pe.SetMeerConn(false)
 
-	_, err = s.p2p.MeerServer().Connect(qc, dest)
-
+	go func() {
+		_, err := s.p2p.MeerServer().Connect(qc, dest)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		pe.SetMeerConn(false)
+	}()
 	return err
 }
 
