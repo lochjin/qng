@@ -42,6 +42,7 @@ func (ps *PeerSync) loadSnapSync() {
 	}
 	snapStatus.syncPoint = ps.Chain().BlockDAG().GetBlockById(uint(snapStatus.PointID))
 	if snapStatus.syncPoint == nil {
+		log.Error("Can't find snap status point", "id", snapStatus.PointID)
 		return
 	}
 	ps.snapStatus = snapStatus
@@ -51,7 +52,6 @@ func (ps *PeerSync) loadSnapSync() {
 		log.Info("End snap-sync", "err", err.Error())
 		return
 	}
-
 }
 
 func (ps *PeerSync) saveSnapSync() {

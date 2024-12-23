@@ -80,6 +80,7 @@ func (ps *PeerSync) Stop() error {
 	ps.wg.Wait()
 
 	log.Info("P2P PeerSync Stoped")
+	ps.saveSnapSync()
 	return nil
 }
 
@@ -765,5 +766,6 @@ func NewPeerSync(sy *Sync) *PeerSync {
 		interrupt:   make(chan struct{}),
 		lastBlockID: meerdag.MaxId,
 	}
+	peerSync.loadSnapSync()
 	return peerSync
 }
