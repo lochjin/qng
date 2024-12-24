@@ -58,6 +58,11 @@ func (ps *PeerSync) loadSnapSync() {
 
 func (ps *PeerSync) saveSnapSync() {
 	if !ps.IsSnapSync() {
+		err := ps.sy.p2p.Consensus().DatabaseContext().DeleteSnapSync()
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
 		return
 	}
 	data, err := ps.snapStatus.Bytes()
@@ -167,10 +172,6 @@ cleanup:
 	result := make(chan error)
 
 	endSnapSyncing := func() {
-		merr := <-result
-		if merr != nil {
-			log.Warn(merr.Error())
-		}
 		ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 		if ps.snapStatus.IsCompleted() {
 			log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
@@ -190,7 +191,15 @@ cleanup:
 	}
 	defer endSnapSyncing()
 
-	go ps.meerSync(evmTarget, result)
+	if !ps.snapStatus.IsEVMCompleted() {
+		defer func() {
+			merr := <-result
+			if merr != nil {
+				log.Warn(merr.Error())
+			}
+		}()
+		go ps.meerSync(evmTarget, result)
+	}
 
 	lastEvmTarget := ps.snapStatus.GetEVMTarget()
 
