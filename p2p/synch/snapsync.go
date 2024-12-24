@@ -14,6 +14,8 @@ import (
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
+	qparams "github.com/Qitmeer/qng/params"
+	ecommon "github.com/ethereum/go-ethereum/common"
 	libp2pcore "github.com/libp2p/go-libp2p/core"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -23,7 +25,7 @@ import (
 const (
 	MinSnapSyncNumber     = 200
 	SnapSyncReqInterval   = time.Second * 5
-	MinSnapSyncChainDepth = 20000
+	MinSnapSyncChainDepth = meerdag.MaxSnapSyncTargetDepth
 )
 
 func (ps *PeerSync) loadSnapSync() {
@@ -40,13 +42,13 @@ func (ps *PeerSync) loadSnapSync() {
 	if snapStatus == nil {
 		return
 	}
-	snapStatus.syncPoint = ps.Chain().BlockDAG().GetBlockById(uint(snapStatus.PointID))
+	snapStatus.syncPoint = ps.Chain().BlockDAG().GetBlockById(uint(snapStatus.GetSyncPointID()))
 	if snapStatus.syncPoint == nil {
-		log.Error("Can't find snap status point", "id", snapStatus.PointID)
+		log.Error("Can't find snap status point", "id", snapStatus.GetSyncPointID())
 		return
 	}
 	ps.snapStatus = snapStatus
-	log.Info("Load snap sync info", "data", ps.snapStatus.ToInfo())
+	log.Info("Load snap sync info", "data", ps.snapStatus.ToString())
 	err = ps.Chain().BeginSnapSyncing()
 	if err != nil {
 		log.Info("End snap-sync", "err", err.Error())
@@ -68,7 +70,7 @@ func (ps *PeerSync) saveSnapSync() {
 		log.Error(err.Error())
 		return
 	}
-	log.Info("Save snap sync info")
+	log.Info("Save snap sync info", "data", ps.snapStatus.ToString())
 }
 
 func (ps *PeerSync) IsSnapSync() bool {
@@ -91,29 +93,35 @@ func (ps *PeerSync) startSnapSync() bool {
 		return false
 	}
 
-	if ps.IsSnapSync() {
-		return ps.continueSnapSync()
-	}
-
 	best := ps.Chain().BestSnapshot()
-	bestPeer := ps.getBestPeer(false, nil)
-	if bestPeer == nil {
-		return false
-	}
-	gs := bestPeer.GraphState()
-	if gs.GetTotal() < best.GraphState.GetTotal()+MinSnapSyncChainDepth {
-		return false
-	}
-	if !isValidSnapPeer(bestPeer) {
-		snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil)
+	var bestPeer *peers.Peer
+	if ps.IsSnapSync() {
+		snapPeer, _ := ps.getSnapSyncPeer(0, nil)
 		if snapPeer == nil {
-			if change {
-				return false
-			}
 			return true
 		}
 		bestPeer = snapPeer
+	} else {
+		bestPeer = ps.getBestPeer(false, nil)
+		if bestPeer == nil {
+			return false
+		}
+		gs := bestPeer.GraphState()
+		if gs.GetTotal() < best.GraphState.GetTotal()+MinSnapSyncChainDepth {
+			return false
+		}
+		if !isValidSnapPeer(bestPeer) {
+			snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil)
+			if snapPeer == nil {
+				if change {
+					return false
+				}
+				return true
+			}
+			bestPeer = snapPeer
+		}
 	}
+
 	if !ps.IsRunning() {
 		return true
 	}
@@ -139,9 +147,14 @@ cleanup:
 	startTime := time.Now()
 	ps.lastSync = startTime
 
-	ps.snapStatus = NewSnapStatus(bestPeer.GetID())
+	if ps.IsSnapSync() {
+		ps.snapStatus.ResetPeer(bestPeer.GetID())
+		log.Info("Snap syncing continue", "cur", best.GraphState.String(), "status", ps.snapStatus.ToString(), "processID", ps.getProcessID())
+	} else {
+		ps.snapStatus = NewSnapStatus(bestPeer.GetID())
+		log.Info("Snap syncing", "cur", best.GraphState.String(), "status", ps.snapStatus.ToString(), "processID", ps.getProcessID())
+	}
 
-	log.Info("Snap syncing", "cur", best.GraphState.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
 	// ------
 	err := ps.Chain().BeginSnapSyncing()
@@ -150,7 +163,14 @@ cleanup:
 		return true
 	}
 	add := 0
+	evmTarget := make(chan ecommon.Hash)
+	result := make(chan error)
+
 	endSnapSyncing := func() {
+		merr := <-result
+		if merr != nil {
+			log.Warn(merr.Error())
+		}
 		ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 		if ps.snapStatus.IsCompleted() {
 			log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "add", add, "processID", ps.getProcessID())
@@ -168,117 +188,64 @@ cleanup:
 			go ps.TryAgainUpdateSyncPeer(false)
 		}
 	}
+	defer endSnapSyncing()
 
-	for !ps.snapStatus.IsPointCompleted() {
-		ret := ps.trySyncSnapStatus(bestPeer)
+	go ps.meerSync(evmTarget, result)
+
+	lastEvmTarget := ps.snapStatus.GetEVMTarget()
+
+	for !ps.snapStatus.IsCompleted() {
+		if !ps.IsRunning() {
+			log.Warn("Snap-sync exit midway")
+			return true
+		}
+		if ps.snapStatus.IsPointCompleted() {
+			select {
+			case <-time.After(qparams.ActiveNetParams.TargetTimePerBlock * meerdag.SnapSyncEVMTargetValve):
+				log.Debug("Try to compare target for snap-sync")
+			case <-ps.quit:
+				log.Warn("Snap-sync exit midway")
+				return true
+			}
+		}
+		ret, pe := ps.trySyncSnapStatus(bestPeer)
+		bestPeer = pe
 		if ret == nil {
-			log.Warn("Snap-sync no rsp data")
-			endSnapSyncing()
-			return true //Exit midway
+			log.Warn("Snap-sync can't get rsp data")
+			return true
 		}
 		sds, err := ps.processRsp(ret)
 		if err != nil {
 			log.Warn(err.Error())
 			continue
 		}
-		if len(sds) <= 0 {
-			log.Warn("No process snap sync data")
-			continue
+		if len(sds) > 0 {
+			latest, err := ps.Chain().ProcessBlockBySnap(sds)
+			if err != nil {
+				panic(err.Error())
+			}
+			ps.snapStatus.SetSyncPoint(latest)
+			add += len(sds)
+			log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 		}
-		latest, err := ps.Chain().ProcessBlockBySnap(sds)
-		if err != nil {
-			panic(err.Error())
+		if !ps.snapStatus.IsEVMCompleted() {
+			if lastEvmTarget != ps.snapStatus.GetEVMTarget() &&
+				ps.snapStatus.GetEVMTarget() != (ecommon.Hash{}) {
+				lastEvmTarget = ps.snapStatus.GetEVMTarget()
+				evmTarget <- ps.snapStatus.GetEVMTarget()
+			}
 		}
-		ps.snapStatus.SetSyncPoint(latest)
-		add += len(sds)
-		log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 	}
 
-	err = ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash(), ps.quit)
-	if err != nil {
-		log.Error(err.Error())
-	} else {
-		ps.snapStatus.CompleteEVM()
-	}
 	ps.sy.p2p.BlockChain().EndSnapSyncing()
-	endSnapSyncing()
 	return true
 }
 
-func (ps *PeerSync) continueSnapSync() bool {
-	if ps.snapStatus.IsEVMCompleted() {
-		log.Warn("No need continue snap-sync")
-		return false
-	}
-	log.Info("Continue snap-sync", "point", ps.snapStatus.syncPoint.GetHash().String(), "point_order", ps.snapStatus.GetSyncPoint().GetOrder(), "status", fmt.Sprintf("%v", ps.snapStatus.ToInfo()))
-
-	best := ps.Chain().BestSnapshot()
-	bestPeer, _ := ps.getSnapSyncPeer(0, nil)
-	if bestPeer == nil {
-		return true
-	}
-
-	if !ps.IsRunning() {
-		return true
-	}
-	// Start syncing from the best peer if one was selected.
-	ps.processID++
-	ps.processwg.Add(1)
-	ps.SetSyncPeer(bestPeer)
-
-	defer func() {
-		defer ps.processwg.Done()
-		ps.SetSyncPeer(nil)
-	}()
-
-cleanup:
-	for {
-		select {
-		case <-ps.interrupt:
-		default:
-			break cleanup
-		}
-	}
-	ps.interrupt = make(chan struct{})
-	startTime := time.Now()
-	ps.lastSync = startTime
-
-	ps.snapStatus.ResetPeer(bestPeer.GetID())
-
-	log.Info("Snap syncing", "cur", best.GraphState.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
-	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderStart))
-
-	err := ps.Chain().MeerChain().SyncTo(ps.snapStatus.GetSyncPoint().GetState().GetEVMHash(), ps.quit)
-	if err != nil {
-		log.Error(err.Error())
-		return true
-	} else {
-		ps.snapStatus.CompleteEVM()
-	}
-	ps.sy.p2p.BlockChain().EndSnapSyncing()
-
-	ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
-
-	sp := ps.snapStatus.GetSyncPoint()
-	if sp != nil {
-		bestPeer.UpdateSyncPoint(sp.GetHash())
-		log.Debug("Snap-sync update sync point", "point", sp.GetHash().String())
-	}
-	ps.snapStatus.SetTarget(sp.GetHash(), sp.GetState().Root())
-	if ps.snapStatus.IsCompleted() {
-		log.Info("Snap-sync has ended", "spend", time.Since(startTime).Truncate(time.Second).String(), "processID", ps.getProcessID())
-		ps.snapStatus = nil
-	} else {
-		log.Error("snapStatus is not completed")
-	}
-	return true
-}
-
-func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
+func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, *peers.Peer) {
 	var ret *pb.SnapSyncRsp
 	for ret == nil {
 		if !ps.IsRunning() {
-			return nil
+			return nil, pe
 		}
 		rsp := make(chan *pb.SnapSyncRsp)
 		go ps.syncSnapStatus(pe, rsp)
@@ -286,20 +253,20 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) *pb.SnapSyncRsp {
 		case ret = <-rsp:
 			log.Debug("SnapSyncRsp", "peer", pe.GetID().String(), "result", ret != nil)
 		case <-ps.quit:
-			return nil
+			return nil, pe
 		}
 		if ret != nil {
-			return ret
+			return ret, pe
 		}
 		log.Warn("Try change snap peer", "processID", ps.getProcessID())
 		newPeer, _ := ps.getSnapSyncPeer(0, map[peer.ID]struct{}{pe.GetID(): struct{}{}})
 		if newPeer == nil {
-			return nil
+			return nil, pe
 		}
 		pe = newPeer
 		ps.snapStatus.ResetPeer(pe.GetID())
 	}
-	return ret
+	return ret, pe
 }
 
 func (ps *PeerSync) syncSnapStatus(pe *peers.Peer, rsp chan *pb.SnapSyncRsp) {
@@ -313,6 +280,11 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer, rsp chan *pb.SnapSyncRsp) {
 			Block: &pb.Hash{Hash: sp.GetHash().Bytes()},
 			Root:  &pb.Hash{Hash: sp.GetState().Root().Bytes()},
 		})
+		if targetBlock.IsEqual(sp.GetHash()) {
+			log.Debug("Compare target for snap-sync")
+		} else {
+			log.Debug("Continue target for snap-sync")
+		}
 	} else {
 		zeroH := &pb.Hash{Hash: hash.ZeroHash.Bytes()}
 		req.Target = &pb.Locator{Block: zeroH, Root: zeroH}
@@ -324,6 +296,7 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer, rsp chan *pb.SnapSyncRsp) {
 				Root:  &pb.Hash{Hash: mainStateRoot[i].Bytes()},
 			})
 		}
+		log.Debug("Init target for snap-sync")
 	}
 
 	ret, err := ps.sy.Send(pe, RPCSyncSnap, req)
@@ -341,9 +314,11 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 	}
 	targetBlock := changePBHashToHash(ssr.Target.Block)
 	stateRoot := changePBHashToHash(ssr.Target.Root)
+	evm := ecommon.BytesToHash(ssr.Evm.Hash)
 	ps.snapStatus.SetTarget(targetBlock, stateRoot)
+	ps.snapStatus.SetEVMTarget(evm)
 
-	log.Trace("Snap-sync receive", "targetBlock", targetBlock.String(), "stateRoot", stateRoot.String(), "dataNum", len(ssr.Datas), "processID", ps.getProcessID())
+	log.Trace("Snap-sync receive", "targetBlock", targetBlock.String(), "stateRoot", stateRoot.String(), "evm", evm.String(), "dataNum", len(ssr.Datas), "processID", ps.getProcessID())
 
 	if len(ssr.Datas) <= 0 {
 		return nil, nil
@@ -434,57 +409,55 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 		log.Error(err.Error())
 		return ErrMessage(err)
 	}
-	if len(blocks) <= 0 {
-		return ErrMessage(fmt.Errorf("Can't find blocks for snap-sync"))
-	}
 	rsp := &pb.SnapSyncRsp{Datas: []*pb.TransferData{}}
-	if isLocatorEmpty(m.Target) {
-		rsp.Target = &pb.Locator{
-			Block: &pb.Hash{Hash: target.GetHash().Bytes()},
-			Root:  &pb.Hash{Hash: target.GetState().Root().Bytes()},
-		}
-	} else {
-		rsp.Target = m.Target
+	rsp.Target = &pb.Locator{
+		Block: &pb.Hash{Hash: target.GetHash().Bytes()},
+		Root:  &pb.Hash{Hash: target.GetState().Root().Bytes()},
 	}
-	for _, block := range blocks {
-		data := &pb.TransferData{}
-		blkBytes, err := s.p2p.BlockChain().FetchBlockBytesByHash(block.GetHash())
-		if err != nil {
-			return ErrMessage(err)
-		}
-		data.Block = blkBytes
+	rsp.Evm = &pb.Hash{Hash: target.GetState().GetEVMHash().Bytes()}
 
-		stxo, err := s.p2p.BlockChain().DB().GetSpendJournal(block.GetHash())
-		if err != nil {
-			return ErrMessage(err)
-		}
-		data.Stxos = stxo
-
-		data.DagBlock = block.Bytes()
-		data.Main = s.p2p.BlockChain().BlockDAG().IsOnMainChain(block.GetID())
-		ts := s.p2p.BlockChain().GetTokenState(uint32(block.GetID()))
-		if ts != nil {
-			prevTSHash, err := meerdag.DBGetDAGBlockHashByID(s.p2p.BlockChain().DB(), uint64(ts.PrevStateID))
+	if len(blocks) > 0 {
+		for _, block := range blocks {
+			data := &pb.TransferData{}
+			blkBytes, err := s.p2p.BlockChain().FetchBlockBytesByHash(block.GetHash())
 			if err != nil {
 				return ErrMessage(err)
 			}
-			serializedData, err := ts.Serialize()
+			data.Block = blkBytes
+
+			stxo, err := s.p2p.BlockChain().DB().GetSpendJournal(block.GetHash())
 			if err != nil {
 				return ErrMessage(err)
 			}
-			data.TokenState = serializedData
-			data.PrevTSHash = &pb.Hash{
-				Hash: prevTSHash.Bytes(),
+			data.Stxos = stxo
+
+			data.DagBlock = block.Bytes()
+			data.Main = s.p2p.BlockChain().BlockDAG().IsOnMainChain(block.GetID())
+			ts := s.p2p.BlockChain().GetTokenState(uint32(block.GetID()))
+			if ts != nil {
+				prevTSHash, err := meerdag.DBGetDAGBlockHashByID(s.p2p.BlockChain().DB(), uint64(ts.PrevStateID))
+				if err != nil {
+					return ErrMessage(err)
+				}
+				serializedData, err := ts.Serialize()
+				if err != nil {
+					return ErrMessage(err)
+				}
+				data.TokenState = serializedData
+				data.PrevTSHash = &pb.Hash{
+					Hash: prevTSHash.Bytes(),
+				}
+			} else {
+				data.PrevTSHash = &pb.Hash{
+					Hash: hash.ZeroHash.Bytes(),
+				}
 			}
-		} else {
-			data.PrevTSHash = &pb.Hash{
-				Hash: hash.ZeroHash.Bytes(),
+			if uint64(rsp.SizeSSZ()+data.SizeSSZ()+BLOCKDATA_SSZ_HEAD_SIZE) >= s.p2p.Encoding().GetMaxChunkSize() {
+				break
 			}
+			rsp.Datas = append(rsp.Datas, data)
 		}
-		if uint64(rsp.SizeSSZ()+data.SizeSSZ()+BLOCKDATA_SSZ_HEAD_SIZE) >= s.p2p.Encoding().GetMaxChunkSize() {
-			break
-		}
-		rsp.Datas = append(rsp.Datas, data)
 	}
+
 	return s.EncodeResponseMsg(stream, rsp)
 }

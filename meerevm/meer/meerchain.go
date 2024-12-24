@@ -5,7 +5,6 @@
 package meer
 
 import (
-	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/common/system"
@@ -32,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	eeth "github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/p2p"
@@ -39,7 +39,6 @@ import (
 	"github.com/holiman/uint256"
 	"math/big"
 	"reflect"
-	"time"
 )
 
 const (
@@ -692,32 +691,8 @@ func (b *MeerChain) Server() *p2p.Server {
 	return b.chain.Node().Server()
 }
 
-func (b *MeerChain) SyncTo(target common.Hash, stop chan struct{}) error {
-	mode := b.SyncMode()
-	err := b.Downloader().SyncQngWaitPeers(mode, target, stop)
-	if err != nil {
-		log.Info("Failed to trigger beacon sync", "err", err)
-		return err
-	}
-
-	ticker := time.NewTicker(time.Second * 5)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			block := b.chain.Ether().BlockChain().GetBlockByHash(target)
-			if block != nil {
-				log.Info("Sync target reached", "number", block.NumberU64(), "hash", block.Hash())
-				return nil
-			}
-		}
-		if system.InterruptRequested(b.consensus.Interrupt()) {
-			return errors.New("System interrupt")
-		}
-		if b.IsShutdown() {
-			return errors.New("MeerChain is shutdown")
-		}
-	}
+func (b *MeerChain) Ether() *eeth.Ethereum {
+	return b.chain.Ether()
 }
 
 func (b *MeerChain) APIs() []api.API {

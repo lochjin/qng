@@ -7,8 +7,8 @@ import "github.com/Qitmeer/qng/p2p/proto/v1/message.proto";
 
 
 message Locator {
-  Hash block =1;
-  Hash root=2;
+  Hash block = 1;
+  Hash root = 2;
 }
 
 message TransferData {
@@ -21,11 +21,12 @@ message TransferData {
 }
 
 message SnapSyncReq {
-  Locator target =1;
+  Locator target = 1;
   repeated Locator locator =2 [(gogoproto.moretags) = "ssz-max:\"32\""];
 }
 
 message SnapSyncRsp {
-  Locator target =1;
-  repeated TransferData datas =2 [(gogoproto.moretags) = "ssz-max:\"2000\""];
+  Locator target = 1;
+  Hash evm = 2;
+  repeated TransferData datas = 3 [(gogoproto.moretags) = "ssz-max:\"2000\""];
 }

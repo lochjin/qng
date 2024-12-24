@@ -4,13 +4,15 @@ import (
 	"container/list"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/ethereum/go-ethereum/core/state"
 	"sync"
 )
 
 // This parameter can be set according to the size of TCP package(1500) to ensure the transmission stability of the network
 const MaxMainLocatorNum = 32
 
-const MaxSnapSyncTargetDepth = 1000
+const MaxSnapSyncTargetDepth = 20000
+const SnapSyncEVMTargetValve = state.TriesInMemory / 3
 
 // Synchronization mode
 type SyncMode byte
@@ -242,6 +244,41 @@ func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, ta
 	ds.bd.stateLock.Lock()
 	defer ds.bd.stateLock.Unlock()
 
+	mp := ds.bd.getMainChainTip()
+	// get target
+	if mp.GetOrder() < MaxSnapSyncTargetDepth {
+		return nil, nil, fmt.Errorf("No blocks for snap-sync:%d", mp.GetOrder())
+	}
+	var targetBlock IBlock
+	if target != nil {
+		targetBlock = ds.bd.getBlock(target.block)
+		if targetBlock == nil {
+			return nil, nil, fmt.Errorf("No target:%s", target.block.String())
+		}
+		if targetBlock.GetState().GetEVMNumber()+SnapSyncEVMTargetValve < mp.GetState().GetEVMNumber() {
+			targetBlock = nil
+		} else {
+			if len(locator) == 1 && locator[0].block.IsEqual(target.block) {
+				return nil, targetBlock, nil
+			}
+		}
+	}
+	if targetBlock == nil {
+		for targetOrder := mp.GetOrder() - StableConfirmations; targetOrder > 0; targetOrder-- {
+			targetID := ds.bd.getBlockIDByOrder(targetOrder)
+			if ds.bd.isOnMainChain(targetID) {
+				targetBlock = ds.bd.getBlockById(targetID)
+				if targetBlock != nil {
+					break
+				}
+			}
+		}
+	}
+
+	if targetBlock == nil {
+		return nil, nil, fmt.Errorf("No blocks for snap-sync:%d", mp.GetOrder())
+	}
+
 	if target != nil {
 		if len(locator) != 1 {
 			return nil, nil, fmt.Errorf("Locator len error")
@@ -253,29 +290,10 @@ func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, ta
 		if !point.GetState().Root().IsEqual(locator[0].root) {
 			return nil, nil, fmt.Errorf("Target root inconsistent:%s != %s", point.GetState().Root().String(), locator[0].root.String())
 		}
-		targetBlock := ds.bd.getBlock(target.block)
-		if targetBlock == nil {
-			return nil, nil, fmt.Errorf("No target:%s", target.block.String())
-		}
 		if point.GetOrder() >= targetBlock.GetOrder() {
 			return nil, nil, fmt.Errorf("Start point is invalid:%d >= %d(target)", point.GetOrder(), targetBlock.GetOrder())
 		}
-		return ds.getBlockChainForSnapSync(point, targetBlock, maxHashes), nil, nil
-	}
-	// get target
-	mp := ds.bd.getMainChainTip()
-	if mp.GetOrder() <= MaxSnapSyncTargetDepth {
-		return nil, nil, fmt.Errorf("No blocks for snap-sync:%d", mp.GetOrder())
-	}
-	var targetBlock IBlock
-	for targetOrder := mp.GetOrder() - MaxSnapSyncTargetDepth; targetOrder > 0; targetOrder-- {
-		targetID := ds.bd.getBlockIDByOrder(targetOrder)
-		if ds.bd.isOnMainChain(targetID) {
-			targetBlock = ds.bd.getBlockById(targetID)
-			if targetBlock != nil {
-				break
-			}
-		}
+		return ds.getBlockChainForSnapSync(point, targetBlock, maxHashes), targetBlock, nil
 	}
 
 	var point IBlock

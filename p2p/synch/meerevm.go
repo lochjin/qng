@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/peers"
+	ecommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"time"
 )
 
 func (s *Sync) establishMeerConnection(pe *peers.Peer) error {
@@ -110,4 +112,49 @@ func (s *Sync) registerMeerConnection() {
 			return
 		}
 	})
+}
+
+func (ps *PeerSync) meerSync(target chan ecommon.Hash, result chan error) {
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	var tar ecommon.Hash
+
+	for {
+		if !ps.IsRunning() {
+			result <- errors.New("Quit meerevm sync")
+			return
+		}
+		if ps.snapStatus.IsEVMCompleted() {
+			result <- nil
+			return
+		}
+		select {
+		case tar = <-target:
+			if tar == (ecommon.Hash{}) {
+				continue
+			}
+			err := ps.sy.p2p.BlockChain().MeerChain().Downloader().SyncQngWaitPeers(ps.sy.p2p.BlockChain().MeerChain().SyncMode(), tar, ps.quit)
+			if err != nil {
+				log.Info("Failed to trigger beacon sync", "err", err)
+				continue
+			}
+		case <-ticker.C:
+			if tar == (ecommon.Hash{}) {
+				continue
+			}
+			block := ps.sy.p2p.BlockChain().MeerChain().Ether().BlockChain().GetBlockByHash(tar)
+			if block != nil {
+				ps.snapStatus.CompleteEVM()
+				log.Info("Sync target reached", "number", block.NumberU64(), "hash", block.Hash())
+				result <- nil
+				return
+			}
+		case <-ps.quit:
+			result <- errors.New("Quit meerevm sync")
+			return
+		}
+
+	}
+
 }

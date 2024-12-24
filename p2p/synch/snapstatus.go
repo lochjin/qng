@@ -2,23 +2,25 @@ package synch
 
 import (
 	"bytes"
+	j "encoding/json"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/core/json"
 	s "github.com/Qitmeer/qng/core/serialization"
 	"github.com/Qitmeer/qng/meerdag"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"sync"
 )
 
 type SnapStatus struct {
-	locker *sync.RWMutex
-
 	targetBlock  *hash.Hash
 	stateRoot    *hash.Hash
+	evm          common.Hash
 	peid         peer.ID
+	pointID      uint64
 	evmCompleted bool
 
-	PointID   uint64
+	locker    *sync.RWMutex
 	syncPoint meerdag.IBlock
 }
 
@@ -41,12 +43,14 @@ func (s *SnapStatus) ToInfo() *json.SnapSyncInfo {
 			PeerID:      "initializing",
 			TargetBlock: "initializing",
 			StateRoot:   "initializing",
+			Evm:         "initializing",
 		}
 	}
 	info := &json.SnapSyncInfo{
 		PeerID:      s.peid.String(),
 		TargetBlock: s.targetBlock.String(),
 		StateRoot:   s.stateRoot.String(),
+		Evm:         s.evm.String(),
 	}
 	if s.syncPoint != nil {
 		info.Point = s.syncPoint.GetHash().String()
@@ -55,6 +59,14 @@ func (s *SnapStatus) ToInfo() *json.SnapSyncInfo {
 	info.EVMCompleted = s.evmCompleted
 	info.Completed = s.isCompleted()
 	return info
+}
+
+func (s *SnapStatus) ToString() string {
+	str, err := j.Marshal(s.ToInfo())
+	if err != nil {
+		return err.Error()
+	}
+	return string(str)
 }
 
 func (s *SnapStatus) PeerID() peer.ID {
@@ -134,6 +146,24 @@ func (s *SnapStatus) getTarget() (*hash.Hash, *hash.Hash) {
 	return s.targetBlock, s.stateRoot
 }
 
+func (s *SnapStatus) SetEVMTarget(evm common.Hash) {
+	s.locker.Lock()
+	defer s.locker.Unlock()
+
+	if evm == s.evm {
+		return
+	}
+	log.Info("Snap status set new evm target", "old", s.evm.String(), "new", evm.String())
+	s.evm = evm
+}
+
+func (s *SnapStatus) GetEVMTarget() common.Hash {
+	s.locker.RLock()
+	defer s.locker.RUnlock()
+
+	return s.evm
+}
+
 func (s *SnapStatus) GetSyncPoint() meerdag.IBlock {
 	s.locker.RLock()
 	defer s.locker.RUnlock()
@@ -154,7 +184,14 @@ func (s *SnapStatus) SetSyncPoint(point meerdag.IBlock) {
 
 func (s *SnapStatus) setSyncPoint(point meerdag.IBlock) {
 	s.syncPoint = point
-	s.PointID = uint64(point.GetID())
+	s.pointID = uint64(point.GetID())
+}
+
+func (s *SnapStatus) GetSyncPointID() uint64 {
+	s.locker.RLock()
+	defer s.locker.RUnlock()
+
+	return s.pointID
 }
 
 func (s *SnapStatus) IsCompleted() bool {
@@ -218,11 +255,19 @@ func (ss *SnapStatus) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = s.WriteElements(w, ss.PointID)
+	err = s.WriteElements(w, ss.pointID)
 	if err != nil {
 		return nil, err
 	}
 	err = s.WriteElements(w, ss.evmCompleted)
+	if err != nil {
+		return nil, err
+	}
+	err = s.WriteElements(w, uint32(len(ss.evm)))
+	if err != nil {
+		return nil, err
+	}
+	_, err = w.Write(ss.evm.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +304,7 @@ func (ss *SnapStatus) Decode(data []byte) error {
 	if err != nil {
 		return err
 	}
-	err = s.ReadElements(r, &ss.PointID)
+	err = s.ReadElements(r, &ss.pointID)
 	if err != nil {
 		return err
 	}
@@ -267,6 +312,17 @@ func (ss *SnapStatus) Decode(data []byte) error {
 	if err != nil {
 		return err
 	}
+	var hashSize uint32
+	err = s.ReadElements(r, &hashSize)
+	if err != nil {
+		return err
+	}
+	evm := make([]byte, peidSize)
+	_, err = r.Read(evm)
+	if err != nil {
+		return err
+	}
+	ss.evm = common.BytesToHash(evm)
 	return nil
 }
 
