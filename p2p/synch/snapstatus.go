@@ -317,7 +317,7 @@ func (ss *SnapStatus) Decode(data []byte) error {
 	if err != nil {
 		return err
 	}
-	evm := make([]byte, peidSize)
+	evm := make([]byte, hashSize)
 	_, err = r.Read(evm)
 	if err != nil {
 		return err
