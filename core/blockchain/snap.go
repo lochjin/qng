@@ -73,6 +73,9 @@ func (b *BlockChain) SetSnapSyncing(val bool) {
 }
 
 func (b *BlockChain) BeginSnapSyncing() error {
+	if b.IsSnapSyncing() {
+		return nil
+	}
 	b.SetSnapSyncing(true)
 	for {
 		size := b.ProcessQueueSize()

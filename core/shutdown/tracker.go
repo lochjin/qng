@@ -2,6 +2,7 @@ package shutdown
 
 import (
 	"fmt"
+	"github.com/Qitmeer/qng/common/util"
 	"os"
 	"path"
 )
@@ -16,7 +17,7 @@ func (t *Tracker) Check() error {
 	if !Exists(t.filePath) {
 		return nil
 	}
-	bhbs, err := ReadFile(t.filePath)
+	bhbs, err := util.ReadFile(t.filePath)
 	if err != nil {
 		return err
 	}
@@ -65,19 +66,4 @@ func Exists(path string) bool {
 		return os.IsExist(err)
 	}
 	return true
-}
-
-func ReadFile(path string) ([]byte, error) {
-	_, err := os.Stat(path)
-	if err != nil {
-		if !os.IsExist(err) {
-			return nil, err
-		}
-	}
-
-	ba, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return ba, nil
 }

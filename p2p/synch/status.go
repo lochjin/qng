@@ -56,6 +56,9 @@ func (s *Sync) maintainPeerStatuses() {
 				if pe.QNR() == nil && time.Since(pe.ConnectionTime()) > ReconnectionTime && s.p2p.Node() != nil {
 					s.peerSync.SyncQNR(pe, s.p2p.Node().String())
 				}
+				if !s.peerSync.checkMeerConnection(pe) {
+					go s.peerSync.establishMeerConnection(pe)
+				}
 			}(pid)
 		}
 		for _, pid := range s.Peers().Disconnected() {

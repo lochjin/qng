@@ -124,6 +124,7 @@ type SnapSyncInfo struct {
 	PeerID       string `json:"peerid"`
 	TargetBlock  string `json:"targetblock"`
 	StateRoot    string `json:"stateroot"`
+	Evm          string `json:"evm"`
 	Point        string `json:"point,omitempty"`
 	PointOrder   uint64 `json:"pointorder,omitempty"`
 	EVMCompleted bool   `json:"evmcompleted,omitempty"`
