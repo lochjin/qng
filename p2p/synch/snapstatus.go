@@ -66,6 +66,10 @@ func (s *SnapStatus) ToString() string {
 	if err != nil {
 		return err.Error()
 	}
+	maxSize := 64 * 1024 * 1024
+	if len(str) >= maxSize {
+		return string(str[:maxSize])
+	}
 	return string(str)
 }
 
