@@ -189,6 +189,12 @@ cleanup:
 			go ps.TryAgainUpdateSyncPeer(false)
 		}
 		ps.saveSnapSync()
+		if ps.snapStatus.IsCompleted() {
+			err := ps.sy.p2p.BlockChain().PrepareEnvironment()
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
 	}
 	defer endSnapSyncing()
 
