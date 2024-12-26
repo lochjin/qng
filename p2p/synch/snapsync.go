@@ -188,6 +188,7 @@ cleanup:
 		} else {
 			go ps.TryAgainUpdateSyncPeer(false)
 		}
+		ps.saveSnapSync()
 	}
 	defer endSnapSyncing()
 
