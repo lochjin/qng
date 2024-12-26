@@ -80,6 +80,7 @@ type DataBase interface {
 	DeleteEstimateFee() error
 	Snapshot() error
 	SnapshotInfo() string
+	SaveSnapshot() error
 	DBEngine() string
 	StartTrack(info string) error
 	StopTrack() error

@@ -2,6 +2,7 @@ package legacychaindb
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/common/system"
@@ -130,6 +131,10 @@ func (cdb *LegacyChainDB) Snapshot() error {
 
 func (cdb *LegacyChainDB) SnapshotInfo() string {
 	return "No support"
+}
+
+func (cdb *LegacyChainDB) SaveSnapshot() error {
+	return errors.New("No support")
 }
 
 func (cdb *LegacyChainDB) Rebuild(mgr model.IndexManager) error {
