@@ -183,13 +183,14 @@ cleanup:
 			bestPeer.UpdateSyncPoint(sp.GetHash())
 			log.Debug("Snap-sync update sync point", "point", sp.GetHash().String())
 		}
-		if ps.snapStatus.IsCompleted() {
+		isCompleted := ps.snapStatus.IsCompleted()
+		if isCompleted {
 			ps.snapStatus = nil
 		} else {
 			go ps.TryAgainUpdateSyncPeer(false)
 		}
 		ps.saveSnapSync()
-		if ps.snapStatus.IsCompleted() {
+		if isCompleted {
 			err := ps.sy.p2p.BlockChain().PrepareEnvironment()
 			if err != nil {
 				log.Error(err.Error())
