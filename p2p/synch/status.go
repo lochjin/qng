@@ -57,7 +57,11 @@ func (s *Sync) maintainPeerStatuses() {
 					s.peerSync.SyncQNR(pe, s.p2p.Node().String())
 				}
 				if !s.peerSync.checkMeerConnection(pe) {
-					go s.peerSync.establishMeerConnection(pe)
+					go func() {
+						pe.HSlock.Lock()
+						defer pe.HSlock.Unlock()
+						s.peerSync.establishMeerConnection(pe)
+					}()
 				}
 			}(pid)
 		}
