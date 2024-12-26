@@ -1,6 +1,7 @@
 package chaindb
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/config"
@@ -90,6 +91,13 @@ func (cdb *ChainDB) SnapshotInfo() string {
 		return "not active"
 	}
 	return fmt.Sprintf("mem=%s,objects=%d", cdb.diff.memorySize().String(), cdb.diff.objects())
+}
+
+func (cdb *ChainDB) SaveSnapshot() error {
+	if cdb.diff == nil {
+		return errors.New("not active")
+	}
+	return cdb.diff.flatten()
 }
 
 // wrapDatabase ensures the database will be auto-closed when Node is closed.

@@ -269,6 +269,10 @@ func (api *PublicBlockChainAPI) GetDatabaseInfo() (interface{}, error) {
 	return ret, nil
 }
 
+func (api *PublicBlockChainAPI) SaveSnapshot() (interface{}, error) {
+	return nil, api.node.db.SaveSnapshot()
+}
+
 func (api *PublicBlockChainAPI) GetChainInfo(lastCount int, start *int64, end *int64) (interface{}, error) {
 	if !api.node.GetPeerServer().IsNearlySynced() {
 		return nil, fmt.Errorf("Busy, try again later")

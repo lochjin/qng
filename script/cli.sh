@@ -847,6 +847,11 @@ function database_info(){
   get_result "$data"
 }
 
+function save_snapshot(){
+  local data='{"jsonrpc":"2.0","method":"saveSnapshot","params":[],"id":1}'
+  get_result "$data"
+}
+
 function get_stateroot(){
   local order=$1
   local verbose=$2
@@ -949,6 +954,7 @@ function usage(){
   echo "  daginfo"
   echo "  chaininfo <count> <start> <end>"
   echo "  dbinfo"
+  echo "  savesnapshot"
   echo "  config"
   echo "  calcExportSig"
   echo "  calcUTXOSig"
@@ -1709,6 +1715,9 @@ elif [ "$1" == "chaininfo" ]; then
 elif [ "$1" == "dbinfo" ]; then
   shift
   database_info $@
+elif [ "$1" == "savesnapshot" ]; then
+  shift
+  save_snapshot $@
 
 elif [ "$1" == "stateroot" ]; then
   shift

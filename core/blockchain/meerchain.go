@@ -230,3 +230,14 @@ func (bc *BlockChain) connectVMTransaction(tx *types.Tx, vmtx *mmeer.VMTx, stxos
 	}
 	return nil
 }
+
+func (b *BlockChain) PrepareEnvironment() error {
+	// prepare evm env
+	mainTip := b.bd.GetMainChainTip()
+	evmHead, err := b.meerChain.PrepareEnvironment(mainTip.GetState())
+	if err != nil {
+		return err
+	}
+	log.Info("prepare evm environment", "mainTipOrder", mainTip.GetOrder(), "mainTipHash", mainTip.GetHash().String(), "hash", evmHead.Hash().String(), "number", evmHead.Number.Uint64(), "root", evmHead.Root.String())
+	return nil
+}
