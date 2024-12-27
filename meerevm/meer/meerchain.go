@@ -39,6 +39,7 @@ import (
 	"github.com/holiman/uint256"
 	"math/big"
 	"reflect"
+	"sync"
 )
 
 const (
@@ -55,6 +56,8 @@ type MeerChain struct {
 	block   *mmeer.Block
 	ddProxy *proxy.DeterministicDeploymentProxy
 	client  *ethclient.Client
+
+	locker sync.RWMutex
 }
 
 func (b *MeerChain) Start() error {
@@ -402,7 +405,7 @@ func (b *MeerChain) ETHChain() *eth.ETHChain {
 func (b *MeerChain) prepareEnvironment(state model.BlockState) (*types.Header, error) {
 	curBlockHeader := b.chain.Ether().BlockChain().CurrentBlock()
 	if curBlockHeader.Number.Uint64() > state.GetEVMNumber() {
-		err := b.RewindTo(state)
+		err := b.rewindTo(state)
 		if err != nil {
 			return nil, err
 		}
@@ -499,10 +502,20 @@ func (b *MeerChain) prepareEnvironment(state model.BlockState) (*types.Header, e
 }
 
 func (b *MeerChain) PrepareEnvironment(state model.BlockState) (*types.Header, error) {
+	b.locker.Lock()
+	defer b.locker.Unlock()
+
 	return b.prepareEnvironment(state)
 }
 
 func (b *MeerChain) RewindTo(state model.BlockState) error {
+	b.locker.Lock()
+	defer b.locker.Unlock()
+
+	return b.rewindTo(state)
+}
+
+func (b *MeerChain) rewindTo(state model.BlockState) error {
 	curBlockHeader := b.chain.Ether().BlockChain().CurrentBlock()
 	if curBlockHeader.Number.Uint64() <= state.GetEVMNumber() {
 		return nil
