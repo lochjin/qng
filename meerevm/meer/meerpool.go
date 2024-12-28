@@ -215,6 +215,7 @@ func (m *MeerPool) updateTemplate(force bool) error {
 	m.snapshotMu.Lock()
 	if m.snapshotBlock != nil && !force {
 		if parentHash == m.snapshotBlock.ParentHash() {
+			m.snapshotMu.Unlock()
 			return nil
 		}
 	}
