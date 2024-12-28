@@ -163,7 +163,7 @@ func (ps *PeerSync) Disconnected(pid peer.ID, conn network.Conn) {
 	}
 
 	//ps.msgChan <- &DisconnectedMsg{ID: pid, Conn: conn}
-	//go ps.processDisconnected(&DisconnectedMsg{ID: pid, Conn: conn})
+	go ps.processDisconnected(&DisconnectedMsg{ID: pid, Conn: conn})
 }
 
 func (ps *PeerSync) processDisconnected(msg *DisconnectedMsg) {

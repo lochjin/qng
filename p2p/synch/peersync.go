@@ -223,6 +223,9 @@ func (ps *PeerSync) OnPeerConnected(pe *peers.Peer) {
 }
 
 func (ps *PeerSync) OnPeerDisconnected(pe *peers.Peer) {
+	if ps.IsSnapSync() {
+		return
+	}
 	if ps.HasSyncPeer() {
 		if ps.isSyncPeer(pe) {
 			ps.TryAgainUpdateSyncPeer(true)
