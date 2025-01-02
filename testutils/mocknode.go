@@ -240,7 +240,7 @@ func (mn *MockNode) GetPrivateWalletManagerAPI() *wallet.PrivateWalletManagerAPI
 
 func (mn *MockNode) GetEvmClient() *ethclient.Client {
 	if mn.evmClient == nil {
-		mn.evmClient = ethclient.NewClient(mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.MeerChain).ETHChain().Node().Attach())
+		mn.evmClient = mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.MeerChain).Client()
 	}
 	return mn.evmClient
 }

@@ -346,13 +346,13 @@ func (api *PrivateP2PAPI) RemoveBan(id *string) (interface{}, error) {
 	return true, nil
 }
 
-func (api *PrivateP2PAPI) CheckConsistency(hashOrNumber string) (interface{}, error) {
-	hn, err := protocol.NewHashOrNumber(hashOrNumber)
+func (a *PrivateP2PAPI) CheckConsistency(hashOrNumber string) (interface{}, error) {
+	hn, err := api.NewHashOrNumber(hashOrNumber)
 	if err != nil {
 		log.Warn("Will use the default block", "error", err.Error())
-		return api.s.sy.CheckConsistency(nil)
+		return a.s.sy.CheckConsistency(nil)
 	}
-	return api.s.sy.CheckConsistency(hn)
+	return a.s.sy.CheckConsistency(hn)
 }
 
 func (api *PrivateP2PAPI) DisableRelayTx(dis bool) (interface{}, error) {
