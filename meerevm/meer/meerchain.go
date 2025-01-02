@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/txpool"
@@ -727,6 +728,14 @@ func (b *MeerChain) CheckState(blockNrOrHash *api.HashOrNumber) bool {
 
 func (b *MeerChain) HasState(root common.Hash) bool {
 	return b.Ether().BlockChain().HasState(root)
+}
+
+func (b *MeerChain) GetPivot() uint64 {
+	pivot := rawdb.ReadLastPivotNumber(b.Ether().ChainDb())
+	if pivot == nil {
+		return 0
+	}
+	return *pivot
 }
 
 func (b *MeerChain) APIs() []api.API {

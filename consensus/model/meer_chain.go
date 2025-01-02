@@ -21,4 +21,5 @@ type MeerChain interface {
 	Synced() bool
 	SetSynced()
 	HasState(root common.Hash) bool
+	GetPivot() uint64
 }

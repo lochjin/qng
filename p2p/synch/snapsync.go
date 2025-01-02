@@ -86,7 +86,9 @@ func (ps *PeerSync) GetSnapSyncInfo() *json.SnapSyncInfo {
 	if !ps.IsSnapSync() {
 		return nil
 	}
-	return ps.snapStatus.ToInfo()
+	info := ps.snapStatus.ToInfo()
+	info.Pivot = ps.Chain().MeerChain().GetPivot()
+	return info
 }
 
 func (ps *PeerSync) startSnapSync() bool {
