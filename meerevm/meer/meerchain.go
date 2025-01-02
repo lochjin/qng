@@ -708,6 +708,10 @@ func (b *MeerChain) Ether() *eeth.Ethereum {
 	return b.chain.Ether()
 }
 
+func (b *MeerChain) Client() *ethclient.Client {
+	return b.client
+}
+
 func (b *MeerChain) APIs() []api.API {
 	return append([]api.API{
 		{

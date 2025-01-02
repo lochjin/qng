@@ -1,11 +1,14 @@
 package meer
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"github.com/Qitmeer/qng/meerevm/meer/meerchange"
 	"github.com/Qitmeer/qng/params"
+	rpcapi "github.com/Qitmeer/qng/rpc/api"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	"math"
 )
 
@@ -91,6 +94,24 @@ func (api *PublicMeerChainAPI) DeployMeerChange(owner common.Address) (interface
 		return nil, err
 	}
 	return txHash.String(), nil
+}
+
+func (api *PublicMeerChainAPI) HasMeerState(hashOrNumber string) (interface{}, error) {
+	hn, err := rpcapi.NewHashOrNumber(hashOrNumber)
+	if err != nil {
+		return false, err
+	}
+	var nh rpc.BlockNumberOrHash
+	if hn.IsHash() {
+		nh = rpc.BlockNumberOrHashWithHash(common.HexToHash(hn.Hash.String()), true)
+	} else {
+		nh = rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(hn.Number))
+	}
+	_, _, err = api.mc.chain.Backend().StateAndHeaderByNumberOrHash(context.Background(), nh)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 type PrivateMeerChainAPI struct {

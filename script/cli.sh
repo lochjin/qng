@@ -624,6 +624,16 @@ function get_meer_info(){
   get_result "$data"
 }
 
+function has_meerstate(){
+  local hashOrNum=$1
+  if [ "$hashOrNum" == "" ]; then
+    hashOrNum="latest"
+  fi
+
+  local data='{"jsonrpc":"2.0","method":"hasMeerState","params":["'$hashOrNum'"],"id":null}'
+  get_result "$data"
+}
+
 function calcExportSig(){
   local txid=$1
   local idx=$2
@@ -941,6 +951,7 @@ function usage(){
   echo "  subsidy"
   echo "  estimateBlocksMined <start> <height>"
   echo "  meerinfo"
+  echo "  hasmeerstate <hashOrNum>"
   echo "  amanainfo"
   echo "  amanapeerinfo"
   echo "  acctinfo"
@@ -1529,6 +1540,9 @@ elif [ "$1" == "minerinfo" ]; then
 elif [ "$1" == "meerinfo" ]; then
   shift
   get_meer_info $@
+elif [ "$1" == "hasmeerstate" ]; then
+  shift
+  has_meerstate $@
 elif [ "$1" == "calcExportSig" ]; then
   shift
   calcExportSig $@

@@ -7,13 +7,14 @@ import (
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
+	"github.com/Qitmeer/qng/rpc/api"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 // Check data consistency
-func (s *Sync) CheckConsistency(hashOrOrder *protocol.HashOrNumber) (string, error) {
+func (s *Sync) CheckConsistency(hashOrOrder *api.HashOrNumber) (string, error) {
 	if !s.p2p.Config().Consistency {
 		return "", fmt.Errorf("Please enable --consistency")
 	}
