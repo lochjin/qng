@@ -1,14 +1,12 @@
 package meer
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"github.com/Qitmeer/qng/meerevm/meer/meerchange"
 	"github.com/Qitmeer/qng/params"
 	rpcapi "github.com/Qitmeer/qng/rpc/api"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
 	"math"
 )
 
@@ -101,15 +99,8 @@ func (api *PublicMeerChainAPI) HasMeerState(hashOrNumber string) (interface{}, e
 	if err != nil {
 		return false, err
 	}
-	var nh rpc.BlockNumberOrHash
-	if hn.IsHash() {
-		nh = rpc.BlockNumberOrHashWithHash(common.HexToHash(hn.Hash.String()), true)
-	} else {
-		nh = rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(hn.Number))
-	}
-	_, _, err = api.mc.chain.Backend().StateAndHeaderByNumberOrHash(context.Background(), nh)
-	if err != nil {
-		return false, err
+	if !api.mc.CheckState(hn) {
+		return false, fmt.Errorf("No meer state at:%s", hashOrNumber)
 	}
 	return true, nil
 }

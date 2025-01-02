@@ -712,6 +712,23 @@ func (b *MeerChain) Client() *ethclient.Client {
 	return b.client
 }
 
+func (b *MeerChain) CheckState(blockNrOrHash *api.HashOrNumber) bool {
+	var head *types.Header
+	if blockNrOrHash.IsHash() {
+		head = b.Ether().BlockChain().GetHeaderByHash(blockNrOrHash.EVM)
+	} else {
+		head = b.Ether().BlockChain().GetHeaderByNumber(uint64(blockNrOrHash.Number))
+	}
+	if head == nil {
+		return false
+	}
+	return b.HasState(head.Root)
+}
+
+func (b *MeerChain) HasState(root common.Hash) bool {
+	return b.Ether().BlockChain().HasState(root)
+}
+
 func (b *MeerChain) APIs() []api.API {
 	return append([]api.API{
 		{
