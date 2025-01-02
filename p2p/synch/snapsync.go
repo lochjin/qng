@@ -211,12 +211,16 @@ cleanup:
 
 	lastEvmTarget := ps.snapStatus.GetEVMTarget()
 
+	onlyEvmFirst := false
+	if ps.snapStatus.IsPointCompleted() && !ps.snapStatus.IsEVMCompleted() {
+		onlyEvmFirst = true
+	}
 	for !ps.snapStatus.IsCompleted() {
 		if !ps.IsRunning() {
 			log.Warn("Snap-sync exit midway")
 			return true
 		}
-		if ps.snapStatus.IsPointCompleted() {
+		if ps.snapStatus.IsPointCompleted() && !onlyEvmFirst {
 			select {
 			case <-time.After(qparams.ActiveNetParams.TargetTimePerBlock * meerdag.SnapSyncEVMTargetValve):
 				log.Debug("Try to compare target for snap-sync")
@@ -246,10 +250,12 @@ cleanup:
 			log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 		}
 		if !ps.snapStatus.IsEVMCompleted() {
-			if lastEvmTarget != ps.snapStatus.GetEVMTarget() &&
-				ps.snapStatus.GetEVMTarget() != (ecommon.Hash{}) {
+			if (lastEvmTarget != ps.snapStatus.GetEVMTarget() && ps.snapStatus.GetEVMTarget() != (ecommon.Hash{})) || onlyEvmFirst {
 				lastEvmTarget = ps.snapStatus.GetEVMTarget()
 				evmTarget <- ps.snapStatus.GetEVMTarget()
+				if onlyEvmFirst {
+					onlyEvmFirst = false
+				}
 			}
 		}
 	}

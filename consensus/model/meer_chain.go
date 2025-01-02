@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/rpc/api"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/downloader"
@@ -19,4 +20,5 @@ type MeerChain interface {
 	GetCurHeader() *types.Header
 	Synced() bool
 	SetSynced()
+	HasState(root common.Hash) bool
 }
