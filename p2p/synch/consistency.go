@@ -8,6 +8,7 @@ import (
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	"github.com/Qitmeer/qng/rpc/api"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,7 +29,11 @@ func (s *Sync) CheckConsistency(hashOrOrder *api.HashOrNumber) (string, error) {
 		if hashOrOrder.IsHash() {
 			block = s.p2p.BlockChain().BlockDAG().GetBlock(hashOrOrder.Hash)
 		} else {
-			block = s.p2p.BlockChain().BlockDAG().GetBlockByOrder(uint(hashOrOrder.Number))
+			order := uint(0)
+			if hashOrOrder.Number < math.MaxUint {
+				order = uint(hashOrOrder.Number)
+			}
+			block = s.p2p.BlockChain().BlockDAG().GetBlockByOrder(order)
 		}
 		if block == nil {
 			return "", fmt.Errorf("No block:%v\n", hashOrOrder)
