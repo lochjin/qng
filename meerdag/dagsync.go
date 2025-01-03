@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/ethereum/go-ethereum/core/state"
 	"sync"
 )
@@ -240,37 +241,58 @@ func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) []*hash.H
 	return result
 }
 
-func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, target *SnapLocator) ([]IBlock, IBlock, error) {
+func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, target *SnapLocator, hasMeerState func(*api.HashOrNumber) bool) ([]IBlock, IBlock, error) {
 	ds.bd.stateLock.Lock()
 	defer ds.bd.stateLock.Unlock()
 
 	mp := ds.bd.getMainChainTip()
 	// get target
 	if mp.GetOrder() < MaxSnapSyncTargetDepth {
-		return nil, nil, fmt.Errorf("No blocks for snap-sync:%d", mp.GetOrder())
+		return nil, nil, fmt.Errorf("No blocks for snap-sync:order=%d", mp.GetOrder())
+	}
+	if mp.GetState().GetEVMNumber() < state.TriesInMemory {
+		return nil, nil, fmt.Errorf("No blocks for snap-sync:number=%d", mp.GetState().GetEVMNumber())
 	}
 	var targetBlock IBlock
+	var oldTargetBlock IBlock
 	if target != nil {
 		targetBlock = ds.bd.getBlock(target.block)
 		if targetBlock == nil {
 			return nil, nil, fmt.Errorf("No target:%s", target.block.String())
 		}
-		if targetBlock.GetState().GetEVMNumber()+SnapSyncEVMTargetValve < mp.GetState().GetEVMNumber() {
+		if !hasMeerState(api.NewHashOrNumberByNumber(CalculatePivot(targetBlock.GetState().GetEVMNumber()))) {
+			oldTargetBlock = targetBlock
 			targetBlock = nil
-		} else {
-			if len(locator) == 1 && locator[0].block.IsEqual(target.block) {
-				return nil, targetBlock, nil
+		}
+		if targetBlock != nil {
+			if mp.GetOrder()-targetBlock.GetOrder() >= MaxSnapSyncTargetDepth {
+				oldTargetBlock = targetBlock
+				targetBlock = nil
+			} else {
+				if len(locator) == 1 && locator[0].block.IsEqual(target.block) {
+					return nil, targetBlock, nil
+				}
 			}
 		}
 	}
 	if targetBlock == nil {
 		for targetOrder := mp.GetOrder() - StableConfirmations; targetOrder > 0; targetOrder-- {
-			targetID := ds.bd.getBlockIDByOrder(targetOrder)
-			if ds.bd.isOnMainChain(targetID) {
-				targetBlock = ds.bd.getBlockById(targetID)
-				if targetBlock != nil {
+			if oldTargetBlock != nil {
+				if targetOrder < oldTargetBlock.GetOrder() {
 					break
 				}
+			}
+			targetID := ds.bd.getBlockIDByOrder(targetOrder)
+			if ds.bd.isOnMainChain(targetID) {
+				targetB := ds.bd.getBlockById(targetID)
+				if targetB == nil {
+					continue
+				}
+				if !hasMeerState(api.NewHashOrNumberByNumber(CalculatePivot(targetB.GetState().GetEVMNumber()))) {
+					continue
+				}
+				targetBlock = targetB
+				break
 			}
 		}
 	}
@@ -349,4 +371,8 @@ func NewSnapLocator(block *hash.Hash, root *hash.Hash) *SnapLocator {
 		block: block,
 		root:  root,
 	}
+}
+
+func CalculatePivot(number uint64) uint64 {
+	return number - state.TriesInMemory/2
 }

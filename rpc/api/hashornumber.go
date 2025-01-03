@@ -11,7 +11,7 @@ import (
 type HashOrNumber struct {
 	Hash   *hash.Hash
 	EVM    common.Hash
-	Number uint32
+	Number uint64
 }
 
 func (hn *HashOrNumber) IsHash() bool {
@@ -39,9 +39,9 @@ func NewHashOrNumber(data string) (*HashOrNumber, error) {
 		EVM:    common.Hash{},
 		Number: 0,
 	}
-	num, err := strconv.ParseUint(data, 10, 32)
+	num, err := strconv.ParseUint(data, 10, 64)
 	if err == nil {
-		hn.Number = uint32(num)
+		hn.Number = num
 		return hn, nil
 	}
 	if qcommon.Has0xPrefix(data) {
@@ -54,4 +54,12 @@ func NewHashOrNumber(data string) (*HashOrNumber, error) {
 		hn.Hash = h
 	}
 	return hn, nil
+}
+
+func NewHashOrNumberByNumber(number uint64) *HashOrNumber {
+	return &HashOrNumber{
+		Hash:   nil,
+		EVM:    common.Hash{},
+		Number: number,
+	}
 }
