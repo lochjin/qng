@@ -465,7 +465,9 @@ func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool) (IBlock, e
 	bd.lastSnapshot.tips = bd.tips.Clone()
 	bd.lastSnapshot.lastTime = bd.lastTime
 	//
-	bd.blockTotal++
+	if newID == bd.blockTotal {
+		bd.blockTotal++
+	}
 
 	if len(parents) > 0 {
 		var maxLayer uint = 0
