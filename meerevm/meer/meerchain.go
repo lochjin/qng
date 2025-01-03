@@ -718,7 +718,7 @@ func (b *MeerChain) CheckState(blockNrOrHash *api.HashOrNumber) bool {
 	if blockNrOrHash.IsHash() {
 		head = b.Ether().BlockChain().GetHeaderByHash(blockNrOrHash.EVM)
 	} else {
-		head = b.Ether().BlockChain().GetHeaderByNumber(uint64(blockNrOrHash.Number))
+		head = b.Ether().BlockChain().GetHeaderByNumber(blockNrOrHash.Number)
 	}
 	if head == nil {
 		return false

@@ -16,6 +16,7 @@ import (
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	qparams "github.com/Qitmeer/qng/params"
 	ecommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	libp2pcore "github.com/libp2p/go-libp2p/core"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -224,7 +225,7 @@ cleanup:
 		}
 		if ps.snapStatus.IsPointCompleted() && !onlyEvmFirst {
 			select {
-			case <-time.After(qparams.ActiveNetParams.TargetTimePerBlock * meerdag.SnapSyncEVMTargetValve):
+			case <-time.After(qparams.ActiveNetParams.TargetTimePerBlock * state.TriesInMemory):
 				log.Debug("Try to compare target for snap-sync")
 			case <-ps.quit:
 				log.Warn("Snap-sync exit midway")
@@ -428,12 +429,12 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 		err := fmt.Errorf("message is not type *pb.SnapSyncReq")
 		return ErrMessage(err)
 	}
-	log.Debug("Received Snap-sync request", "peer", pe.GetID().String())
-	blocks, target, err := s.peerSync.dagSync.CalcSnapSyncBlocks(changePBLocatorsToLocators(m.Locator), MaxBlockLocatorsPerMsg, changePBLocatorToLocator(m.Target))
+	blocks, target, err := s.peerSync.dagSync.CalcSnapSyncBlocks(changePBLocatorsToLocators(m.Locator), MaxBlockLocatorsPerMsg, changePBLocatorToLocator(m.Target), s.peerSync.Chain().MeerChain().CheckState)
 	if err != nil {
 		log.Error(err.Error())
 		return ErrMessage(err)
 	}
+	log.Debug("Received Snap-sync request", "peer", pe.GetID().String(), "target", target.GetHash().String(), "number", target.GetState().GetEVMNumber(), "pivot", meerdag.CalculatePivot(target.GetState().GetEVMNumber()))
 	rsp := &pb.SnapSyncRsp{Datas: []*pb.TransferData{}}
 	rsp.Target = &pb.Locator{
 		Block: &pb.Hash{Hash: target.GetHash().Bytes()},
