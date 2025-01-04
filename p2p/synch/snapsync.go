@@ -371,7 +371,14 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 			if err != nil {
 				return nil, err
 			}
-			sd.SetDAGBlock(dblock)
+			var dagBIDs map[uint]*hash.Hash
+			if len(data.DagBIDs) > 0 {
+				dagBIDs = map[uint]*hash.Hash{}
+				for _, bid := range data.DagBIDs {
+					dagBIDs[uint(bid.Id)] = changePBHashToHash(bid.Block)
+				}
+			}
+			sd.SetDAGBlock(dblock, dagBIDs)
 		}
 		sd.SetMain(data.Main)
 		if len(data.TokenState) > 0 {
@@ -444,7 +451,7 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 
 	if len(blocks) > 0 {
 		for _, block := range blocks {
-			data := &pb.TransferData{}
+			data := &pb.TransferData{DagBIDs: []*pb.BlockID{}}
 			blkBytes, err := s.p2p.BlockChain().FetchBlockBytesByHash(block.GetHash())
 			if err != nil {
 				return ErrMessage(err)
@@ -457,7 +464,39 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 			}
 			data.Stxos = stxo
 
+			// process DAG block data
 			data.DagBlock = block.Bytes()
+			pblock, ok := block.(*meerdag.PhantomBlock)
+			if !ok {
+				err := fmt.Errorf("Not phantom block %s", block.GetHash().String())
+				log.Error(err.Error())
+				return ErrMessage(err)
+			}
+			if pblock.GetBlueDiffAnticoneSize() > 0 {
+				for k, _ := range pblock.GetBlueDiffAnticone().GetMap() {
+					bh := s.p2p.BlockChain().BlockDAG().GetBlockHash(k)
+					if bh == nil {
+						return ErrMessage(fmt.Errorf("No block hash:%d", k))
+					}
+					data.DagBIDs = append(data.DagBIDs, &pb.BlockID{
+						Block: &pb.Hash{Hash: bh.Bytes()},
+						Id:    uint32(k),
+					})
+				}
+			}
+			if pblock.GetRedDiffAnticoneSize() > 0 {
+				for k, _ := range pblock.GetRedDiffAnticone().GetMap() {
+					bh := s.p2p.BlockChain().BlockDAG().GetBlockHash(k)
+					if bh == nil {
+						return ErrMessage(fmt.Errorf("No block hash:%d", k))
+					}
+					data.DagBIDs = append(data.DagBIDs, &pb.BlockID{
+						Block: &pb.Hash{Hash: bh.Bytes()},
+						Id:    uint32(k),
+					})
+				}
+			}
+
 			data.Main = s.p2p.BlockChain().BlockDAG().IsOnMainChain(block.GetID())
 			ts := s.p2p.BlockChain().GetTokenState(uint32(block.GetID()))
 			if ts != nil {

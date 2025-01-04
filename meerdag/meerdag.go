@@ -401,7 +401,7 @@ func (bd *MeerDAG) AddBlock(b IBlockData) (*list.List, *list.List, IBlock, bool)
 	return news, olds, ib, lastMT != curMT.GetID()
 }
 
-func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool) (IBlock, error) {
+func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool, bids map[uint]*hash.Hash) (IBlock, error) {
 	bd.stateLock.Lock()
 	defer bd.stateLock.Unlock()
 
@@ -410,6 +410,10 @@ func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool) (IBlock, e
 	}
 	if bd.blockTotal <= 0 {
 		return nil, fmt.Errorf("No genesis block")
+	}
+	pblock := ib.(*PhantomBlock)
+	if pblock.GetDiffAnticoneSize() > 0 && len(bids) <= 0 {
+		return nil, fmt.Errorf("diff anticone data error")
 	}
 	// Must keep no block in outside.
 	newID := bd.blockTotal
@@ -438,7 +442,6 @@ func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool) (IBlock, e
 			mp = pib
 		}
 	}
-	pblock := ib.(*PhantomBlock)
 	oldID := pblock.id
 	if newID != oldID {
 		pblock.SetID(newID)
@@ -481,6 +484,43 @@ func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool) (IBlock, e
 			}
 		}
 		pblock.SetLayer(maxLayer + 1)
+	}
+	// diffanti
+	if pblock.GetBlueDiffAnticoneSize() > 0 {
+		diff := NewIdSet()
+		for k, v := range pblock.GetBlueDiffAnticone().GetMap() {
+			bh, ok := bids[k]
+			if !ok {
+				log.Error("No diff anticone data", "id", k)
+				continue
+			}
+			daID := bd.getBlockId(bh)
+			if daID == MaxId {
+				log.Error("No DAG Block", "hash", bh.String())
+				continue
+			}
+			diff.AddPair(daID, v)
+		}
+		pblock.GetBlueDiffAnticone().Clean()
+		pblock.GetBlueDiffAnticone().AddSet(diff)
+	}
+	if pblock.GetRedDiffAnticoneSize() > 0 {
+		diff := NewIdSet()
+		for k, v := range pblock.GetRedDiffAnticone().GetMap() {
+			bh, ok := bids[k]
+			if !ok {
+				log.Error("No diff anticone data", "id", k)
+				continue
+			}
+			daID := bd.getBlockId(bh)
+			if daID == MaxId {
+				log.Error("No DAG Block", "hash", bh.String())
+				continue
+			}
+			diff.AddPair(daID, v)
+		}
+		pblock.GetRedDiffAnticone().Clean()
+		pblock.GetRedDiffAnticone().AddSet(diff)
 	}
 
 	bd.updateTips(ib)
