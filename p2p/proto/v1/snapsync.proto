@@ -11,13 +11,19 @@ message Locator {
   Hash root = 2;
 }
 
+message BlockID {
+  Hash block = 1;
+  uint32 id = 2;
+}
+
 message TransferData {
   bytes block = 1 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
   bytes stxos = 2 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
   bytes dagBlock = 3 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
-  bool main = 4;
-  bytes tokenState = 5 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
-  Hash prevTSHash = 6;
+  repeated BlockID dagBIDs = 4 [(gogoproto.moretags) = "ssz-max:\"2000\""];
+  bool main = 5;
+  bytes tokenState = 6 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
+  Hash prevTSHash = 7;
 }
 
 message SnapSyncReq {

@@ -15,6 +15,7 @@ type SnapData struct {
 	block      *types.SerializedBlock
 	stxos      []utxo.SpentTxOut
 	dagBlock   meerdag.IBlock
+	dagBIDs    map[uint]*hash.Hash
 	main       bool
 	tokenState *token.TokenState
 	prevTSHash *hash.Hash
@@ -28,8 +29,9 @@ func (s *SnapData) SetStxos(stxos []utxo.SpentTxOut) {
 	s.stxos = stxos
 }
 
-func (s *SnapData) SetDAGBlock(block meerdag.IBlock) {
+func (s *SnapData) SetDAGBlock(block meerdag.IBlock, dagBIDs map[uint]*hash.Hash) {
 	s.dagBlock = block
+	s.dagBIDs = dagBIDs
 }
 
 func (s *SnapData) SetMain(main bool) {
@@ -133,7 +135,7 @@ func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) (meerdag.IBlock, error)
 			}
 		}
 		node := NewBlockNode(sd.block)
-		dblock, err := b.bd.AddDirectBlock(node, sd.dagBlock, sd.main)
+		dblock, err := b.bd.AddDirectBlock(node, sd.dagBlock, sd.main, sd.dagBIDs)
 		if err != nil {
 			b.ChainUnlock()
 			return latest, err
