@@ -58,7 +58,12 @@ func (ps *PeerSync) loadSnapSync() {
 }
 
 func (ps *PeerSync) saveSnapSync() {
-	if !ps.IsSnapSync() {
+	save := false
+	if ps.IsSnapSync() && ps.snapStatus.IsInit() {
+		save = true
+	}
+
+	if !save {
 		err := ps.sy.p2p.Consensus().DatabaseContext().DeleteSnapSync()
 		if err != nil {
 			log.Error(err.Error())

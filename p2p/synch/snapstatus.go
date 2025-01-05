@@ -32,7 +32,7 @@ func (s *SnapStatus) IsInit() bool {
 }
 
 func (s *SnapStatus) isInit() bool {
-	return s.targetBlock != nil
+	return s.targetBlock != nil && s.stateRoot != nil
 }
 
 func (s *SnapStatus) ToInfo() *json.SnapSyncInfo {
