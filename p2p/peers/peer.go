@@ -1,6 +1,7 @@
 package peers
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/Qitmeer/qng/common/bloom"
 	"github.com/Qitmeer/qng/common/hash"
@@ -64,6 +65,10 @@ type Peer struct {
 	mempoolreq time.Time
 
 	meerConn bool
+
+	rw     *bufio.ReadWriter
+	closed chan struct{}
+	recv   chan interface{}
 }
 
 func (p *Peer) GetID() peer.ID {
@@ -822,6 +827,16 @@ func (p *Peer) IsSupportMeerpoolTransmission() bool {
 	return p.chainState.ProtocolVersion >= protocol.MeerPoolProtocolVersion
 }
 
+func (p *Peer) IsSupportLongChan() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return p.chainState.ProtocolVersion >= protocol.PeerLongChanProtocolVersion
+}
+
 func (p *Peer) GetMeerConn() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -841,6 +856,50 @@ func (p *Peer) SetMeerConn(value bool) {
 	}
 }
 
+func (p *Peer) GetReadWrite() *bufio.ReadWriter {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.rw
+}
+
+func (p *Peer) SetReadWrite(rw *bufio.ReadWriter) {
+	p.lock.Lock()
+	p.rw = rw
+	p.lock.Unlock()
+
+	if rw != nil {
+		p.closed = make(chan struct{})
+
+		log.Debug("Set ReadWriter for peer", "id", p.pid.String())
+	} else {
+		close(p.closed)
+	cleanup:
+		for {
+			select {
+			case <-p.recv:
+			default:
+				break cleanup
+			}
+		}
+
+		log.Debug("Unset ReadWriter for peer", "id", p.pid.String())
+	}
+}
+
+func (p *Peer) Recv() chan interface{} {
+	return p.recv
+}
+
+func (p *Peer) ReadMsg() interface{} {
+	select {
+	case ret := <-p.recv:
+		return ret
+	case <-p.closed:
+	}
+	return nil
+}
+
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
 	return &Peer{
 		peerStatus: &peerStatus{
@@ -854,5 +913,6 @@ func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
 		rateTasks: map[string]*time.Timer{},
 		broadcast: map[string]interface{}{},
 		meerConn:  false,
+		recv:      make(chan interface{}),
 	}
 }

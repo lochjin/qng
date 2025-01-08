@@ -33,8 +33,11 @@ const (
 	// Support bridging Meer EVM p2p to QNG libp2p
 	MeerP2PBridgingProtocolVersion uint32 = 48
 
+	// Support long channel for peer connection
+	PeerLongChanProtocolVersion uint32 = 49
+
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = MeerP2PBridgingProtocolVersion
+	ProtocolVersion uint32 = PeerLongChanProtocolVersion
 )
 
 // Network represents which qitmeer network a message belongs to.

@@ -70,6 +70,8 @@ const (
 	RPCSyncSnap = "/qitmeer/req/syncsnap/1"
 	// RPC defines the topic for the meer connection rpc method.
 	RPCMeerConn = "/qitmeer/req/meerconn/1"
+	// RPC defines the topic for the peer connection rpc method.
+	RPCPeerConn = "/qitmeer/req/peerconn/1"
 )
 
 // Time to first byte timeout. The maximum time to wait for first byte of
@@ -264,6 +266,7 @@ func (s *Sync) registerRPCHandlers() {
 	)
 
 	s.registerMeerConnection()
+	s.registerPeerConnection()
 }
 
 // registerRPC for a given topic with an expected protobuf message type.

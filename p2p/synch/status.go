@@ -63,6 +63,13 @@ func (s *Sync) maintainPeerStatuses() {
 						s.peerSync.establishMeerConnection(pe)
 					}()
 				}
+				if s.peerSync.checkPeerConnection(pe) {
+					go func() {
+						pe.HSlock.Lock()
+						defer pe.HSlock.Unlock()
+						s.peerSync.establishPeerConnection(pe)
+					}()
+				}
 			}(pid)
 		}
 		for _, pid := range s.Peers().Disconnected() {

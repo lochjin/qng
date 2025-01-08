@@ -1,7 +1,9 @@
 package synch
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/core/blockchain"
@@ -330,7 +332,7 @@ func (ps *PeerSync) syncSnapStatus(pe *peers.Peer, rsp chan *pb.SnapSyncRsp) {
 		log.Debug("Init target for snap-sync")
 	}
 
-	ret, err := ps.sy.Send(pe, RPCSyncSnap, req)
+	ret, err := ps.sendSnapSyncRequest(pe, req)
 	if err != nil {
 		log.Error(err.Error())
 		rsp <- nil
@@ -422,6 +424,52 @@ func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}) (
 	return pe, false
 }
 
+func (s *PeerSync) sendSnapSyncRequest(pe *peers.Peer, message *pb.SnapSyncReq) (interface{}, error) {
+	if !s.IsRunning() {
+		return nil, fmt.Errorf("No run PeerSync\n")
+	}
+	if pe.GetReadWrite() == nil {
+		return nil, fmt.Errorf("No connection for peer:%s", pe.GetID())
+	}
+	common.EgressConnectMeter.Mark(1)
+	var buff bytes.Buffer
+	err := buff.WriteByte(SnapSyncReqMsg)
+	if err != nil {
+		return nil, err
+	}
+	size, err := s.sy.p2p.Encoding().EncodeWithMaxLength(&buff, message)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, fmt.Errorf("encocde rpc message %v to stream failed:%v", getMessageString(message), err)
+	}
+	rw := pe.GetReadWrite()
+	bs := make([]byte, 8)
+	binary.BigEndian.PutUint64(bs, uint64(buff.Len()))
+	size, err = rw.Write(bs)
+	if err != nil {
+		return nil, err
+	}
+	if size != 8 {
+		return nil, fmt.Errorf("Write size error:%d", size)
+	}
+	size, err = rw.Write(buff.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	s.sy.p2p.IncreaseBytesSent(pe.GetID(), size)
+	err = rw.Flush()
+	if err != nil {
+		return nil, err
+	}
+	rsp := pe.ReadMsg()
+	if rsp == nil {
+		return nil, fmt.Errorf("No rsp for SnapSyncReq")
+	}
+	return rsp, nil
+}
+
 func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {
 	e := ReadRspCode(stream, s.p2p)
 	if !e.Code.IsSuccess() {
@@ -441,10 +489,19 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 		err := fmt.Errorf("message is not type *pb.SnapSyncReq")
 		return ErrMessage(err)
 	}
+	rsp, err := s.doSnapSyncHandler(m, pe)
+	if err != nil {
+		log.Warn(err.String())
+		return err
+	}
+	return s.EncodeResponseMsg(stream, rsp)
+}
+
+func (s *Sync) doSnapSyncHandler(m *pb.SnapSyncReq, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {
 	blocks, target, err := s.peerSync.dagSync.CalcSnapSyncBlocks(changePBLocatorsToLocators(m.Locator), MaxBlockLocatorsPerMsg, changePBLocatorToLocator(m.Target), s.peerSync.Chain().MeerChain().CheckState)
 	if err != nil {
 		log.Error(err.Error())
-		return ErrMessage(err)
+		return nil, ErrMessage(err)
 	}
 	log.Debug("Received Snap-sync request", "peer", pe.GetID().String(), "target", target.GetHash().String(), "number", target.GetState().GetEVMNumber(), "pivot", meerdag.CalculatePivot(target.GetState().GetEVMNumber()))
 	rsp := &pb.SnapSyncRsp{Datas: []*pb.TransferData{}}
@@ -459,13 +516,13 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 			data := &pb.TransferData{DagBIDs: []*pb.BlockID{}}
 			blkBytes, err := s.p2p.BlockChain().FetchBlockBytesByHash(block.GetHash())
 			if err != nil {
-				return ErrMessage(err)
+				return nil, ErrMessage(err)
 			}
 			data.Block = blkBytes
 
 			stxo, err := s.p2p.BlockChain().DB().GetSpendJournal(block.GetHash())
 			if err != nil {
-				return ErrMessage(err)
+				return nil, ErrMessage(err)
 			}
 			data.Stxos = stxo
 
@@ -475,13 +532,13 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 			if !ok {
 				err := fmt.Errorf("Not phantom block %s", block.GetHash().String())
 				log.Error(err.Error())
-				return ErrMessage(err)
+				return nil, ErrMessage(err)
 			}
 			if pblock.GetBlueDiffAnticoneSize() > 0 {
 				for k, _ := range pblock.GetBlueDiffAnticone().GetMap() {
 					bh := s.p2p.BlockChain().BlockDAG().GetBlockHash(k)
 					if bh == nil {
-						return ErrMessage(fmt.Errorf("No block hash:%d", k))
+						return nil, ErrMessage(fmt.Errorf("No block hash:%d", k))
 					}
 					data.DagBIDs = append(data.DagBIDs, &pb.BlockID{
 						Block: &pb.Hash{Hash: bh.Bytes()},
@@ -493,7 +550,7 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 				for k, _ := range pblock.GetRedDiffAnticone().GetMap() {
 					bh := s.p2p.BlockChain().BlockDAG().GetBlockHash(k)
 					if bh == nil {
-						return ErrMessage(fmt.Errorf("No block hash:%d", k))
+						return nil, ErrMessage(fmt.Errorf("No block hash:%d", k))
 					}
 					data.DagBIDs = append(data.DagBIDs, &pb.BlockID{
 						Block: &pb.Hash{Hash: bh.Bytes()},
@@ -507,11 +564,11 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 			if ts != nil {
 				prevTSHash, err := meerdag.DBGetDAGBlockHashByID(s.p2p.BlockChain().DB(), uint64(ts.PrevStateID))
 				if err != nil {
-					return ErrMessage(err)
+					return nil, ErrMessage(err)
 				}
 				serializedData, err := ts.Serialize()
 				if err != nil {
-					return ErrMessage(err)
+					return nil, ErrMessage(err)
 				}
 				data.TokenState = serializedData
 				data.PrevTSHash = &pb.Hash{
@@ -529,5 +586,5 @@ func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp
 		}
 	}
 
-	return s.EncodeResponseMsg(stream, rsp)
+	return rsp, nil
 }

@@ -12,6 +12,39 @@ import (
 	"time"
 )
 
+func (ps *PeerSync) establishMeerConnection(pe *peers.Peer) {
+	if !ps.checkMeerConnection(pe) {
+		return
+	}
+	err := ps.sy.establishMeerConnection(pe)
+	if err != nil {
+		log.Error(err.Error())
+	}
+}
+
+func (ps *PeerSync) checkMeerConnection(pe *peers.Peer) bool {
+	if !ps.IsRunning() {
+		return false
+	}
+	if pe.GetMeerConn() {
+		return false
+	}
+	if !pe.IsSupportMeerP2PBridging() {
+		return false
+	}
+	if !pe.IsSnap() {
+		return false
+	}
+	if pe.Direction() != network.DirOutbound {
+		return false
+	}
+	ms := pe.GetMeerState()
+	if ms == nil {
+		return false
+	}
+	return true
+}
+
 func (s *Sync) establishMeerConnection(pe *peers.Peer) error {
 	proto := RPCMeerConn
 	if !s.peerSync.IsRunning() {
