@@ -827,14 +827,14 @@ func (p *Peer) IsSupportMeerpoolTransmission() bool {
 	return p.chainState.ProtocolVersion >= protocol.MeerPoolProtocolVersion
 }
 
-func (p *Peer) IsSupportLongChan() bool {
+func (p *Peer) IsSupportLongConn() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
 	if p.chainState == nil {
 		return false
 	}
-	return p.chainState.ProtocolVersion >= protocol.PeerLongChanProtocolVersion
+	return p.chainState.ProtocolVersion >= protocol.PeerLongConnProtocolVersion
 }
 
 func (p *Peer) GetMeerConn() bool {

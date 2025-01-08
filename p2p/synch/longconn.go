@@ -19,24 +19,24 @@ const (
 	SnapSyncRspMsg = 0x65
 )
 
-func (ps *PeerSync) establishPeerConnection(pe *peers.Peer) {
-	if !ps.checkPeerConnection(pe) {
+func (ps *PeerSync) establishLongConnection(pe *peers.Peer) {
+	if !ps.checkLongConnection(pe) {
 		return
 	}
-	err := ps.sy.establishPeerConnection(pe)
+	err := ps.sy.establishLongConnection(pe)
 	if err != nil {
 		log.Error(err.Error())
 	}
 }
 
-func (ps *PeerSync) checkPeerConnection(pe *peers.Peer) bool {
+func (ps *PeerSync) checkLongConnection(pe *peers.Peer) bool {
 	if !ps.IsRunning() {
 		return false
 	}
 	if pe.GetReadWrite() != nil {
 		return false
 	}
-	if !pe.IsSupportLongChan() {
+	if !pe.IsSupportLongConn() {
 		return false
 	}
 	if pe.Direction() != network.DirOutbound {
@@ -45,8 +45,8 @@ func (ps *PeerSync) checkPeerConnection(pe *peers.Peer) bool {
 	return true
 }
 
-func (s *Sync) establishPeerConnection(pe *peers.Peer) error {
-	proto := RPCPeerConn
+func (s *Sync) establishLongConnection(pe *peers.Peer) error {
+	proto := RPCLongConn
 	log.Trace("Send message", "protocol", getProtocol(s.p2p, proto), "peer", pe.IDWithAddress())
 
 	curState := s.p2p.Host().Network().Connectedness(pe.GetID())
@@ -67,7 +67,7 @@ func (s *Sync) establishPeerConnection(pe *peers.Peer) error {
 	pe.SetReadWrite(rw)
 
 	go func() {
-		s.processMessage(stream, pe)
+		s.longConnHander(stream, pe)
 		pe.SetReadWrite(nil)
 		err := stream.Close()
 		if err != nil {
@@ -77,8 +77,8 @@ func (s *Sync) establishPeerConnection(pe *peers.Peer) error {
 	return err
 }
 
-func (s *Sync) registerPeerConnection() {
-	basetopic := RPCPeerConn
+func (s *Sync) registerLongConnection() {
+	basetopic := RPCLongConn
 	topic := getProtocol(s.p2p, basetopic)
 
 	s.p2p.Host().SetStreamHandler(protocol.ID(topic), func(stream network.Stream) {
@@ -113,11 +113,11 @@ func (s *Sync) registerPeerConnection() {
 		pe.SetReadWrite(rw)
 		defer pe.SetReadWrite(nil)
 
-		s.processMessage(stream, pe)
+		s.longConnHander(stream, pe)
 	})
 }
 
-func (s *Sync) processMessage(stream network.Stream, pe *peers.Peer) {
+func (s *Sync) longConnHander(stream network.Stream, pe *peers.Peer) {
 	rw := pe.GetReadWrite()
 	for {
 		dataHead := make([]byte, 8)
@@ -143,7 +143,7 @@ func (s *Sync) processMessage(stream network.Stream, pe *peers.Peer) {
 			break
 		}
 		if err != nil {
-			log.Warn("Error reading from base stream", "peer", pe.IDWithAddress(), "error", err)
+			log.Warn("Error reading from long stream", "peer", pe.IDWithAddress(), "error", err)
 			break
 		}
 		if int64(size) != dataSize {

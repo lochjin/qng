@@ -325,5 +325,5 @@ func (s *Sync) ConnectionGater(pid *peer.ID, addr ma.Multiaddr, dir network.Dire
 
 func (ps *PeerSync) establishConnection(pe *peers.Peer) {
 	ps.establishMeerConnection(pe)
-	ps.establishPeerConnection(pe)
+	ps.establishLongConnection(pe)
 }

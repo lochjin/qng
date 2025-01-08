@@ -66,12 +66,10 @@ const (
 	RPCStateRoot = "/qitmeer/req/stateroot/1"
 	// RPCBroadcastBlock defines the topic for the broadcast block rpc method.
 	RPCBroadcastBlock = "/qitmeer/req/broadcastblock/1"
-	// RPCSyncSnap defines the topic for the snap sync rpc method.
-	RPCSyncSnap = "/qitmeer/req/syncsnap/1"
 	// RPC defines the topic for the meer connection rpc method.
 	RPCMeerConn = "/qitmeer/req/meerconn/1"
-	// RPC defines the topic for the peer connection rpc method.
-	RPCPeerConn = "/qitmeer/req/peerconn/1"
+	// RPC defines the topic for the long chan connection rpc method.
+	RPCLongConn = "/qitmeer/req/longconn/1"
 )
 
 // Time to first byte timeout. The maximum time to wait for first byte of
@@ -259,14 +257,8 @@ func (s *Sync) registerRPCHandlers() {
 		s.broadcastBlockHandler,
 	)
 
-	s.registerRPC(
-		RPCSyncSnap,
-		&pb.SnapSyncReq{},
-		s.snapSyncHandler,
-	)
-
 	s.registerMeerConnection()
-	s.registerPeerConnection()
+	s.registerLongConnection()
 }
 
 // registerRPC for a given topic with an expected protobuf message type.
@@ -325,8 +317,6 @@ func (s *Sync) Send(pe *peers.Peer, protocol string, message interface{}) (inter
 		ret, e = s.sendStateRootRequest(stream, pe)
 	case RPCBroadcastBlock:
 		e = s.sendBroadcastBlockRequest(stream, pe)
-	case RPCSyncSnap:
-		ret, e = s.sendSnapSyncRequest(stream, pe)
 	default:
 		return nil, fmt.Errorf("Can't support:%s", protocol)
 	}

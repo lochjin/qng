@@ -2,7 +2,6 @@ package synch
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
@@ -19,8 +18,6 @@ import (
 	qparams "github.com/Qitmeer/qng/params"
 	ecommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
-	libp2pcore "github.com/libp2p/go-libp2p/core"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"time"
 )
@@ -468,33 +465,6 @@ func (s *PeerSync) sendSnapSyncRequest(pe *peers.Peer, message *pb.SnapSyncReq) 
 		return nil, fmt.Errorf("No rsp for SnapSyncReq")
 	}
 	return rsp, nil
-}
-
-func (s *Sync) sendSnapSyncRequest(stream network.Stream, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {
-	e := ReadRspCode(stream, s.p2p)
-	if !e.Code.IsSuccess() {
-		e.Add("snap-sync request rsp")
-		return nil, e
-	}
-	msg := &pb.SnapSyncRsp{}
-	if err := DecodeMessage(stream, s.p2p, msg); err != nil {
-		return nil, common.NewError(common.ErrStreamRead, err)
-	}
-	return msg, nil
-}
-
-func (s *Sync) snapSyncHandler(ctx context.Context, msg interface{}, stream libp2pcore.Stream, pe *peers.Peer) *common.Error {
-	m, ok := msg.(*pb.SnapSyncReq)
-	if !ok {
-		err := fmt.Errorf("message is not type *pb.SnapSyncReq")
-		return ErrMessage(err)
-	}
-	rsp, err := s.doSnapSyncHandler(m, pe)
-	if err != nil {
-		log.Warn(err.String())
-		return err
-	}
-	return s.EncodeResponseMsg(stream, rsp)
 }
 
 func (s *Sync) doSnapSyncHandler(m *pb.SnapSyncReq, pe *peers.Peer) (*pb.SnapSyncRsp, *common.Error) {

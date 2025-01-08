@@ -34,10 +34,10 @@ const (
 	MeerP2PBridgingProtocolVersion uint32 = 48
 
 	// Support long channel for peer connection
-	PeerLongChanProtocolVersion uint32 = 49
+	PeerLongConnProtocolVersion uint32 = 49
 
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = PeerLongChanProtocolVersion
+	ProtocolVersion uint32 = PeerLongConnProtocolVersion
 )
 
 // Network represents which qitmeer network a message belongs to.

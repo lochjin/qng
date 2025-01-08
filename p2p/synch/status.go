@@ -63,11 +63,11 @@ func (s *Sync) maintainPeerStatuses() {
 						s.peerSync.establishMeerConnection(pe)
 					}()
 				}
-				if s.peerSync.checkPeerConnection(pe) {
+				if s.peerSync.checkLongConnection(pe) {
 					go func() {
 						pe.HSlock.Lock()
 						defer pe.HSlock.Unlock()
-						s.peerSync.establishPeerConnection(pe)
+						s.peerSync.establishLongConnection(pe)
 					}()
 				}
 			}(pid)
