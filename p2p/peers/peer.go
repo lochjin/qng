@@ -895,10 +895,10 @@ func (p *Peer) Run(stream network.Stream, en encoder.NetworkEncoding) error {
 func (p *Peer) Respond(msgcode uint64, data interface{}, id uint64) error {
 	conn := p.GetLongConn()
 	if conn == nil {
-		return fmt.Errorf("No long message connection for peer", "peer", p.GetID().String())
+		return fmt.Errorf("No long message connection for peer:%s", p.GetID().String())
 	}
 	if id == 0 {
-		return fmt.Errorf("No respond id", "peer", p.GetID().String())
+		return fmt.Errorf("No respond id:%s", p.GetID().String())
 	}
 	_, err := conn.Send(msgcode, data, id)
 	return err
@@ -907,7 +907,7 @@ func (p *Peer) Respond(msgcode uint64, data interface{}, id uint64) error {
 func (p *Peer) Request(msgcode uint64, data interface{}) (interface{}, error) {
 	conn := p.GetLongConn()
 	if conn == nil {
-		return nil, fmt.Errorf("No long message connection for peer", "peer", p.GetID().String())
+		return nil, fmt.Errorf("No long message connection for peer:%s", p.GetID().String())
 	}
 	return conn.Send(msgcode, data, 0)
 }

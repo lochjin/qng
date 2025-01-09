@@ -82,7 +82,7 @@ func (p *ConnMsgRW) Send(msgcode uint64, data interface{}, respondID uint64) (in
 	}
 	_, ok := MsgDataTypes[msgcode]
 	if !ok {
-		return nil, fmt.Errorf("Not support message", "code", msgcode)
+		return nil, fmt.Errorf("Not support message:code=%d", msgcode)
 	}
 	id := respondID
 	if id == 0 {
@@ -225,7 +225,7 @@ func (p *ConnMsgRW) readLoop(pe *Peer, errc chan<- error) {
 		//
 		base, ok := MsgDataTypes[msg.Code]
 		if !ok {
-			returnFun(fmt.Errorf("Unknown message type code", "msg", msg.String(), "peer", pe.GetID().String()))
+			returnFun(fmt.Errorf("Unknown message type code: msg=%s, %s", msg.String(), pe.GetID().String()))
 			return
 		}
 		t := reflect.TypeOf(base)
