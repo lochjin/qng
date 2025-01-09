@@ -372,6 +372,7 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 		MempoolReqTime: p.mempoolreq,
 		Tasks:          len(p.rateTasks),
 		Broadcast:      len(p.broadcast),
+		LongConn:       p.isLongConn(),
 	}
 	n := p.node()
 	if n != nil {
@@ -858,6 +859,10 @@ func (p *Peer) IsLongConn() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
+	return p.isLongConn()
+}
+
+func (p *Peer) isLongConn() bool {
 	return p.conn != nil
 }
 

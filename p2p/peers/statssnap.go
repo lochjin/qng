@@ -42,6 +42,7 @@ type StatsSnap struct {
 	Broadcast      int
 	MeerState      *common.MeerState
 	SnapSync       bool
+	LongConn       bool
 }
 
 func (p *StatsSnap) IsRelay() bool {
