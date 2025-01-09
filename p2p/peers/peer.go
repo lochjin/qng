@@ -9,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/common"
+	"github.com/Qitmeer/qng/p2p/encoder"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	v2 "github.com/Qitmeer/qng/p2p/proto/v2"
 	"github.com/Qitmeer/qng/p2p/qnode"
@@ -64,6 +65,8 @@ type Peer struct {
 	mempoolreq time.Time
 
 	meerConn bool
+
+	conn *ConnMsgRW
 }
 
 func (p *Peer) GetID() peer.ID {
@@ -369,6 +372,7 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 		MempoolReqTime: p.mempoolreq,
 		Tasks:          len(p.rateTasks),
 		Broadcast:      len(p.broadcast),
+		LongConnStat:   p.isLongConn(),
 	}
 	n := p.node()
 	if n != nil {
@@ -386,7 +390,7 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 		ss.MeerState = common.NewMeerState(p.getMeerState(), p.meerConn)
 	}
 	if p.chainState != nil {
-		ss.SnapSync = p.chainState.SnapSync
+		ss.InSnapSync = p.chainState.SnapSync
 	}
 	return ss, nil
 }
@@ -822,6 +826,16 @@ func (p *Peer) IsSupportMeerpoolTransmission() bool {
 	return p.chainState.ProtocolVersion >= protocol.MeerPoolProtocolVersion
 }
 
+func (p *Peer) IsSupportLongConn() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return p.chainState.ProtocolVersion >= protocol.PeerLongConnProtocolVersion
+}
+
 func (p *Peer) GetMeerConn() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -839,6 +853,63 @@ func (p *Peer) SetMeerConn(value bool) {
 	} else {
 		log.Debug("Peer disconnect to meer", "id", p.pid.String())
 	}
+}
+
+func (p *Peer) IsLongConn() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.isLongConn()
+}
+
+func (p *Peer) isLongConn() bool {
+	return p.conn != nil
+}
+
+func (p *Peer) GetLongConn() *ConnMsgRW {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.conn
+}
+
+func (p *Peer) Run(stream network.Stream, en encoder.NetworkEncoding) error {
+	pconn := p.GetLongConn()
+	if pconn != nil {
+		pconn.Close()
+	}
+	conn := NewConnRW(stream, en)
+	p.lock.Lock()
+	p.conn = conn
+	p.lock.Unlock()
+
+	err := conn.Run(p)
+
+	p.lock.Lock()
+	p.conn = nil
+	p.lock.Unlock()
+
+	return err
+}
+
+func (p *Peer) Respond(msgcode uint64, data interface{}, id uint64) error {
+	conn := p.GetLongConn()
+	if conn == nil {
+		return fmt.Errorf("No long message connection for peer:%s", p.GetID().String())
+	}
+	if id == 0 {
+		return fmt.Errorf("No respond id:%s", p.GetID().String())
+	}
+	_, err := conn.Send(msgcode, data, id)
+	return err
+}
+
+func (p *Peer) Request(msgcode uint64, data interface{}) (interface{}, error) {
+	conn := p.GetLongConn()
+	if conn == nil {
+		return nil, fmt.Errorf("No long message connection for peer:%s", p.GetID().String())
+	}
+	return conn.Send(msgcode, data, 0)
 }
 
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {

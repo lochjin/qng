@@ -79,7 +79,7 @@ const (
 )
 
 func isValidSnapPeer(pe *peers.Peer) bool {
-	if !pe.IsSnap() || pe.GetMeerState() == nil || !pe.GetMeerConn() {
+	if !pe.IsSnap() || pe.GetMeerState() == nil || !pe.GetMeerConn() || !pe.IsLongConn() {
 		return false
 	}
 	if pe.GetMeerState().Number <= MinSnapSyncNumber {
