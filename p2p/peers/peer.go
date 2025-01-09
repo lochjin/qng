@@ -372,7 +372,7 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 		MempoolReqTime: p.mempoolreq,
 		Tasks:          len(p.rateTasks),
 		Broadcast:      len(p.broadcast),
-		LongConn:       p.isLongConn(),
+		LongConnStat:   p.isLongConn(),
 	}
 	n := p.node()
 	if n != nil {
@@ -390,7 +390,7 @@ func (p *Peer) StatsSnapshot() (*StatsSnap, error) {
 		ss.MeerState = common.NewMeerState(p.getMeerState(), p.meerConn)
 	}
 	if p.chainState != nil {
-		ss.SnapSync = p.chainState.SnapSync
+		ss.InSnapSync = p.chainState.SnapSync
 	}
 	return ss, nil
 }

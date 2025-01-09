@@ -65,18 +65,18 @@ func (api *PublicP2PAPI) GetPeerInfo(verbose *bool, pid *string) (interface{}, e
 			}
 		}
 		info := &json.GetPeerInfoResult{
-			ID:        p.PeerID.String(),
-			Name:      p.Name,
-			Address:   p.Address,
-			BytesSent: p.BytesSent,
-			BytesRecv: p.BytesRecv,
-			Circuit:   p.IsCircuit,
-			Bads:      p.Bads,
-			ReConnect: p.ReConnect,
-			Active:    active,
-			Snap:      p.IsSnap(),
-			SnapSync:  p.SnapSync,
-			LongConn:  p.LongConn,
+			ID:           p.PeerID.String(),
+			Name:         p.Name,
+			Address:      p.Address,
+			BytesSent:    p.BytesSent,
+			BytesRecv:    p.BytesRecv,
+			Circuit:      p.IsCircuit,
+			Bads:         p.Bads,
+			ReConnect:    p.ReConnect,
+			Active:       active,
+			Snap:         p.IsSnap(),
+			InSnapSync:   p.InSnapSync,
+			LongConnStat: p.LongConnStat,
 		}
 		info.Protocol = p.Protocol
 		info.Services = p.Services.String()

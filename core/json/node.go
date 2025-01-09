@@ -61,8 +61,8 @@ type GetPeerInfoResult struct {
 	Tasks          int                  `json:"tasks,omitempty"`
 	Broadcast      int                  `json:"broadcast,omitempty"`
 	Snap           bool                 `json:"snap,omitempty"`
-	SnapSync       bool                 `json:"insnapsync,omitempty"`
-	LongConn       bool                 `json:"longconnstat,omitempty"`
+	InSnapSync     bool                 `json:"insnapsync,omitempty"`
+	LongConnStat   bool                 `json:"longconnstat,omitempty"`
 	MeerState      *MeerState           `json:"meerstate,omitempty"`
 }
 
