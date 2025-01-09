@@ -72,16 +72,17 @@ func (api *PublicRelayAPI) GetPeerInfo(verbose *bool, network *string) (interfac
 			}
 		}
 		info := &json.GetPeerInfoResult{
-			ID:        p.PeerID.String(),
-			Name:      p.Name,
-			Address:   p.Address,
-			BytesSent: p.BytesSent,
-			BytesRecv: p.BytesRecv,
-			Bads:      p.Bads,
-			ReConnect: p.ReConnect,
-			Active:    active,
-			Snap:      p.IsSnap(),
-			SnapSync:  p.InSnapSync,
+			ID:           p.PeerID.String(),
+			Name:         p.Name,
+			Address:      p.Address,
+			BytesSent:    p.BytesSent,
+			BytesRecv:    p.BytesRecv,
+			Bads:         p.Bads,
+			ReConnect:    p.ReConnect,
+			Active:       active,
+			Snap:         p.IsSnap(),
+			InSnapSync:   p.InSnapSync,
+			LongConnStat: p.LongConnStat,
 		}
 		info.Protocol = p.Protocol
 		info.Services = p.Services.String()
