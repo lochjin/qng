@@ -105,11 +105,16 @@ func (p *ConnMsgRW) Send(msgcode uint64, data interface{}, respondID uint64) (in
 	log.Debug("Send message", "msg", msg.String())
 	select {
 	case p.w <- msg:
-		if msg.Reply != nil {
-			ret := <-msg.Reply
-			return ret, nil
-		}
 	case <-p.closing:
+		return nil, nil
+	}
+	if msg.Reply != nil {
+		select {
+		case ret := <-msg.Reply:
+			return ret, nil
+		case <-p.closing:
+			return nil, nil
+		}
 	}
 	return nil, nil
 }
@@ -144,8 +149,15 @@ loop:
 	for {
 		select {
 		case msg := <-p.w:
+			dataSize := msg.Size()
+			if dataSize > MaxMessageSize {
+				if msg.Reply != nil {
+					msg.Reply <- nil
+				}
+				return fmt.Errorf("Too large message size: %d > %d", dataSize, MaxMessageSize)
+			}
 			bs := make([]byte, PacketSize)
-			binary.BigEndian.PutUint64(bs, uint64(msg.Size()))
+			binary.BigEndian.PutUint64(bs, uint64(dataSize))
 			size, err := p.rw.Write(bs)
 			if err != nil {
 				return err
@@ -284,6 +296,9 @@ func (p *ConnMsgRW) readMsg(pe *Peer) (*Msg, error) {
 	}
 	dataSize := binary.BigEndian.Uint64(dataHead)
 	log.Debug("Receive message head", "peer", pe.IDWithAddress(), "size", dataSize)
+	if dataSize > MaxMessageSize {
+		return nil, fmt.Errorf("Too large message size: %d > %d", dataSize, MaxMessageSize)
+	}
 	msgData := make([]byte, dataSize)
 	size, err = io.ReadFull(p.rw, msgData)
 	if err == io.EOF {
