@@ -72,6 +72,11 @@ const (
 	RPCLongConn = "/qitmeer/req/longconn/1"
 )
 
+const (
+	SnapSyncReqMsg = 0x100
+	SnapSyncRspMsg = 0x110
+)
+
 // Time to first byte timeout. The maximum time to wait for first byte of
 // request response (time-to-first-byte). The client is expected to give up if
 // they don't receive the first byte within 20 seconds.
@@ -258,7 +263,11 @@ func (s *Sync) registerRPCHandlers() {
 	)
 
 	s.registerMeerConnection()
+
 	s.registerLongConnection()
+
+	peers.RegisterDataType(SnapSyncRspMsg, &pb.SnapSyncRsp{})
+	peers.RegisterHandler(SnapSyncReqMsg, &pb.SnapSyncReq{}, s.snapSyncHandler)
 }
 
 // registerRPC for a given topic with an expected protobuf message type.

@@ -1,7 +1,6 @@
 package peers
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/Qitmeer/qng/common/bloom"
 	"github.com/Qitmeer/qng/common/hash"
@@ -10,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/common"
+	"github.com/Qitmeer/qng/p2p/encoder"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
 	v2 "github.com/Qitmeer/qng/p2p/proto/v2"
 	"github.com/Qitmeer/qng/p2p/qnode"
@@ -66,9 +66,7 @@ type Peer struct {
 
 	meerConn bool
 
-	rw     *bufio.ReadWriter
-	closed chan struct{}
-	recv   chan interface{}
+	conn *ConnMsgRW
 }
 
 func (p *Peer) GetID() peer.ID {
@@ -856,48 +854,57 @@ func (p *Peer) SetMeerConn(value bool) {
 	}
 }
 
-func (p *Peer) GetReadWrite() *bufio.ReadWriter {
+func (p *Peer) IsLongConn() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	return p.rw
+	return p.conn != nil
 }
 
-func (p *Peer) SetReadWrite(rw *bufio.ReadWriter) {
+func (p *Peer) GetLongConn() *ConnMsgRW {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.conn
+}
+
+func (p *Peer) Run(stream network.Stream, en encoder.NetworkEncoding) error {
+	pconn := p.GetLongConn()
+	if pconn != nil {
+		pconn.Close()
+	}
+	conn := NewConnRW(stream, en)
 	p.lock.Lock()
-	p.rw = rw
+	p.conn = conn
 	p.lock.Unlock()
 
-	if rw != nil {
-		p.closed = make(chan struct{})
+	err := conn.Run(p)
 
-		log.Debug("Set ReadWriter for peer", "id", p.pid.String())
-	} else {
-		close(p.closed)
-	cleanup:
-		for {
-			select {
-			case <-p.recv:
-			default:
-				break cleanup
-			}
-		}
+	p.lock.Lock()
+	p.conn = nil
+	p.lock.Unlock()
 
-		log.Debug("Unset ReadWriter for peer", "id", p.pid.String())
-	}
+	return err
 }
 
-func (p *Peer) Recv() chan interface{} {
-	return p.recv
+func (p *Peer) Respond(msgcode uint64, data interface{}, id uint64) error {
+	conn := p.GetLongConn()
+	if conn == nil {
+		return fmt.Errorf("No long message connection for peer", "peer", p.GetID().String())
+	}
+	if id == 0 {
+		return fmt.Errorf("No respond id", "peer", p.GetID().String())
+	}
+	_, err := conn.Send(msgcode, data, id)
+	return err
 }
 
-func (p *Peer) ReadMsg() interface{} {
-	select {
-	case ret := <-p.recv:
-		return ret
-	case <-p.closed:
+func (p *Peer) Request(msgcode uint64, data interface{}) (interface{}, error) {
+	conn := p.GetLongConn()
+	if conn == nil {
+		return nil, fmt.Errorf("No long message connection for peer", "peer", p.GetID().String())
 	}
-	return nil
+	return conn.Send(msgcode, data, 0)
 }
 
 func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
@@ -913,6 +920,5 @@ func NewPeer(pid peer.ID, point *hash.Hash) *Peer {
 		rateTasks: map[string]*time.Timer{},
 		broadcast: map[string]interface{}{},
 		meerConn:  false,
-		recv:      make(chan interface{}),
 	}
 }
