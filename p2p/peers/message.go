@@ -106,14 +106,14 @@ func (p *ConnMsgRW) Send(msgcode uint64, data interface{}, respondID uint64) (in
 	select {
 	case p.w <- msg:
 	case <-p.closing:
-		return nil, nil
+		return nil, ErrConnClosed
 	}
 	if msg.Reply != nil {
 		select {
 		case ret := <-msg.Reply:
 			return ret, nil
 		case <-p.closing:
-			return nil, nil
+			return nil, ErrConnClosed
 		}
 	}
 	return nil, nil
@@ -134,7 +134,7 @@ func (p *ConnMsgRW) Run(pe *Peer) error {
 		return ErrConnClosed
 	}
 	var (
-		readErr = make(chan error, 1)
+		readErr = make(chan error)
 	)
 	p.wg.Add(1)
 	go p.readLoop(pe, readErr)
