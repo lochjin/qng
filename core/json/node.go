@@ -109,6 +109,9 @@ type NetworkStat struct {
 	Services       string         `json:"services"`
 	Snap           bool           `json:"snap"`
 	SnapSync       *SnapSyncInfo  `json:"snapsync,omitempty"`
+	MaxOrder       uint           `json:"maxorder,omitempty"`
+	MinOrder       uint           `json:"minorder,omitempty"`
+	MyOrder        uint           `json:"myorder,omitempty"`
 }
 
 type NetworkInfo struct {
