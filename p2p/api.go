@@ -158,12 +158,16 @@ func (api *PublicP2PAPI) IsCurrent() (interface{}, error) {
 func (api *PublicP2PAPI) GetNetworkInfo() (interface{}, error) {
 	ps := api.s
 	peers := ps.Peers().StatsSnapshots()
+	best := api.s.BlockChain().BestSnapshot()
 	nstat := &json.NetworkStat{
 		MaxConnected: ps.Config().MaxPeers,
 		MaxInbound:   ps.Config().MaxInbound,
 		Infos:        []*json.NetworkInfo{},
 		Services:     ps.Config().Services.String(),
 		Snap:         ps.IsSnap(),
+		MyOrder:      best.GraphState.GetMainOrder(),
+		MaxOrder:     0,
+		MinOrder:     math.MaxUint,
 	}
 	ss := ps.PeerSync().GetSnapSyncInfo()
 	if ss != nil {
@@ -202,6 +206,15 @@ func (api *PublicP2PAPI) GetNetworkInfo() (interface{}, error) {
 			}
 			if p.GraphStateDur < gsups[p.Network][2] {
 				gsups[p.Network][2] = p.GraphStateDur
+			}
+
+			if p.State && p.GraphState != nil {
+				if p.GraphState.GetMainOrder() > nstat.MaxOrder {
+					nstat.MaxOrder = p.GraphState.GetMainOrder()
+				}
+				if p.GraphState.GetMainOrder() < nstat.MinOrder {
+					nstat.MinOrder = p.GraphState.GetMainOrder()
+				}
 			}
 		}
 		if p.Services&protocol.Relay > 0 {
