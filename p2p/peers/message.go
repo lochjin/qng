@@ -107,8 +107,14 @@ func (p *ConnMsgRW) Send(msgcode uint64, data interface{}, respondID uint64) (in
 		msg.Reply = make(chan interface{})
 	}
 	log.Debug("Send message", "msg", msg.String())
+	ctx, can := context.WithTimeout(context.Background(), HandleTimeout)
+	defer can()
+
 	select {
 	case p.w <- msg:
+	case <-ctx.Done():
+		go p.Close()
+		return nil, fmt.Errorf("ConnMsgRW send message timeout:%s", msg.String())
 	case <-p.closing:
 		return nil, ErrConnClosed
 	}
@@ -116,6 +122,9 @@ func (p *ConnMsgRW) Send(msgcode uint64, data interface{}, respondID uint64) (in
 		select {
 		case ret := <-msg.Reply:
 			return ret, nil
+		case <-ctx.Done():
+			go p.Close()
+			return nil, fmt.Errorf("ConnMsgRW wait respond message timeout:%s", msg.String())
 		case <-p.closing:
 			return nil, ErrConnClosed
 		}
