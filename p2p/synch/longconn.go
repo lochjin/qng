@@ -50,16 +50,19 @@ func (s *Sync) establishLongConnection(pe *peers.Peer) error {
 	if err != nil {
 		return common.NewErrorStr(common.ErrStreamBase, fmt.Sprintf("open stream on topic %v failed", topic)).ToError()
 	}
-	defer func() {
-		err := stream.Close()
+	common.EgressConnectMeter.Mark(1)
+
+	go func() {
+		err = pe.Run(stream, s.p2p.Encoding())
+		if err != nil {
+			log.Warn(err.Error())
+		}
+		err = stream.Close()
 		if err != nil {
 			log.Warn(err.Error())
 		}
 	}()
-
-	common.EgressConnectMeter.Mark(1)
-
-	return pe.Run(stream, s.p2p.Encoding())
+	return nil
 }
 
 func (s *Sync) registerLongConnection() {
