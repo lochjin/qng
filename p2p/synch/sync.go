@@ -73,6 +73,9 @@ const (
 )
 
 const (
+	PingMsg = 0x10
+	PongMsg = 0x11
+
 	SnapSyncReqMsg = 0x100
 	SnapSyncRspMsg = 0x110
 )
@@ -266,8 +269,11 @@ func (s *Sync) registerRPCHandlers() {
 
 	s.registerLongConnection()
 
-	peers.RegisterDataType(SnapSyncRspMsg, &pb.SnapSyncRsp{})
-	peers.RegisterHandler(SnapSyncReqMsg, &pb.SnapSyncReq{}, s.snapSyncHandler)
+	peers.RegisterDataType(SnapSyncRspMsg, &pb.SnapSyncRsp{}, "SnapSyncRspMsg")
+	peers.RegisterHandler(SnapSyncReqMsg, &pb.SnapSyncReq{}, s.snapSyncHandler, "SnapSyncReqMsg")
+
+	peers.RegisterDataType(PongMsg, new(uint64), "PongMsg")
+	peers.RegisterHandler(PingMsg, new(uint64), s.pongHandler, "PingMsg")
 }
 
 // registerRPC for a given topic with an expected protobuf message type.
@@ -279,7 +285,11 @@ func (s *Sync) Send(pe *peers.Peer, protocol string, message interface{}) (inter
 	if !s.peerSync.IsRunning() {
 		return nil, fmt.Errorf("No run PeerSync\n")
 	}
-
+	if protocol == RPCPingTopic {
+		if pe.IsSupportPingPongLong() {
+			return pe.Request(PingMsg, message)
+		}
+	}
 	log.Trace("Send message", "protocol", getProtocol(s.p2p, protocol), "peer", pe.IDWithAddress())
 
 	ctx, cancel := context.WithTimeout(s.p2p.Context(), ReqTimeout)

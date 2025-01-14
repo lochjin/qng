@@ -49,10 +49,15 @@ func (msg *Msg) Size() int {
 }
 
 func (msg *Msg) String() string {
+	code := fmt.Sprintf("%d", msg.Code)
+	name, ok := MsgNames[msg.Code]
+	if ok {
+		code = fmt.Sprintf("%s(%d)", name, msg.Code)
+	}
 	if msg.ReceivedAt.Unix() > 0 {
-		return fmt.Sprintf("id:%d code:%d size:%d time:%s", msg.ID, msg.Code, msg.Size(), msg.ReceivedAt.String())
+		return fmt.Sprintf("id:%d code:%s size:%d time:%s", msg.ID, code, msg.Size(), msg.ReceivedAt.String())
 	} else {
-		return fmt.Sprintf("id:%d code:%d size:%d", msg.ID, msg.Code, msg.Size())
+		return fmt.Sprintf("id:%d code:%s size:%d", msg.ID, code, msg.Size())
 	}
 }
 
@@ -64,14 +69,17 @@ type MsgHander func(id uint64, msg interface{}, pe *Peer) error
 
 var MsgHanders = map[uint64]MsgHander{}
 var MsgDataTypes = map[uint64]interface{}{}
+var MsgNames = map[uint64]string{}
 
-func RegisterHandler(code uint64, base interface{}, handler MsgHander) {
+func RegisterHandler(code uint64, base interface{}, handler MsgHander, name string) {
 	MsgHanders[code] = handler
 	MsgDataTypes[code] = base
+	MsgNames[code] = name
 }
 
-func RegisterDataType(code uint64, base interface{}) {
+func RegisterDataType(code uint64, base interface{}, name string) {
 	MsgDataTypes[code] = base
+	MsgNames[code] = name
 }
 
 type ConnMsgRW struct {
@@ -288,7 +296,7 @@ func (p *ConnMsgRW) readMsg(pe *Peer) (*Msg, error) {
 	}
 	// read msg
 	dataSize := binary.BigEndian.Uint64(dataSizeBS)
-	log.Debug("Receive message head", "peer", pe.IDWithAddress(), "size", dataSize)
+	log.Trace("Receive message head", "size", dataSize, "peer", pe.IDWithAddress())
 	if dataSize > MaxMessageSize {
 		return nil, fmt.Errorf("Too large message size: %d > %d", dataSize, MaxMessageSize)
 	}
@@ -312,13 +320,13 @@ func (p *ConnMsgRW) readMsg(pe *Peer) (*Msg, error) {
 	msgCodeBs := msgData[MsgCodeSize : MsgCodeSize*2]
 	msgCode := binary.BigEndian.Uint64(msgCodeBs)
 
-	log.Debug("Receive message", "id", msgID, "code", msgCode, "peer", pe.IDWithAddress(), "size", size)
-
-	return &Msg{
+	msg := &Msg{
 		ID:      msgID,
 		Code:    msgCode,
 		Payload: msgData[MsgCodeSize*2:],
-	}, nil
+	}
+	log.Debug("Receive", "msg", msg.String(), "peer", pe.IDWithAddress())
+	return msg, nil
 }
 
 func (p *ConnMsgRW) writeMsg(pe *Peer, msg *Msg) error {

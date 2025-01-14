@@ -93,3 +93,15 @@ func (s *Sync) validateSequenceNum(seq uint64, pe *peers.Peer) (bool, error) {
 	}
 	return true, nil
 }
+
+// New Implementation by long connection
+func (s *Sync) pongHandler(id uint64, msg interface{}, pe *peers.Peer) error {
+	m, ok := msg.(*uint64)
+	if !ok {
+		return fmt.Errorf("wrong message type for ping, got %T, wanted *uint64", msg)
+	}
+	if s.p2p.MetadataSeq() != *m {
+		return fmt.Errorf("sequence num error:%d != %d", s.p2p.MetadataSeq(), *m)
+	}
+	return pe.Respond(PongMsg, s.p2p.MetadataSeq(), id)
+}
