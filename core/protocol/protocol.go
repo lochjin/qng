@@ -36,8 +36,11 @@ const (
 	// Support long channel for peer connection
 	PeerLongConnProtocolVersion uint32 = 49
 
+	// Support pingpong by long channel connection
+	PingPongLongProtocolVersion uint32 = 50
+
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = PeerLongConnProtocolVersion
+	ProtocolVersion uint32 = PingPongLongProtocolVersion
 )
 
 // Network represents which qitmeer network a message belongs to.

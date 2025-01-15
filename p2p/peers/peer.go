@@ -836,6 +836,16 @@ func (p *Peer) IsSupportLongConn() bool {
 	return p.chainState.ProtocolVersion >= protocol.PeerLongConnProtocolVersion
 }
 
+func (p *Peer) IsSupportPingPongLong() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.chainState == nil {
+		return false
+	}
+	return p.chainState.ProtocolVersion >= protocol.PingPongLongProtocolVersion
+}
+
 func (p *Peer) GetMeerConn() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()

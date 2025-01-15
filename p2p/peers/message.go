@@ -1,14 +1,16 @@
 package peers
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/p2p/encoder"
 	"github.com/libp2p/go-libp2p/core/network"
+	"golang.org/x/crypto/sha3"
+	"hash"
 	"io"
 	"math/rand"
 	"reflect"
@@ -20,9 +22,11 @@ import (
 const MaxMessageSize = 10 * 1024 * 1024
 const MsgCodeSize = 8
 const PacketSize = 8
+const MACSize = 16
+const HeadSize = PacketSize + MACSize + PacketSize
 
 // HandleTimeout is the maximum time for complete handler.
-const HandleTimeout = 20 * time.Second
+const HandleTimeout = time.Minute
 
 var ErrConnClosed = errors.New("ConnMsg: read or write on closed message")
 
@@ -45,10 +49,15 @@ func (msg *Msg) Size() int {
 }
 
 func (msg *Msg) String() string {
+	code := fmt.Sprintf("%d", msg.Code)
+	name, ok := MsgNames[msg.Code]
+	if ok {
+		code = fmt.Sprintf("%s(%d)", name, msg.Code)
+	}
 	if msg.ReceivedAt.Unix() > 0 {
-		return fmt.Sprintf("id:%d code:%d size:%d time:%s", msg.ID, msg.Code, msg.Size(), msg.ReceivedAt.String())
+		return fmt.Sprintf("id:%d code:%s size:%d time:%s", msg.ID, code, msg.Size(), msg.ReceivedAt.String())
 	} else {
-		return fmt.Sprintf("id:%d code:%d size:%d", msg.ID, msg.Code, msg.Size())
+		return fmt.Sprintf("id:%d code:%s size:%d", msg.ID, code, msg.Size())
 	}
 }
 
@@ -60,24 +69,29 @@ type MsgHander func(id uint64, msg interface{}, pe *Peer) error
 
 var MsgHanders = map[uint64]MsgHander{}
 var MsgDataTypes = map[uint64]interface{}{}
+var MsgNames = map[uint64]string{}
 
-func RegisterHandler(code uint64, base interface{}, handler MsgHander) {
+func RegisterHandler(code uint64, base interface{}, handler MsgHander, name string) {
 	MsgHanders[code] = handler
 	MsgDataTypes[code] = base
+	MsgNames[code] = name
 }
 
-func RegisterDataType(code uint64, base interface{}) {
+func RegisterDataType(code uint64, base interface{}, name string) {
 	MsgDataTypes[code] = base
+	MsgNames[code] = name
 }
 
 type ConnMsgRW struct {
-	w       chan *Msg
-	closing chan struct{}
-	closed  *atomic.Bool
-	rw      *bufio.ReadWriter
-	en      encoder.NetworkEncoding
-	wg      sync.WaitGroup
-	pending sync.Map
+	w          chan *Msg
+	closing    chan struct{}
+	closed     *atomic.Bool
+	rw         network.Stream
+	en         encoder.NetworkEncoding
+	wg         sync.WaitGroup
+	pending    sync.Map
+	macRHasher hash.Hash
+	macWHasher hash.Hash
 }
 
 func (p *ConnMsgRW) Send(msgcode uint64, data interface{}, respondID uint64) (interface{}, error) {
@@ -119,10 +133,12 @@ func (p *ConnMsgRW) Send(msgcode uint64, data interface{}, respondID uint64) (in
 		return nil, ErrConnClosed
 	}
 	if msg.Reply != nil {
+		rctx, rcan := context.WithTimeout(context.Background(), HandleTimeout)
+		defer rcan()
 		select {
 		case ret := <-msg.Reply:
 			return ret, nil
-		case <-ctx.Done():
+		case <-rctx.Done():
 			go p.Close()
 			return nil, fmt.Errorf("ConnMsgRW wait respond message timeout:%s", msg.String())
 		case <-p.closing:
@@ -162,53 +178,9 @@ loop:
 	for {
 		select {
 		case msg := <-p.w:
-			dataSize := msg.Size()
-			if dataSize > MaxMessageSize {
-				if msg.Reply != nil {
-					msg.Reply <- nil
-				}
-				return fmt.Errorf("Too large message size: %d > %d", dataSize, MaxMessageSize)
-			}
-			bs := make([]byte, PacketSize)
-			binary.BigEndian.PutUint64(bs, uint64(dataSize))
-			size, err := p.rw.Write(bs)
+			err := p.writeMsg(pe, msg)
 			if err != nil {
 				return err
-			}
-			if size != PacketSize {
-				return fmt.Errorf("Write size error:%d", size)
-			}
-			bs = make([]byte, MsgCodeSize)
-			binary.BigEndian.PutUint64(bs, msg.ID)
-
-			size, err = p.rw.Write(bs)
-			if err != nil {
-				return err
-			}
-			if size != MsgCodeSize {
-				return fmt.Errorf("write size error:%d", size)
-			}
-			bs = make([]byte, MsgCodeSize)
-			binary.BigEndian.PutUint64(bs, msg.Code)
-
-			size, err = p.rw.Write(bs)
-			if err != nil {
-				return err
-			}
-			if size != MsgCodeSize {
-				return fmt.Errorf("write size error:%d", size)
-			}
-			size, err = p.rw.Write(msg.Payload)
-			if err != nil {
-				return err
-			}
-			err = p.rw.Flush()
-			if err != nil {
-				return err
-			}
-			pe.IncreaseBytesSent(msg.Size() + PacketSize)
-			if msg.Reply != nil {
-				p.pending.Store(msg.ID, msg.Reply)
 			}
 
 		case err := <-readErr:
@@ -292,7 +264,11 @@ func (p *ConnMsgRW) readMsg(pe *Peer) (*Msg, error) {
 	if p.closed.Load() {
 		return nil, ErrConnClosed
 	}
-	dataHead := make([]byte, PacketSize)
+	dataHead := make([]byte, HeadSize)
+	err := p.rw.SetReadDeadline(time.Now().Add(HandleTimeout))
+	if err != nil {
+		return nil, err
+	}
 	size, err := p.rw.Read(dataHead)
 	if err == io.EOF {
 		log.Debug("Base Stream closed by peer", "peer", pe.IDWithAddress())
@@ -302,38 +278,30 @@ func (p *ConnMsgRW) readMsg(pe *Peer) (*Msg, error) {
 		log.Warn("Error reading from base stream", "peer", pe.IDWithAddress(), "error", err)
 		return nil, err
 	}
-	if size != PacketSize {
+	if size != HeadSize {
 		err = fmt.Errorf("Error message head size")
 		log.Warn(err.Error(), "peer", pe.IDWithAddress())
 		return nil, err
 	}
-	dataSize := binary.BigEndian.Uint64(dataHead)
-	log.Debug("Receive message head", "peer", pe.IDWithAddress(), "size", dataSize)
+	dataSizeBS := dataHead[:PacketSize]
+	macBS := dataHead[PacketSize : PacketSize+MACSize]
+	calcMAC, err := calculateMAC(p.macRHasher, dataSizeBS)
+	if err != nil {
+		log.Warn("Error calculate mac", "peer", pe.IDWithAddress(), "error", err)
+		return nil, err
+	}
+	if !bytes.Equal(macBS, calcMAC) {
+		err := fmt.Errorf("message mac validation failed:%s != %s(%s)", hex.EncodeToString(macBS), hex.EncodeToString(calcMAC), hex.EncodeToString(dataSizeBS))
+		return nil, err
+	}
+	// read msg
+	dataSize := binary.BigEndian.Uint64(dataSizeBS)
+	log.Trace("Receive message head", "size", dataSize, "peer", pe.IDWithAddress())
 	if dataSize > MaxMessageSize {
 		return nil, fmt.Errorf("Too large message size: %d > %d", dataSize, MaxMessageSize)
 	}
 	msgData := make([]byte, dataSize)
-	ctx, can := context.WithTimeout(context.Background(), HandleTimeout)
-	defer can()
-
-	ret := make(chan error)
-	go func(ret chan error) {
-		size, err = io.ReadFull(p.rw, msgData)
-		select {
-		case <-p.closing:
-			return
-		case ret <- err:
-		}
-	}(ret)
-
-	select {
-	case <-p.closing:
-		return nil, ErrConnClosed
-	case <-ctx.Done():
-		return nil, fmt.Errorf("ConnMsgRW read message timeout:%s", pe.GetID())
-	case err = <-ret:
-	}
-
+	size, err = io.ReadFull(p.rw, msgData)
 	if err == io.EOF {
 		log.Debug("Base Stream closed by peer", "peer", pe.IDWithAddress())
 		return nil, nil
@@ -352,23 +320,121 @@ func (p *ConnMsgRW) readMsg(pe *Peer) (*Msg, error) {
 	msgCodeBs := msgData[MsgCodeSize : MsgCodeSize*2]
 	msgCode := binary.BigEndian.Uint64(msgCodeBs)
 
-	log.Debug("Receive message", "id", msgID, "code", msgCode, "peer", pe.IDWithAddress(), "size", size)
-
-	return &Msg{
+	msg := &Msg{
 		ID:      msgID,
 		Code:    msgCode,
 		Payload: msgData[MsgCodeSize*2:],
-	}, nil
+	}
+	log.Debug("Receive", "msg", msg.String(), "peer", pe.IDWithAddress())
+	return msg, nil
+}
+
+func (p *ConnMsgRW) writeMsg(pe *Peer, msg *Msg) error {
+	dataSize := msg.Size()
+	if dataSize > MaxMessageSize {
+		if msg.Reply != nil {
+			msg.Reply <- nil
+		}
+		return fmt.Errorf("Too large message size: %d > %d", dataSize, MaxMessageSize)
+	}
+	var buff bytes.Buffer
+	bs := make([]byte, PacketSize)
+	binary.BigEndian.PutUint64(bs, uint64(dataSize))
+	size, err := buff.Write(bs)
+	if err != nil {
+		return err
+	}
+	if size != PacketSize {
+		return fmt.Errorf("Write size error:%d", size)
+	}
+	mac, err := calculateMAC(p.macWHasher, bs)
+	if err != nil {
+		return err
+	}
+	size, err = buff.Write(mac)
+	if err != nil {
+		return err
+	}
+	if size != MACSize {
+		return fmt.Errorf("Write size error:%d", size)
+	}
+	// Future reserved fields
+	size, err = buff.Write(make([]byte, PacketSize))
+	if err != nil {
+		return err
+	}
+	if size != PacketSize {
+		return fmt.Errorf("Write size error:%d", size)
+	}
+
+	bs = make([]byte, MsgCodeSize)
+	binary.BigEndian.PutUint64(bs, msg.ID)
+
+	size, err = buff.Write(bs)
+	if err != nil {
+		return err
+	}
+	if size != MsgCodeSize {
+		return fmt.Errorf("write size error:%d", size)
+	}
+	bs = make([]byte, MsgCodeSize)
+	binary.BigEndian.PutUint64(bs, msg.Code)
+
+	size, err = buff.Write(bs)
+	if err != nil {
+		return err
+	}
+	if size != MsgCodeSize {
+		return fmt.Errorf("write size error:%d", size)
+	}
+	size, err = buff.Write(msg.Payload)
+	if err != nil {
+		return err
+	}
+
+	err = p.rw.SetWriteDeadline(time.Now().Add(HandleTimeout))
+	if err != nil {
+		return err
+	}
+	size, err = p.rw.Write(buff.Bytes())
+	if err != nil {
+		return err
+	}
+	if size != buff.Len() {
+		return fmt.Errorf("write size error:%d", size)
+	}
+	pe.IncreaseBytesSent(msg.Size() + PacketSize)
+	if msg.Reply != nil {
+		p.pending.Store(msg.ID, msg.Reply)
+	}
+	return nil
 }
 
 func NewConnRW(stream network.Stream, en encoder.NetworkEncoding) *ConnMsgRW {
-	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 	conn := &ConnMsgRW{
-		rw:      rw,
-		en:      en,
-		w:       make(chan *Msg),
-		closing: make(chan struct{}),
-		closed:  new(atomic.Bool),
+		rw:         stream,
+		en:         en,
+		w:          make(chan *Msg),
+		closing:    make(chan struct{}),
+		closed:     new(atomic.Bool),
+		macRHasher: sha3.NewLegacyKeccak256(),
+		macWHasher: sha3.NewLegacyKeccak256(),
 	}
 	return conn
+}
+
+func calculateMAC(hasher hash.Hash, data []byte) ([]byte, error) {
+	hasher.Reset()
+	size, err := hasher.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	if size != len(data) {
+		return nil, fmt.Errorf("Write mac size error:%d", size)
+	}
+	mac := hasher.Sum(nil)
+	if len(mac) < MACSize {
+		return nil, fmt.Errorf("mac hasher error:%d < %d", len(mac), MACSize)
+	}
+	return mac[:MACSize], nil
 }
