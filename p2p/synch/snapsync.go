@@ -16,6 +16,7 @@ import (
 	ecommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"sync"
 	"time"
 )
 
@@ -105,7 +106,7 @@ func (ps *PeerSync) startSnapSync() bool {
 	best := ps.Chain().BestSnapshot()
 	var bestPeer *peers.Peer
 	if ps.IsSnapSync() {
-		snapPeer, _ := ps.getSnapSyncPeer(0, nil)
+		snapPeer, _ := ps.getSnapSyncPeer(0, nil, false)
 		if snapPeer == nil {
 			return true
 		}
@@ -116,11 +117,11 @@ func (ps *PeerSync) startSnapSync() bool {
 			return false
 		}
 		gs := bestPeer.GraphState()
-		if gs.GetTotal() < best.GraphState.GetTotal()+MinSnapSyncChainDepth {
+		if gs.GetMainOrder() < best.GraphState.GetMainOrder()+MinSnapSyncChainDepth {
 			return false
 		}
 		if !isValidSnapPeer(bestPeer) {
-			snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil)
+			snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil, true)
 			if snapPeer == nil {
 				if change {
 					return false
@@ -173,7 +174,6 @@ cleanup:
 	}
 	add := 0
 	evmTarget := make(chan ecommon.Hash)
-	result := make(chan error)
 
 	endSnapSyncing := func() {
 		ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
@@ -203,17 +203,28 @@ cleanup:
 	}
 	defer endSnapSyncing()
 
+	lastEvmTarget := ps.snapStatus.GetEVMTarget()
 	if !ps.snapStatus.IsEVMCompleted() {
-		defer func() {
-			merr := <-result
-			if merr != nil {
-				log.Warn(merr.Error())
-			}
-		}()
-		go ps.meerSync(evmTarget, result)
+		if lastEvmTarget != (ecommon.Hash{}) && ps.Chain().MeerChain().Ether().BlockChain().GetBlockByHash(lastEvmTarget) != nil {
+			ps.snapStatus.CompleteEVM()
+		}
 	}
 
-	lastEvmTarget := ps.snapStatus.GetEVMTarget()
+	if !ps.snapStatus.IsEVMCompleted() {
+		var wg sync.WaitGroup
+		quit := make(chan struct{})
+
+		defer func() {
+			close(quit)
+			wg.Wait()
+		}()
+
+		wg.Add(1)
+		go func() {
+			ps.meerSync(evmTarget, quit)
+			wg.Done()
+		}()
+	}
 
 	onlyEvmFirst := false
 	if ps.snapStatus.IsPointCompleted() && !ps.snapStatus.IsEVMCompleted() {
@@ -256,7 +267,11 @@ cleanup:
 		if !ps.snapStatus.IsEVMCompleted() {
 			if (lastEvmTarget != ps.snapStatus.GetEVMTarget() && ps.snapStatus.GetEVMTarget() != (ecommon.Hash{})) || onlyEvmFirst {
 				lastEvmTarget = ps.snapStatus.GetEVMTarget()
-				evmTarget <- ps.snapStatus.GetEVMTarget()
+				if ps.Chain().MeerChain().Ether().BlockChain().GetBlockByHash(lastEvmTarget) != nil {
+					ps.snapStatus.CompleteEVM()
+				} else {
+					evmTarget <- ps.snapStatus.GetEVMTarget()
+				}
 				if onlyEvmFirst {
 					onlyEvmFirst = false
 				}
@@ -286,7 +301,7 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, *peers.P
 			return ret, pe
 		}
 		log.Warn("Try change snap peer", "processID", ps.getProcessID())
-		newPeer, _ := ps.getSnapSyncPeer(0, map[peer.ID]struct{}{pe.GetID(): struct{}{}})
+		newPeer, _ := ps.getSnapSyncPeer(0, map[peer.ID]struct{}{pe.GetID(): struct{}{}}, false)
 		if newPeer == nil {
 			return nil, pe
 		}
@@ -405,11 +420,19 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 	return ret, nil
 }
 
-func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}) (*peers.Peer, bool) {
+func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}, pre bool) (*peers.Peer, bool) {
 	start := time.Now()
 	var pe *peers.Peer
 	for pe == nil {
 		pe = ps.getBestPeer(true, exclude)
+		if pre {
+			if pe != nil {
+				best := ps.Chain().BestSnapshot()
+				if pe.GraphState().GetMainOrder() < best.GraphState.GetMainOrder()+MinSnapSyncChainDepth {
+					pe = nil
+				}
+			}
+		}
 		if pe == nil {
 			if timeout > 0 {
 				if time.Since(start) > time.Duration(timeout)*time.Second {

@@ -147,19 +147,21 @@ func (s *Sync) registerMeerConnection() {
 	})
 }
 
-func (ps *PeerSync) meerSync(target chan ecommon.Hash, result chan error) {
-	ticker := time.NewTicker(time.Second * 5)
+func (ps *PeerSync) meerSync(target chan ecommon.Hash, quit chan struct{}) {
+	log.Info("enter meer sync")
+	defer log.Info("exit meer sync")
+
+	ticker := time.NewTicker(time.Second * 15)
 	defer ticker.Stop()
 
 	var tar ecommon.Hash
 
 	for {
 		if !ps.IsRunning() {
-			result <- errors.New("Quit meerevm sync")
+			log.Warn("Quit meerevm sync")
 			return
 		}
 		if ps.snapStatus.IsEVMCompleted() {
-			result <- nil
 			return
 		}
 		select {
@@ -167,7 +169,7 @@ func (ps *PeerSync) meerSync(target chan ecommon.Hash, result chan error) {
 			if tar == (ecommon.Hash{}) {
 				continue
 			}
-			err := ps.sy.p2p.BlockChain().MeerChain().Downloader().SyncQngWaitPeers(ps.sy.p2p.BlockChain().MeerChain().SyncMode(), tar, ps.quit)
+			err := ps.sy.p2p.BlockChain().MeerChain().Downloader().SyncQngWaitPeers(ps.sy.p2p.BlockChain().MeerChain().SyncMode(), tar, ps.quit, time.Minute*5)
 			if err != nil {
 				log.Info("Failed to trigger beacon sync", "err", err)
 				continue
@@ -180,11 +182,13 @@ func (ps *PeerSync) meerSync(target chan ecommon.Hash, result chan error) {
 			if block != nil {
 				ps.snapStatus.CompleteEVM()
 				log.Info("Sync target reached", "number", block.NumberU64(), "hash", block.Hash())
-				result <- nil
 				return
 			}
 		case <-ps.quit:
-			result <- errors.New("Quit meerevm sync")
+			log.Warn("Quit meerevm sync by ps")
+			return
+		case <-quit:
+			log.Warn("Quit meerevm sync")
 			return
 		}
 
