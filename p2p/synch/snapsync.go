@@ -105,7 +105,7 @@ func (ps *PeerSync) startSnapSync() bool {
 	best := ps.Chain().BestSnapshot()
 	var bestPeer *peers.Peer
 	if ps.IsSnapSync() {
-		snapPeer, _ := ps.getSnapSyncPeer(0, nil)
+		snapPeer, _ := ps.getSnapSyncPeer(0, nil, false)
 		if snapPeer == nil {
 			return true
 		}
@@ -116,11 +116,11 @@ func (ps *PeerSync) startSnapSync() bool {
 			return false
 		}
 		gs := bestPeer.GraphState()
-		if gs.GetTotal() < best.GraphState.GetTotal()+MinSnapSyncChainDepth {
+		if gs.GetMainOrder() < best.GraphState.GetMainOrder()+MinSnapSyncChainDepth {
 			return false
 		}
 		if !isValidSnapPeer(bestPeer) {
-			snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil)
+			snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil, true)
 			if snapPeer == nil {
 				if change {
 					return false
@@ -286,7 +286,7 @@ func (ps *PeerSync) trySyncSnapStatus(pe *peers.Peer) (*pb.SnapSyncRsp, *peers.P
 			return ret, pe
 		}
 		log.Warn("Try change snap peer", "processID", ps.getProcessID())
-		newPeer, _ := ps.getSnapSyncPeer(0, map[peer.ID]struct{}{pe.GetID(): struct{}{}})
+		newPeer, _ := ps.getSnapSyncPeer(0, map[peer.ID]struct{}{pe.GetID(): struct{}{}}, false)
 		if newPeer == nil {
 			return nil, pe
 		}
@@ -405,11 +405,19 @@ func (ps *PeerSync) processRsp(ssr *pb.SnapSyncRsp) ([]*blockchain.SnapData, err
 	return ret, nil
 }
 
-func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}) (*peers.Peer, bool) {
+func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}, pre bool) (*peers.Peer, bool) {
 	start := time.Now()
 	var pe *peers.Peer
 	for pe == nil {
 		pe = ps.getBestPeer(true, exclude)
+		if pre {
+			if pe != nil {
+				best := ps.Chain().BestSnapshot()
+				if pe.GraphState().GetMainOrder() < best.GraphState.GetMainOrder()+MinSnapSyncChainDepth {
+					pe = nil
+				}
+			}
+		}
 		if pe == nil {
 			if timeout > 0 {
 				if time.Since(start) > time.Duration(timeout)*time.Second {
