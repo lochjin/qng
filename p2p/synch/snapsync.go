@@ -16,6 +16,7 @@ import (
 	ecommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"sync"
 	"time"
 )
 
@@ -173,7 +174,6 @@ cleanup:
 	}
 	add := 0
 	evmTarget := make(chan ecommon.Hash)
-	result := make(chan error)
 
 	endSnapSyncing := func() {
 		ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
@@ -203,17 +203,28 @@ cleanup:
 	}
 	defer endSnapSyncing()
 
+	lastEvmTarget := ps.snapStatus.GetEVMTarget()
 	if !ps.snapStatus.IsEVMCompleted() {
-		defer func() {
-			merr := <-result
-			if merr != nil {
-				log.Warn(merr.Error())
-			}
-		}()
-		go ps.meerSync(evmTarget, result)
+		if lastEvmTarget != (ecommon.Hash{}) && ps.Chain().MeerChain().Ether().BlockChain().GetBlockByHash(lastEvmTarget) != nil {
+			ps.snapStatus.CompleteEVM()
+		}
 	}
 
-	lastEvmTarget := ps.snapStatus.GetEVMTarget()
+	if !ps.snapStatus.IsEVMCompleted() {
+		var wg sync.WaitGroup
+		quit := make(chan struct{})
+
+		defer func() {
+			close(quit)
+			wg.Wait()
+		}()
+
+		wg.Add(1)
+		go func() {
+			ps.meerSync(evmTarget, quit)
+			wg.Done()
+		}()
+	}
 
 	onlyEvmFirst := false
 	if ps.snapStatus.IsPointCompleted() && !ps.snapStatus.IsEVMCompleted() {
@@ -256,7 +267,11 @@ cleanup:
 		if !ps.snapStatus.IsEVMCompleted() {
 			if (lastEvmTarget != ps.snapStatus.GetEVMTarget() && ps.snapStatus.GetEVMTarget() != (ecommon.Hash{})) || onlyEvmFirst {
 				lastEvmTarget = ps.snapStatus.GetEVMTarget()
-				evmTarget <- ps.snapStatus.GetEVMTarget()
+				if ps.Chain().MeerChain().Ether().BlockChain().GetBlockByHash(lastEvmTarget) != nil {
+					ps.snapStatus.CompleteEVM()
+				} else {
+					evmTarget <- ps.snapStatus.GetEVMTarget()
+				}
 				if onlyEvmFirst {
 					onlyEvmFirst = false
 				}
