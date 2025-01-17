@@ -12,11 +12,8 @@ import (
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/p2p/peers"
 	pb "github.com/Qitmeer/qng/p2p/proto/v1"
-	qparams "github.com/Qitmeer/qng/params"
 	ecommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"sync"
 	"time"
 )
 
@@ -173,7 +170,6 @@ cleanup:
 		return true
 	}
 	add := 0
-	evmTarget := make(chan ecommon.Hash)
 
 	endSnapSyncing := func() {
 		ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
@@ -203,46 +199,26 @@ cleanup:
 	}
 	defer endSnapSyncing()
 
-	lastEvmTarget := ps.snapStatus.GetEVMTarget()
+	ebc := ps.Chain().MeerChain().Ether().BlockChain()
+	mc := ps.sy.p2p.BlockChain().MeerChain()
 	if !ps.snapStatus.IsEVMCompleted() {
-		if lastEvmTarget != (ecommon.Hash{}) && ps.Chain().MeerChain().Ether().BlockChain().GetBlockByHash(lastEvmTarget) != nil {
+		curEVMTarget := ps.snapStatus.GetEVMTarget()
+		if curEVMTarget != (ecommon.Hash{}) && ebc.GetBlockByHash(curEVMTarget) != nil {
+			ps.snapStatus.CompleteEVM()
+		}
+		if mc.GetCurHeader().Number.Uint64()+MinSnapSyncNumber >= bestPeer.GetMeerState().Number {
 			ps.snapStatus.CompleteEVM()
 		}
 	}
+	var lastEvmTarget ecommon.Hash
+	timeout := time.Minute * 5
+	ticker := time.NewTicker(time.Second * 15)
+	defer ticker.Stop()
 
-	if !ps.snapStatus.IsEVMCompleted() {
-		var wg sync.WaitGroup
-		quit := make(chan struct{})
-
-		defer func() {
-			close(quit)
-			wg.Wait()
-		}()
-
-		wg.Add(1)
-		go func() {
-			ps.meerSync(evmTarget, quit)
-			wg.Done()
-		}()
-	}
-
-	onlyEvmFirst := false
-	if ps.snapStatus.IsPointCompleted() && !ps.snapStatus.IsEVMCompleted() {
-		onlyEvmFirst = true
-	}
 	for !ps.snapStatus.IsCompleted() {
 		if !ps.IsRunning() {
 			log.Warn("Snap-sync exit midway")
 			return true
-		}
-		if ps.snapStatus.IsPointCompleted() && !onlyEvmFirst {
-			select {
-			case <-time.After(qparams.ActiveNetParams.TargetTimePerBlock * state.TriesInMemory):
-				log.Debug("Try to compare target for snap-sync")
-			case <-ps.quit:
-				log.Warn("Snap-sync exit midway")
-				return true
-			}
 		}
 		ret, pe := ps.trySyncSnapStatus(bestPeer)
 		bestPeer = pe
@@ -264,16 +240,32 @@ cleanup:
 			add += len(sds)
 			log.Trace("Snap-sync", "point", latest.GetHash().String(), "data_num", len(sds), "total", add)
 		}
-		if !ps.snapStatus.IsEVMCompleted() {
-			if (lastEvmTarget != ps.snapStatus.GetEVMTarget() && ps.snapStatus.GetEVMTarget() != (ecommon.Hash{})) || onlyEvmFirst {
-				lastEvmTarget = ps.snapStatus.GetEVMTarget()
-				if ps.Chain().MeerChain().Ether().BlockChain().GetBlockByHash(lastEvmTarget) != nil {
+		curEVMTarget := ps.snapStatus.GetEVMTarget()
+		if (ps.snapStatus.IsPointCompleted() || lastEvmTarget == (ecommon.Hash{})) && !ps.snapStatus.IsEVMCompleted() && curEVMTarget != (ecommon.Hash{}) {
+			if lastEvmTarget != curEVMTarget || lastEvmTarget == (ecommon.Hash{}) {
+				if ebc.GetBlockByHash(curEVMTarget) != nil {
 					ps.snapStatus.CompleteEVM()
 				} else {
-					evmTarget <- ps.snapStatus.GetEVMTarget()
+					err := mc.Downloader().SyncQngWaitPeers(mc.SyncMode(), curEVMTarget, ps.quit, timeout)
+					if err != nil {
+						log.Warn("Failed to trigger beacon sync", "err", err)
+					}
 				}
-				if onlyEvmFirst {
-					onlyEvmFirst = false
+				lastEvmTarget = curEVMTarget
+			}
+			if ps.snapStatus.IsPointCompleted() && !ps.snapStatus.IsEVMCompleted() {
+				select {
+				case <-time.After(timeout):
+					log.Debug("Try to compare target for snap-sync", "cur", curEVMTarget.String())
+				case <-ticker.C:
+					block := ebc.GetBlockByHash(curEVMTarget)
+					if block != nil {
+						ps.snapStatus.CompleteEVM()
+						log.Info("Sync target reached", "number", block.NumberU64(), "hash", block.Hash())
+					}
+				case <-ps.quit:
+					log.Warn("Snap-sync exit midway")
+					return true
 				}
 			}
 		}
