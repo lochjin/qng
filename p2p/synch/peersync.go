@@ -182,8 +182,7 @@ func (ps *PeerSync) handleStallSample() {
 		ps.lastBlockID = lbid
 		return
 	}
-	ps.Chain().MeerChain().Downloader().Progress()
-	ps.TryAgainUpdateSyncPeer(true)
+	go ps.TryAgainUpdateSyncPeer(true)
 }
 
 func (ps *PeerSync) Pause() bool {
