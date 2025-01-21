@@ -311,11 +311,9 @@ func (ps *PeerSync) startConsensusSync() {
 	bestPeer := ps.getBestPeer(false, nil)
 	// Start syncing from the best peer if one was selected.
 	if bestPeer != nil {
-		ps.processID++
 		if ps.IsInterrupt() {
 			return
 		}
-		ps.processwg.Add(1)
 		gs := bestPeer.GraphState()
 		log.Info("Syncing graph state", "cur", best.GraphState.String(), "target", gs.String(), "peer", bestPeer.GetID().String(), "processID", ps.getProcessID())
 		// When the current height is less than a known checkpoint we
@@ -335,19 +333,12 @@ func (ps *PeerSync) startConsensusSync() {
 		// and fully validate them.  Finally, regression test mode does
 		// not support the headers-first approach so do normal block
 		// downloads when in regression test mode.
-		ps.SetSyncPeer(bestPeer)
+		startTime := ps.prepSync(bestPeer)
+		defer func() {
+			ps.SetSyncPeer(nil)
+			ps.processwg.Done()
+		}()
 
-	cleanup:
-		for {
-			select {
-			case <-ps.interrupt:
-			default:
-				break cleanup
-			}
-		}
-		ps.interrupt = make(chan struct{})
-		startTime := time.Now()
-		ps.lastSync = startTime
 		longSyncMod := false
 
 		if gs.GetTotal() >= best.GraphState.GetTotal()+MaxBlockLocatorsPerMsg {
@@ -388,8 +379,6 @@ func (ps *PeerSync) startConsensusSync() {
 		if longSyncMod {
 			ps.sy.p2p.Consensus().Events().Send(event.New(event.DownloaderEnd))
 		}
-		ps.SetSyncPeer(nil)
-		ps.processwg.Done()
 	} else {
 		log.Trace("You're already up to date, no synchronization is required.")
 		ps.Chain().MeerChain().SetSynced()
@@ -750,6 +739,26 @@ func (ps *PeerSync) IsInterrupt() bool {
 		return true
 	}
 	return false
+}
+
+func (ps *PeerSync) prepSync(pe *peers.Peer) time.Time {
+cleanup:
+	for {
+		select {
+		case <-ps.interrupt:
+		default:
+			break cleanup
+		}
+	}
+	ps.interrupt = make(chan struct{})
+
+	startTime := time.Now()
+	ps.lastSync = startTime
+
+	ps.processID++
+	ps.processwg.Add(1)
+	ps.SetSyncPeer(pe)
+	return startTime
 }
 
 func (ps *PeerSync) getProcessID() string {

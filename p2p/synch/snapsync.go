@@ -133,26 +133,11 @@ func (ps *PeerSync) startSnapSync() bool {
 		return true
 	}
 	// Start syncing from the best peer if one was selected.
-	ps.processID++
-	ps.processwg.Add(1)
-	ps.SetSyncPeer(bestPeer)
-
+	startTime := ps.prepSync(bestPeer)
 	defer func() {
 		defer ps.processwg.Done()
 		ps.SetSyncPeer(nil)
 	}()
-
-cleanup:
-	for {
-		select {
-		case <-ps.interrupt:
-		default:
-			break cleanup
-		}
-	}
-	ps.interrupt = make(chan struct{})
-	startTime := time.Now()
-	ps.lastSync = startTime
 
 	if ps.IsSnapSync() {
 		ps.snapStatus.ResetPeer(bestPeer.GetID())
