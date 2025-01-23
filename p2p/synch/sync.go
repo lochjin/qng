@@ -78,6 +78,9 @@ const (
 
 	SnapSyncReqMsg = 0x100
 	SnapSyncRspMsg = 0x110
+
+	SyncBlocksReqMsg = 0x101
+	SyncBlocksRspMsg = 0x111
 )
 
 // Time to first byte timeout. The maximum time to wait for first byte of
@@ -274,6 +277,9 @@ func (s *Sync) registerRPCHandlers() {
 
 	peers.RegisterDataType(PongMsg, new(uint64), "PongMsg")
 	peers.RegisterHandler(PingMsg, new(uint64), s.pongHandler, "PingMsg")
+
+	peers.RegisterDataType(SyncBlocksRspMsg, &pb.SyncBlocksRsp{}, "SyncBlocksRspMsg")
+	peers.RegisterHandler(SyncBlocksReqMsg, &pb.SyncBlocksReq{}, s.syncBlocksHandler, "SyncBlocksReqMsg")
 }
 
 // registerRPC for a given topic with an expected protobuf message type.

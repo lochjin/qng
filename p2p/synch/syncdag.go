@@ -44,7 +44,7 @@ func (s *Sync) syncDAGHandler(ctx context.Context, msg interface{}, stream libp2
 	}
 	pe.UpdateGraphState(m.GraphState)
 
-	blocks, point := s.PeerSync().dagSync.CalcSyncBlocks(changePBHashsToHashs(m.MainLocator), meerdag.SubDAGMode, MaxBlockLocatorsPerMsg)
+	blocks, _, point := s.PeerSync().dagSync.CalcSyncBlocks(changePBHashsToHashs(m.MainLocator), meerdag.SubDAGMode, MaxBlockLocatorsPerMsg)
 	pe.UpdateSyncPoint(point)
 	sd := &pb.SubDAG{SyncPoint: &pb.Hash{Hash: point.Bytes()}, GraphState: s.getGraphState(), Blocks: changeHashsToPBHashs(blocks)}
 
@@ -58,7 +58,7 @@ func (s *Sync) conSyncDAGHandler(ctx context.Context, msg interface{}, stream li
 		return ErrMessage(err)
 	}
 
-	blocks, point := s.PeerSync().dagSync.CalcSyncBlocks([]*hash.Hash{changePBHashToHash(m.SyncPoint), changePBHashToHash(m.Start)}, meerdag.ContinueMode, MaxBlockLocatorsPerMsg)
+	blocks, _, point := s.PeerSync().dagSync.CalcSyncBlocks([]*hash.Hash{changePBHashToHash(m.SyncPoint), changePBHashToHash(m.Start)}, meerdag.ContinueMode, MaxBlockLocatorsPerMsg)
 	if point == nil || len(blocks) <= 0 {
 		err := fmt.Errorf("CalcSyncBlocks error by ContinueMode: point=%s start=%s", m.SyncPoint.String(), m.Start.String())
 		return ErrMessage(err)

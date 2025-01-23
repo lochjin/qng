@@ -78,16 +78,6 @@ const (
 	PeerUpdateOrphan = "PeerUpdateOrphan"
 )
 
-func isValidSnapPeer(pe *peers.Peer) bool {
-	if !pe.IsSnap() || pe.GetMeerState() == nil || !pe.GetMeerConn() || !pe.IsLongConn() {
-		return false
-	}
-	if pe.GetMeerState().Number <= MinSnapSyncNumber {
-		return false
-	}
-	return true
-}
-
 func CreateMeerNode(addr ma.Multiaddr, url string) (*enode.Node, error) {
 	en := enode.MustParse(url)
 	ip, err := manet.ToIP(addr)

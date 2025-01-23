@@ -109,7 +109,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		}
 		bestPeer = snapPeer
 	} else {
-		bestPeer = ps.getBestPeer(false, nil)
+		bestPeer = ps.getBestPeer(NormalSyncMode, nil)
 		if bestPeer == nil {
 			return false
 		}
@@ -117,7 +117,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		if gs.GetMainOrder() < best.GraphState.GetMainOrder()+MinSnapSyncChainDepth {
 			return false
 		}
-		if !isValidSnapPeer(bestPeer) {
+		if !ps.isValidSyncPeer(bestPeer, SnapSyncMode) {
 			snapPeer, change := ps.getSnapSyncPeer(ps.sy.p2p.Consensus().Config().NoSnapSyncPeerTimeout, nil, true)
 			if snapPeer == nil {
 				if change {
@@ -133,7 +133,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		return true
 	}
 	// Start syncing from the best peer if one was selected.
-	startTime := ps.prepSync(bestPeer)
+	startTime, _ := ps.prepSync(bestPeer)
 	defer func() {
 		defer ps.processwg.Done()
 		ps.SetSyncPeer(nil)
@@ -401,7 +401,7 @@ func (ps *PeerSync) getSnapSyncPeer(timeout int, exclude map[peer.ID]struct{}, p
 	start := time.Now()
 	var pe *peers.Peer
 	for pe == nil {
-		pe = ps.getBestPeer(true, exclude)
+		pe = ps.getBestPeer(SnapSyncMode, exclude)
 		if pre {
 			if pe != nil {
 				best := ps.Chain().BestSnapshot()

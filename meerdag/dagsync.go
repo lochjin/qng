@@ -33,33 +33,34 @@ type DAGSync struct {
 }
 
 // CalcSyncBlocks
-func (ds *DAGSync) CalcSyncBlocks(locator []*hash.Hash, mode SyncMode, maxHashes uint) ([]*hash.Hash, *hash.Hash) {
+func (ds *DAGSync) CalcSyncBlocks(locator []*hash.Hash, mode SyncMode, maxHashes uint) ([]*hash.Hash, bool, *hash.Hash) {
 	ds.bd.stateLock.Lock()
 	defer ds.bd.stateLock.Unlock()
 
 	if mode == DirectMode {
 		result := []*hash.Hash{}
 		if len(locator) == 0 {
-			return result, nil
+			return result, false, nil
 		}
-		return ds.bd.sortBlock(locator), nil
+		return ds.bd.sortBlock(locator), false, nil
 	} else if mode == ContinueMode {
 		result := []*hash.Hash{}
 		if len(locator) <= 0 {
-			return result, nil
+			return result, false, nil
 		}
 		point := ds.bd.getBlock(locator[0])
 		if point == nil {
-			return result, nil
+			return result, false, nil
 		}
 		if !ds.bd.isOnMainChain(point.GetID()) {
-			return result, nil
+			return result, false, nil
 		}
 		startBlock := ds.bd.getBlock(locator[1])
 		if startBlock == nil {
-			return result, nil
+			return result, false, nil
 		}
-		return ds.getBlockChainFromMain(startBlock, maxHashes), point.GetHash()
+		blocks, complete := ds.getBlockChainFromMain(startBlock, maxHashes)
+		return blocks, complete, point.GetHash()
 	}
 
 	var point IBlock
@@ -94,7 +95,8 @@ func (ds *DAGSync) CalcSyncBlocks(locator []*hash.Hash, mode SyncMode, maxHashes
 	if point == nil {
 		point = ds.bd.getGenesis()
 	}
-	return ds.getBlockChainFromMain(point, maxHashes), point.GetHash()
+	blocks, complete := ds.getBlockChainFromMain(point, maxHashes)
+	return blocks, complete, point.GetHash()
 }
 
 // GetMainLocator
@@ -203,9 +205,10 @@ func (ds *DAGSync) GetMainLocator(point *hash.Hash, withRoot bool) ([]*hash.Hash
 	return result0, result1
 }
 
-func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) []*hash.Hash {
+func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) ([]*hash.Hash, bool) {
 	mainTip := ds.bd.getMainChainTip()
 	result := []*hash.Hash{}
+	complete := true
 	for i := point.GetOrder() + 1; i <= mainTip.GetOrder(); i++ {
 		block := ds.bd.getBlockByOrder(i)
 		if block == nil {
@@ -213,6 +216,7 @@ func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) []*hash.H
 		}
 		result = append(result, block.GetHash())
 		if uint(len(result)) >= maxHashes {
+			complete = false
 			break
 		}
 	}
@@ -232,13 +236,14 @@ func (ds *DAGSync) getBlockChainFromMain(point IBlock, maxHashes uint) []*hash.H
 					}
 					result = append(result, block.GetHash())
 					if uint(len(result)) >= maxHashes {
+						complete = false
 						break
 					}
 				}
 			}
 		}
 	}
-	return result
+	return result, complete
 }
 
 func (ds *DAGSync) CalcSnapSyncBlocks(locator []*SnapLocator, maxHashes uint, target *SnapLocator, hasMeerState func(*api.HashOrNumber) bool) ([]IBlock, IBlock, error) {
