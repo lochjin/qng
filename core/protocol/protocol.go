@@ -39,8 +39,11 @@ const (
 	// Support pingpong by long channel connection
 	PingPongLongProtocolVersion uint32 = 50
 
+	// Support sync blocks by long channel connection
+	SyncBlocksLongProtocolVersion uint32 = 51
+
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = PingPongLongProtocolVersion
+	ProtocolVersion uint32 = SyncBlocksLongProtocolVersion
 )
 
 // Network represents which qitmeer network a message belongs to.
