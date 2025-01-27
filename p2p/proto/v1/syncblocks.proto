@@ -15,5 +15,5 @@ message SyncBlocksReq {
 message SyncBlocksRsp {
   bool complete = 1;
   Hash syncPoint = 2;
-  repeated BytesData blocks = 3 [(gogoproto.moretags) = "ssz-max:\"2000\""];
+  repeated BytesData blocks = 3 [(gogoproto.moretags) = "ssz-max:\"1048576\""];
 }
