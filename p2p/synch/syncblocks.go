@@ -34,7 +34,7 @@ func (ps *PeerSync) syncBlocks(pe *peers.Peer) int {
 	behaviorFlags := blockchain.BFP2PAdd
 	add := 0
 	init := true
-	zeroGS := &pb.GraphState{Tips: []*pb.Hash{}}
+	zeroGS := &pb.GraphState{Tips: []*pb.Hash{&pb.Hash{Hash: hash.ZeroHash.Bytes()}}}
 	var gs *pb.GraphState
 	var mainLocator []*hash.Hash
 	var latest *hash.Hash
@@ -50,7 +50,6 @@ func (ps *PeerSync) syncBlocks(pe *peers.Peer) int {
 			gs = zeroGS
 			mainLocator = []*hash.Hash{point, latest}
 		}
-
 		req := &pb.SyncBlocksReq{Init: init, GraphState: gs, MainLocator: changeHashsToPBHashs(mainLocator)}
 		ret, err := pe.Request(SyncBlocksReqMsg, req)
 		if err != nil {
@@ -111,38 +110,74 @@ func (s *Sync) syncBlocksHandler(id uint64, msg interface{}, pe *peers.Peer) err
 	if !ok {
 		return fmt.Errorf("message is not type *SyncBlocksReq")
 	}
-	rsp := &pb.SyncBlocksRsp{Blocks: []*pb.BytesData{}}
-	var blocks []*hash.Hash
-	var point *hash.Hash
-	complete := false
+	locator := changePBHashsToHashs(m.MainLocator)
+	bd := s.p2p.BlockChain().BlockDAG()
+	rsp := &pb.SyncBlocksRsp{
+		SyncPoint: &pb.Hash{Hash: hash.ZeroHash.Bytes()},
+		Blocks:    []*pb.BytesData{},
+		Complete:  true,
+	}
 	if m.Init {
 		pe.UpdateGraphState(m.GraphState)
-		blocks, complete, point = s.PeerSync().dagSync.CalcSyncBlocks(changePBHashsToHashs(m.MainLocator), meerdag.SubDAGMode, MaxBlockLocatorsPerMsg)
-	} else {
-		blocks, complete, point = s.PeerSync().dagSync.CalcSyncBlocks(changePBHashsToHashs(m.MainLocator), meerdag.ContinueMode, MaxBlockLocatorsPerMsg)
 	}
-	if point == nil {
-		rsp.Complete = true
-		rsp.SyncPoint = &pb.Hash{Hash: hash.ZeroHash.Bytes()}
-	} else {
-		rsp.Complete = complete
-		pe.UpdateSyncPoint(point)
-		rsp.SyncPoint = &pb.Hash{Hash: point.Bytes()}
-		if len(blocks) > 0 {
-			for _, bh := range blocks {
-				bs, err := s.p2p.BlockChain().FetchBlockBytesByHash(bh)
-				if err != nil {
-					return err
-				}
-				pbbd := &pb.BytesData{Data: bs}
-				if uint64(rsp.SizeSSZ()+pbbd.SizeSSZ()+BLOCKDATA_SSZ_HEAD_SIZE) >= s.p2p.Encoding().GetMaxChunkSize() {
-					break
-				}
-				rsp.Blocks = append(rsp.Blocks, pbbd)
+	var startBlock meerdag.IBlock
+	var point meerdag.IBlock
+	if m.Init {
+		for i := len(locator) - 1; i >= 0; i-- {
+			mainBlock := bd.GetBlock(locator[i])
+			if mainBlock == nil {
+				continue
 			}
-		} else {
-			rsp.Complete = true
+			if !bd.IsOnMainChain(mainBlock.GetID()) {
+				continue
+			}
+			point = mainBlock
+			break
 		}
+
+		if point == nil && len(locator) > 0 {
+			point = bd.GetBlock(locator[0])
+			if point != nil {
+				for !bd.IsOnMainChain(point.GetID()) {
+					if point.GetMainParent() == meerdag.MaxId {
+						break
+					}
+					point = bd.GetBlockById(point.GetMainParent())
+					if point == nil {
+						break
+					}
+				}
+			}
+		}
+		if point == nil {
+			point = bd.GetGenesis()
+		}
+		startBlock = point
+	} else {
+		if len(locator) == 2 {
+			point = bd.GetBlock(locator[0])
+			if point != nil {
+				if bd.IsOnMainChain(point.GetID()) {
+					startBlock = bd.GetBlock(locator[1])
+				}
+			}
+		}
+	}
+	if startBlock != nil {
+		rsp.SyncPoint = &pb.Hash{Hash: point.GetHash().Bytes()}
+		rsp.Complete = s.PeerSync().dagSync.TraverseBlocks(startBlock, func(block meerdag.IBlock) bool {
+			bs, err := s.p2p.BlockChain().FetchBlockBytesByHash(block.GetHash())
+			if err != nil {
+				log.Error(err.Error())
+				return false
+			}
+			pbbd := &pb.BytesData{Data: bs}
+			if uint64(rsp.SizeSSZ()+pbbd.SizeSSZ()+BLOCKDATA_SSZ_HEAD_SIZE) >= s.p2p.Encoding().GetMaxChunkSize() {
+				return false
+			}
+			rsp.Blocks = append(rsp.Blocks, pbbd)
+			return true
+		})
 	}
 	return pe.Respond(SyncBlocksRspMsg, rsp, id)
 }

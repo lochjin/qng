@@ -545,6 +545,13 @@ func (bd *MeerDAG) getGenesis() IBlock {
 	return bd.getBlockById(GenesisId)
 }
 
+func (bd *MeerDAG) GetGenesis() IBlock {
+	bd.stateLock.RLock()
+	defer bd.stateLock.RUnlock()
+
+	return bd.getGenesis()
+}
+
 // Acquire the genesis block hash of chain
 func (bd *MeerDAG) GetGenesisHash() *hash.Hash {
 	return &bd.genesis

@@ -361,6 +361,47 @@ func (ds *DAGSync) getBlockChainForSnapSync(point IBlock, target IBlock, maxHash
 	return result
 }
 
+func (ds *DAGSync) TraverseBlocks(start IBlock, fn func(block IBlock) bool) bool {
+	pdb, ok := ds.bd.GetInstance().(*Phantom)
+	if !ok {
+		return true
+	}
+	mainTip := ds.bd.GetMainChainTip()
+	find := false
+	for i := start.GetOrder() + 1; i <= mainTip.GetOrder(); i++ {
+		find = true
+		block := ds.bd.GetBlockByOrder(i)
+		if block == nil {
+			log.Error("No block by traverse", "order", i)
+			return true
+		}
+		if !fn(block) {
+			return false
+		}
+	}
+	if !pdb.GetDiffAnticone().IsEmpty() {
+		da := pdb.GetDiffAnticone().SortList(false)
+		for i, id := range da {
+			if id == start.GetID() {
+				find = true
+				continue
+			}
+			if !find {
+				continue
+			}
+			block := ds.bd.GetBlockById(id)
+			if block == nil {
+				log.Error("No block by traverse", "order", i)
+				return true
+			}
+			if !fn(block) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // NewDAGSync
 func NewDAGSync(bd *MeerDAG) *DAGSync {
 	return &DAGSync{bd: bd}
