@@ -231,7 +231,7 @@ func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) (meerdag.IBlock, error)
 
 		txNum += int64(len(sd.block.Transactions()))
 	}
-	err := b.updateBestState(nil, sds[len(sds)-1].block, nil)
+	err := b.updateBestState(sds[len(sds)-1].block, false)
 	if err != nil {
 		return returnFun(err)
 	}

@@ -532,7 +532,7 @@ func (bd *MeerDAG) AddDirectBlock(b IBlockData, ib IBlock, main bool, bids map[u
 	//
 	bd.instance.(*Phantom).AddDirectBlock(ib, main)
 	bd.commitOrder[pblock.GetOrder()] = pblock.GetID()
-	err := bd.commit()
+	err := bd.commit(false)
 	if err != nil {
 		return nil, err
 	}
@@ -1304,14 +1304,14 @@ func (bd *MeerDAG) AddToCommit(block IBlock) {
 }
 
 // Commit the consensus content to the database for persistence
-func (bd *MeerDAG) Commit() error {
+func (bd *MeerDAG) Commit(prune bool) error {
 	bd.stateLock.Lock()
 	defer bd.stateLock.Unlock()
-	return bd.commit()
+	return bd.commit(prune)
 }
 
 // Commit the consensus content to the database for persistence
-func (bd *MeerDAG) commit() error {
+func (bd *MeerDAG) commit(prune bool) error {
 	needPB := false
 	if bd.lastSnapshot.IsValid() {
 		needPB = true
@@ -1402,6 +1402,9 @@ func (bd *MeerDAG) commit() error {
 	err := ph.mainChain.commit()
 	if err != nil {
 		return err
+	}
+	if !prune {
+		return nil
 	}
 	bd.optimizeTips(false)
 	return nil

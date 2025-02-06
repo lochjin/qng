@@ -265,7 +265,7 @@ func addBlock(tag string, parents []*hash.Hash) (*TestBlock, meerdag.IBlock, err
 
 func commitBlock(tag string, block *TestBlock, ib meerdag.IBlock) error {
 	tbMap[tag] = ib
-	err := bd.Commit()
+	err := bd.Commit(true)
 	if err != nil {
 		return err
 	}

@@ -240,7 +240,7 @@ func (gd *GhostDAG) UpdateOrders() error {
 		curOrder++
 
 	}
-	return gd.bd.commit()
+	return gd.bd.commit(true)
 }
 
 // ---------------
