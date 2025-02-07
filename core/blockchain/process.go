@@ -109,9 +109,9 @@ func (b *BlockChain) processBlock(block *types.SerializedBlock, flags BehaviorFl
 		return ib, false, err
 	}
 	if source != nil {
-		log.Debug("Accepted block", "hash", block.Hash().String(), "age", time.Since(block.Block().Header.Timestamp), "source", source.ShortString())
+		log.Debug("Accepted block", "hash", block.Hash().String(), "age", time.Since(block.Block().Header.Timestamp), "BFlags", flags.String(), "source", source.ShortString())
 	} else {
-		log.Debug("Accepted block", "hash", block.Hash().String(), "age", time.Since(block.Block().Header.Timestamp))
+		log.Debug("Accepted block", "hash", block.Hash().String(), "age", time.Since(block.Block().Header.Timestamp), "BFlags", flags.String())
 	}
 
 	return ib, false, nil
@@ -282,7 +282,7 @@ func (b *BlockChain) maybeAcceptBlock(block *types.SerializedBlock, flags Behavi
 	if err != nil {
 		panic(err.Error())
 	}
-	err = b.updateBestState(ib, block, newOrders)
+	err = b.updateBestState(block, flags.Has(BFBroadcast) || flags.Has(BFRPCAdd))
 	if err != nil {
 		panic(err.Error())
 	}
@@ -692,8 +692,8 @@ func (bc *BlockChain) disconnectTransactions(block *types.SerializedBlock, stxos
 	return nil
 }
 
-func (b *BlockChain) updateBestState(ib meerdag.IBlock, block *types.SerializedBlock, attachNodes *list.List) error {
-	err := b.bd.Commit()
+func (b *BlockChain) updateBestState(block *types.SerializedBlock, prune bool) error {
+	err := b.bd.Commit(prune)
 	if err != nil {
 		return err
 	}

@@ -347,7 +347,7 @@ func (b *BlockChain) createChainState() error {
 	if err != nil {
 		return err
 	}
-	return b.bd.Commit()
+	return b.bd.Commit(false)
 }
 
 func (b *BlockChain) Start() error {
@@ -1002,7 +1002,7 @@ func (b *BlockChain) Rebuild() error {
 		if err != nil {
 			log.Error(err.Error())
 		}
-		err = b.bd.Commit()
+		err = b.bd.Commit(false)
 		if err != nil {
 			return err
 		}
