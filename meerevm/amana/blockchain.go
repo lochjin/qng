@@ -44,10 +44,10 @@ const (
 	txMaxSize  = 4 * txSlotSize
 )
 
-type AmanaChain struct {
+type blockChain struct {
 	service.Service
 	chain     *eth.ETHChain
-	pool      *AmanaPool
+	pool      *TxPool
 	consensus model.Consensus
 
 	block   *mmeer.Block
@@ -57,12 +57,12 @@ type AmanaChain struct {
 	locker sync.RWMutex
 }
 
-func (b *AmanaChain) Start() error {
+func (b *blockChain) Start() error {
 	if err := b.Service.Start(); err != nil {
 		return err
 	}
 	//
-	log.Info("Start AmanaChain...")
+	log.Info("Start Amana blockchain...")
 	err := b.chain.Start()
 	if err != nil {
 		return err
@@ -96,12 +96,12 @@ func (b *AmanaChain) Start() error {
 	return nil
 }
 
-func (b *AmanaChain) Stop() error {
-	log.Info("try stop AmanaChain")
+func (b *blockChain) Stop() error {
+	log.Info("try stop Amana BlockChain")
 	if err := b.Service.Stop(); err != nil {
 		return err
 	}
-	log.Info("Stop AmanaChain...")
+	log.Info("Stop Amana BlockChain...")
 
 	err := b.chain.Stop()
 	if err != nil {
@@ -112,7 +112,7 @@ func (b *AmanaChain) Stop() error {
 	return nil
 }
 
-func (b *AmanaChain) CheckConnectBlock(block *mmeer.Block) error {
+func (b *blockChain) CheckConnectBlock(block *mmeer.Block) error {
 	b.block = block
 	parent := b.chain.Ether().BlockChain().CurrentBlock()
 	mblock, _, _, err := b.buildBlock(parent, block.Transactions(), block.Timestamp().Unix())
@@ -124,7 +124,7 @@ func (b *AmanaChain) CheckConnectBlock(block *mmeer.Block) error {
 	return nil
 }
 
-func (b *AmanaChain) ConnectBlock(block *mmeer.Block) (uint64, error) {
+func (b *blockChain) ConnectBlock(block *mmeer.Block) (uint64, error) {
 	mblock := block.EvmBlock
 	if mblock == nil {
 		return 0, fmt.Errorf("No EVM block:%d", block.ID())
@@ -144,7 +144,7 @@ func (b *AmanaChain) ConnectBlock(block *mmeer.Block) (uint64, error) {
 	return mblock.NumberU64(), b.finalized(mblock)
 }
 
-func (b *AmanaChain) finalized(block *types.Block) error {
+func (b *blockChain) finalized(block *types.Block) error {
 	number := block.Number().Uint64()
 	var finalizedNumber uint64
 	epochLength := uint64(params.ActiveNetParams.CoinbaseMaturity)
@@ -172,7 +172,7 @@ func (b *AmanaChain) finalized(block *types.Block) error {
 	return nil
 }
 
-func (b *AmanaChain) buildBlock(parent *types.Header, qtxs []model.Tx, timestamp int64) (*types.Block, types.Receipts, *state.StateDB, error) {
+func (b *blockChain) buildBlock(parent *types.Header, qtxs []model.Tx, timestamp int64) (*types.Block, types.Receipts, *state.StateDB, error) {
 	config := b.chain.Config().Eth.Genesis.Config
 	engine := b.chain.Ether().Engine()
 	parentBlock := types.NewBlockWithHeader(parent)
@@ -208,7 +208,7 @@ func (b *AmanaChain) buildBlock(parent *types.Header, qtxs []model.Tx, timestamp
 	return block, receipts, statedb, nil
 }
 
-func (b *AmanaChain) fillBlock(qtxs []model.Tx, header *types.Header, statedb *state.StateDB) ([]*types.Transaction, []*types.Receipt, error) {
+func (b *blockChain) fillBlock(qtxs []model.Tx, header *types.Header, statedb *state.StateDB) ([]*types.Transaction, []*types.Receipt, error) {
 	txs := []*types.Transaction{}
 	receipts := []*types.Receipt{}
 
@@ -288,7 +288,7 @@ func (b *AmanaChain) fillBlock(qtxs []model.Tx, header *types.Header, statedb *s
 	return txs, receipts, nil
 }
 
-func (b *AmanaChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *state.StateDB, txs *[]*types.Transaction, receipts *[]*types.Receipt, gasPool *core.GasPool) error {
+func (b *blockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *state.StateDB, txs *[]*types.Transaction, receipts *[]*types.Receipt, gasPool *core.GasPool) error {
 	tx := vmtx.ETx
 	config := b.chain.Config().Eth.Genesis.Config
 	statedb.SetTxContext(tx.Hash(), len(*txs))
@@ -307,7 +307,7 @@ func (b *AmanaChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *stat
 	return nil
 }
 
-func (b *AmanaChain) RegisterAPIs(apis []api.API) {
+func (b *blockChain) RegisterAPIs(apis []api.API) {
 	eapis := []rpc.API{}
 
 	for _, api := range apis {
@@ -324,15 +324,15 @@ func (b *AmanaChain) RegisterAPIs(apis []api.API) {
 	b.chain.Node().RegisterAPIs(eapis)
 }
 
-func (b *AmanaChain) Pool() *AmanaPool {
+func (b *blockChain) TxPool() *TxPool {
 	return b.pool
 }
 
-func (b *AmanaChain) ETHChain() *eth.ETHChain {
+func (b *blockChain) ETHChain() *eth.ETHChain {
 	return b.chain
 }
 
-func (b *AmanaChain) prepareEnvironment(state model.BlockState) (*types.Header, error) {
+func (b *blockChain) prepareEnvironment(state model.BlockState) (*types.Header, error) {
 	curBlockHeader := b.chain.Ether().BlockChain().CurrentBlock()
 	if curBlockHeader.Number.Uint64() > state.GetEVMNumber() {
 		err := b.rewindTo(state)
@@ -431,21 +431,21 @@ func (b *AmanaChain) prepareEnvironment(state model.BlockState) (*types.Header, 
 	return nil, getError("prepare environment")
 }
 
-func (b *AmanaChain) PrepareEnvironment(state model.BlockState) (*types.Header, error) {
+func (b *blockChain) PrepareEnvironment(state model.BlockState) (*types.Header, error) {
 	b.locker.Lock()
 	defer b.locker.Unlock()
 
 	return b.prepareEnvironment(state)
 }
 
-func (b *AmanaChain) RewindTo(state model.BlockState) error {
+func (b *blockChain) RewindTo(state model.BlockState) error {
 	b.locker.Lock()
 	defer b.locker.Unlock()
 
 	return b.rewindTo(state)
 }
 
-func (b *AmanaChain) rewindTo(state model.BlockState) error {
+func (b *blockChain) rewindTo(state model.BlockState) error {
 	curBlockHeader := b.chain.Ether().BlockChain().CurrentBlock()
 	if curBlockHeader.Number.Uint64() <= state.GetEVMNumber() {
 		return nil
@@ -463,12 +463,12 @@ func (b *AmanaChain) rewindTo(state model.BlockState) error {
 	return fmt.Errorf("Rewind fail:cur.number=%d, cur.hash=%s, target.evm.root=%s, target.evm.number=%d, target.evm.hash=%s", cur.Number.Uint64(), cur.Hash().String(), state.GetEVMRoot(), state.GetEVMNumber(), state.GetEVMHash())
 }
 
-func (b *AmanaChain) CheckSanity(vt *mmeer.VMTx) error {
+func (b *blockChain) CheckSanity(vt *mmeer.VMTx) error {
 	return b.validateTx(vt.ETx, false)
 
 }
 
-func (b *AmanaChain) validateTx(tx *types.Transaction, checkState bool) error {
+func (b *blockChain) validateTx(tx *types.Transaction, checkState bool) error {
 	// Reject transactions over defined size to prevent DOS attacks
 	if tx.Size() > txMaxSize {
 		return txpool.ErrOversizedData
@@ -511,7 +511,7 @@ func (b *AmanaChain) validateTx(tx *types.Transaction, checkState bool) error {
 	return nil
 }
 
-func (b *AmanaChain) VerifyTx(tx *mmeer.VMTx, utxoView *utxo.UtxoViewpoint) (int64, error) {
+func (b *blockChain) VerifyTx(tx *mmeer.VMTx, utxoView *utxo.UtxoViewpoint) (int64, error) {
 	if tx.GetTxType() == qtypes.TxTypeCrossChainVM {
 		txe := tx.ETx
 		err := b.validateTx(txe, true)
@@ -526,11 +526,11 @@ func (b *AmanaChain) VerifyTx(tx *mmeer.VMTx, utxoView *utxo.UtxoViewpoint) (int
 	return 0, fmt.Errorf("Not support")
 }
 
-func (b *AmanaChain) GetCurHeader() *types.Header {
+func (b *blockChain) GetCurHeader() *types.Header {
 	return b.chain.Ether().BlockChain().CurrentBlock()
 }
 
-func (b *AmanaChain) Genesis() *hash.Hash {
+func (b *blockChain) Genesis() *hash.Hash {
 	mbb := b.chain.Ether().BlockChain().Genesis().Hash().Bytes()
 	qcommon.ReverseBytes(&mbb)
 	nmbb, err := hash.NewHash(mbb)
@@ -540,7 +540,7 @@ func (b *AmanaChain) Genesis() *hash.Hash {
 	return nmbb
 }
 
-func (b *AmanaChain) GetBalance(addre string) (int64, error) {
+func (b *blockChain) GetBalance(addre string) (int64, error) {
 	var eAddr common.Address
 	if common.IsHexAddress(addre) {
 		eAddr = common.HexToAddress(addre)
@@ -574,7 +574,7 @@ func (b *AmanaChain) GetBalance(addre string) (int64, error) {
 	return ba.Int64(), nil
 }
 
-func (b *AmanaChain) GetBlockIDByTxHash(txhash *hash.Hash) uint64 {
+func (b *blockChain) GetBlockIDByTxHash(txhash *hash.Hash) uint64 {
 	ret, tx, _, blockNumber, _, _ := b.chain.Backend().GetTransaction(nil, qcommon.ToEVMHash(txhash))
 	if !ret || tx == nil {
 		return 0
@@ -582,42 +582,42 @@ func (b *AmanaChain) GetBlockIDByTxHash(txhash *hash.Hash) uint64 {
 	return blockNumber
 }
 
-func (b *AmanaChain) DeterministicDeploymentProxy() *proxy.DeterministicDeploymentProxy {
+func (b *blockChain) DeterministicDeploymentProxy() *proxy.DeterministicDeploymentProxy {
 	return b.ddProxy
 }
 
-func (b *AmanaChain) SyncMode() downloader.SyncMode {
+func (b *blockChain) SyncMode() downloader.SyncMode {
 	return b.chain.Config().Eth.SyncMode
 }
 
-func (b *AmanaChain) Downloader() *downloader.Downloader {
+func (b *blockChain) Downloader() *downloader.Downloader {
 	return b.chain.Ether().Downloader()
 }
 
-func (b *AmanaChain) SetSynced() {
+func (b *blockChain) SetSynced() {
 	if b.chain.Ether().Synced() {
 		return
 	}
 	b.chain.Ether().SetSynced()
 }
 
-func (b *AmanaChain) Synced() bool {
+func (b *blockChain) Synced() bool {
 	return b.chain.Ether().Synced()
 }
 
-func (b *AmanaChain) Server() *p2p.Server {
+func (b *blockChain) Server() *p2p.Server {
 	return b.chain.Node().Server()
 }
 
-func (b *AmanaChain) Ether() *eeth.Ethereum {
+func (b *blockChain) Ether() *eeth.Ethereum {
 	return b.chain.Ether()
 }
 
-func (b *AmanaChain) Client() *ethclient.Client {
+func (b *blockChain) Client() *ethclient.Client {
 	return b.client
 }
 
-func (b *AmanaChain) CheckState(blockNrOrHash *api.HashOrNumber) bool {
+func (b *blockChain) CheckState(blockNrOrHash *api.HashOrNumber) bool {
 	var head *types.Header
 	if blockNrOrHash.IsHash() {
 		head = b.Ether().BlockChain().GetHeaderByHash(blockNrOrHash.EVM)
@@ -630,11 +630,11 @@ func (b *AmanaChain) CheckState(blockNrOrHash *api.HashOrNumber) bool {
 	return b.HasState(head.Root)
 }
 
-func (b *AmanaChain) HasState(root common.Hash) bool {
+func (b *blockChain) HasState(root common.Hash) bool {
 	return b.Ether().BlockChain().HasState(root)
 }
 
-func (b *AmanaChain) GetPivot() uint64 {
+func (b *blockChain) GetPivot() uint64 {
 	pivot := rawdb.ReadLastPivotNumber(b.Ether().ChainDb())
 	if pivot == nil {
 		return 0
@@ -642,7 +642,7 @@ func (b *AmanaChain) GetPivot() uint64 {
 	return *pivot
 }
 
-func (b *AmanaChain) APIs() []api.API {
+func (b *blockChain) APIs() []api.API {
 	return append([]api.API{
 		{
 			NameSpace: cmds.DefaultServiceNameSpace,
@@ -652,7 +652,7 @@ func (b *AmanaChain) APIs() []api.API {
 	}, b.ddProxy.APIs()...)
 }
 
-func NewAmanaChain(consensus model.Consensus) (*AmanaChain, error) {
+func NewBlockChain(consensus model.Consensus) (*blockChain, error) {
 	log.Info("Amana chain")
 	cfg := consensus.Config()
 	eth.InitLog(cfg.DebugLevel, cfg.DebugPrintOrigins)
@@ -673,9 +673,9 @@ func NewAmanaChain(consensus model.Consensus) (*AmanaChain, error) {
 		return nil, err
 	}
 
-	mchain := &AmanaChain{
+	mchain := &blockChain{
 		chain:     chain,
-		pool:      newAmanaPool(consensus, chain.Ether()),
+		pool:      newTxPool(consensus, chain.Ether()),
 		consensus: consensus,
 	}
 	mchain.InitContext()

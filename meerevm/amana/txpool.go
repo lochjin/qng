@@ -42,7 +42,7 @@ type snapshotTx struct {
 	eHash common.Hash
 }
 
-type AmanaPool struct {
+type TxPool struct {
 	wg      sync.WaitGroup
 	quit    chan struct{}
 	running int32
@@ -73,7 +73,7 @@ type AmanaPool struct {
 	p2pSer model.P2PService
 }
 
-func (m *AmanaPool) Start() {
+func (m *TxPool) Start() {
 	if m.isRunning() {
 		log.Info("Amana pool was started")
 		return
@@ -88,7 +88,7 @@ func (m *AmanaPool) Start() {
 	m.updateTemplate(true)
 }
 
-func (m *AmanaPool) Stop() {
+func (m *TxPool) Stop() {
 	if !m.isRunning() {
 		log.Info("Amana pool was stopped")
 		return
@@ -102,11 +102,11 @@ func (m *AmanaPool) Stop() {
 	log.Info(fmt.Sprintf("Amana pool stopped"))
 }
 
-func (m *AmanaPool) isRunning() bool {
+func (m *TxPool) isRunning() bool {
 	return atomic.LoadInt32(&m.running) == 1
 }
 
-func (m *AmanaPool) handler() {
+func (m *TxPool) handler() {
 	defer m.txsSub.Unsubscribe()
 	defer m.chainHeadSub.Unsubscribe()
 	defer m.wg.Done()
@@ -153,7 +153,7 @@ func (m *AmanaPool) handler() {
 	}
 }
 
-func (m *AmanaPool) handleStallSample() {
+func (m *TxPool) handleStallSample() {
 	if m.p2pSer == nil {
 		// The service is not ready yet, try again next time
 		return
@@ -179,7 +179,7 @@ func (m *AmanaPool) handleStallSample() {
 	go m.ResetTemplate()
 }
 
-func (m *AmanaPool) updateTemplate(force bool) error {
+func (m *TxPool) updateTemplate(force bool) error {
 	if m.syncing.Load() {
 		return nil
 	}
@@ -214,12 +214,12 @@ func (m *AmanaPool) updateTemplate(force bool) error {
 		}
 	}
 	//
-	log.Debug("amanapool update block template", "txs", txsNum)
+	log.Debug("amana txpool update block template", "txs", txsNum)
 	m.dirty.Store(false)
 	return nil
 }
 
-func (m *AmanaPool) GetTxs() ([]*qtypes.Tx, []*hash.Hash, error) {
+func (m *TxPool) GetTxs() ([]*qtypes.Tx, []*hash.Hash, error) {
 	m.snapshotMu.RLock()
 	defer m.snapshotMu.RUnlock()
 
@@ -241,14 +241,14 @@ func (m *AmanaPool) GetTxs() ([]*qtypes.Tx, []*hash.Hash, error) {
 }
 
 // all: contain txs in pending and queue
-func (m *AmanaPool) HasTx(h *hash.Hash) bool {
+func (m *TxPool) HasTx(h *hash.Hash) bool {
 	m.snapshotMu.RLock()
 	_, ok := m.snapshotQTxsM[h.String()]
 	m.snapshotMu.RUnlock()
 	return ok
 }
 
-func (m *AmanaPool) GetSize() int64 {
+func (m *TxPool) GetSize() int64 {
 	m.snapshotMu.RLock()
 	defer m.snapshotMu.RUnlock()
 
@@ -258,7 +258,7 @@ func (m *AmanaPool) GetSize() int64 {
 	return 0
 }
 
-func (m *AmanaPool) AddTx(tx *qtypes.Tx) (int64, error) {
+func (m *TxPool) AddTx(tx *qtypes.Tx) (int64, error) {
 	h := qcommon.ToEVMHash(&tx.Tx.TxIn[0].PreviousOut.Hash)
 	if m.eth.TxPool().Has(h) {
 		return 0, fmt.Errorf("already exists:%s (evm:%s)", tx.Hash().String(), h.String())
@@ -284,7 +284,7 @@ func (m *AmanaPool) AddTx(tx *qtypes.Tx) (int64, error) {
 	return cost.Int64(), nil
 }
 
-func (m *AmanaPool) RemoveTx(tx *qtypes.Tx) error {
+func (m *TxPool) RemoveTx(tx *qtypes.Tx) error {
 	if !m.isRunning() {
 		return fmt.Errorf("Amana pool is not running")
 	}
@@ -299,9 +299,9 @@ func (m *AmanaPool) RemoveTx(tx *qtypes.Tx) error {
 	return nil
 }
 
-func (m *AmanaPool) ResetTemplate() error {
+func (m *TxPool) ResetTemplate() error {
 	if !m.isRunning() {
-		err := errors.New("amana pool is not running")
+		err := errors.New("amana txpool is not running")
 		log.Warn(err.Error())
 		return err
 	}
@@ -312,22 +312,22 @@ func (m *AmanaPool) ResetTemplate() error {
 	}()
 	select {
 	case <-m.quit:
-		return errors.New("AmanaPool is quit")
+		return errors.New("Amana txPool is quit")
 	case <-msg.reply:
 
 	}
 	return nil
 }
 
-func (m *AmanaPool) SetTxPool(tp model.TxPool) {
+func (m *TxPool) SetTxPool(tp model.TxPool) {
 	m.qTxPool = tp
 }
 
-func (m *AmanaPool) SetP2P(ser model.P2PService) {
+func (m *TxPool) SetP2P(ser model.P2PService) {
 	m.p2pSer = ser
 }
 
-func (m *AmanaPool) subscribe() {
+func (m *TxPool) subscribe() {
 	ch := make(chan *qevent.Event)
 	sub := m.consensus.Events().Subscribe(ch)
 	go func() {
@@ -350,14 +350,14 @@ func (m *AmanaPool) subscribe() {
 					ev.Ack <- struct{}{}
 				}
 			case <-m.quit:
-				log.Info("Close AmanaPool Event Subscribe")
+				log.Info("Close Amana txPool Event Subscribe")
 				return
 			}
 		}
 	}()
 }
 
-func (m *AmanaPool) AnnounceNewTransactions(txs []*types.Transaction) error {
+func (m *TxPool) AnnounceNewTransactions(txs []*types.Transaction) error {
 	txds := []*qtypes.TxDesc{}
 
 	for _, tx := range txs {
@@ -389,9 +389,9 @@ func (m *AmanaPool) AnnounceNewTransactions(txs []*types.Transaction) error {
 	return nil
 }
 
-func newAmanaPool(consensus model.Consensus, eth *eth.Ethereum) *AmanaPool {
+func newTxPool(consensus model.Consensus, eth *eth.Ethereum) *TxPool {
 	log.Info(fmt.Sprintf("New Amana pool"))
-	m := &AmanaPool{}
+	m := &TxPool{}
 	m.consensus = consensus
 	m.eth = eth
 	m.txsCh = make(chan core.NewTxsEvent, txChanSize)

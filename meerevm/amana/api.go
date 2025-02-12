@@ -16,15 +16,15 @@ type AmanaChainInfo struct {
 	WS        string `json:"ws,omitempty"`
 }
 
-type PublicAmanaChainAPI struct {
-	mc *AmanaChain
+type PublicBlockChainAPI struct {
+	mc *blockChain
 }
 
-func NewPublicAmanaChainAPI(mc *AmanaChain) *PublicAmanaChainAPI {
-	return &PublicAmanaChainAPI{mc}
+func NewPublicAmanaChainAPI(mc *blockChain) *PublicBlockChainAPI {
+	return &PublicBlockChainAPI{mc}
 }
 
-func (api *PublicAmanaChainAPI) GetAmanaChainInfo() (interface{}, error) {
+func (api *PublicBlockChainAPI) GetAmanaChainInfo() (interface{}, error) {
 	mi := AmanaChainInfo{
 		AmanaVer:  version.String(),
 		EvmVer:    api.mc.chain.Config().Node.Version,
@@ -43,7 +43,7 @@ func (api *PublicAmanaChainAPI) GetAmanaChainInfo() (interface{}, error) {
 	return mi, nil
 }
 
-func (api *PublicAmanaChainAPI) HasAmanaState(hashOrNumber string) (interface{}, error) {
+func (api *PublicBlockChainAPI) HasAmanaState(hashOrNumber string) (interface{}, error) {
 	hn, err := rpcapi.NewHashOrNumber(hashOrNumber)
 	if err != nil {
 		return false, err
