@@ -6,8 +6,6 @@ The MeerEVM is the Qtimeer's implementation of the Ethereum Virtual Machine (EVM
 ### How to open Amana
 ```
 ~ ./qng -A=./ --amana
-or
-~ ./qng -A=./ --amana --amanaenv="--http"
 ```
 
 You can use RPC `./cli.sh amanainfo` to view the operation.
@@ -21,6 +19,6 @@ or
 ```
 2. Configure QNG startup parameters
 ```
-~ ./qng -A=./ --testnet --amana --amanaenv="--mine --miner.etherbase=[YourAddress] --unlock=[YourAddress] --password=./password"
+~ ./qng -A=./ --amana --evmenv="--mine --miner.etherbase=[YourAddress] --unlock=[YourAddress] --password=./password"
 ```
 Note: `./password"` The unlock password of address from keystore is located in the current directory.
