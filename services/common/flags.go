@@ -544,20 +544,15 @@ var (
 			Value:       defaultMinBlockDataCache,
 			Destination: &cfg.BlockDataCacheSize,
 		},
-		&cli.StringFlag{
-			Name:        "amanaenv",
-			Usage:       "Amana environment",
-			Destination: &cfg.AmanaEnv,
-		},
 		&cli.BoolFlag{
 			Name:        "amana",
 			Usage:       "Enable Amana",
 			Destination: &cfg.Amana,
 		},
 		&cli.StringFlag{
-			Name:        "amanagen",
-			Usage:       "Custom Amana genesis",
-			Destination: &cfg.AmanaGenesis,
+			Name:        "evmgen",
+			Usage:       "Custom EVM genesis",
+			Destination: &cfg.EVMGenesis,
 		},
 		&cli.BoolFlag{
 			Name:        "consistency",

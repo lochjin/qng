@@ -109,8 +109,10 @@ type Config struct {
 	MaxBadResp     int      `long:"maxbadresp" description:"maxbadresp is the maximum number of bad responses from a peer before we stop talking to it."`
 	Circuit        bool     `long:"circuit" description:"All peers will ignore dual channel mode detection"`
 	Consistency    bool     `long:"consistency" description:"Detect data consistency through P2P"`
-	// meerevm environment
-	EVMEnv string `long:"evmenv" description:"meer EVM environment"`
+
+	// evm environment
+	EVMEnv     string `long:"evmenv" description:"meer EVM environment"`
+	EVMGenesis string `long:"evmgen" description:"EVM custom genesis file"`
 
 	Estimatefee bool `long:"estimatefee" description:"Enable estimate fee"`
 
@@ -120,10 +122,6 @@ type Config struct {
 
 	DAGCacheSize       uint64 `long:"dagcachesize" description:"DAG block cache size"`
 	BlockDataCacheSize uint64 `long:"bdcachesize" description:"Block data cache size"`
-
-	Amana        bool   `long:"amana" description:"Enable Amana"`
-	AmanaEnv     string `long:"amanaenv" description:"Amana environment"`
-	AmanaGenesis string `long:"amanagen" description:"Amana custom genesis file"`
 
 	Metrics          bool `long:"metrics" description:"Enable metrics collection and reporting"`
 	MetricsExpensive bool `long:"metrics.expensive" description:"Enable expensive metrics collection and reporting"`
@@ -150,6 +148,8 @@ type Config struct {
 	PowDiffMode int `long:"powdiffmode" description:"Pow difficult mode:(0:meer,1:ghostdag,2:develop)"`
 
 	TranferTxLegacyMode bool `long:"tranfertxlegacymode" description:"Support transaction transmission mode compatible with older versions before the snapsync P2P"`
+
+	Amana bool `long:"amana" description:"Enable Amana"`
 }
 
 func (c *Config) GetMinningAddrs() []types.Address {

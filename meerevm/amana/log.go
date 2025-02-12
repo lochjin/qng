@@ -20,5 +20,5 @@ func UseLogger(logger l.Logger) {
 
 // The default amount of logging is none.
 func init() {
-	UseLogger(l.New(l.Ctx{"module": "Amana"}))
+	UseLogger(l.New(l.Ctx{"module": "AMANA"}))
 }

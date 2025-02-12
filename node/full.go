@@ -302,11 +302,6 @@ func newQitmeerFullNode(node *Node) (*QitmeerFull, error) {
 	if err := qm.RegisterAccountService(cfg); err != nil {
 		return nil, err
 	}
-	if qm.node.consensus.AmanaService() != nil {
-		if err := qm.Services().RegisterService(qm.node.consensus.AmanaService()); err != nil {
-			return nil, err
-		}
-	}
 	if err := qm.RegisterWalletService(cfg); err != nil {
 		return nil, err
 	}

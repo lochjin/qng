@@ -1,4 +1,4 @@
-package amana2
+package amana
 
 import (
 	"github.com/Qitmeer/qng/consensus/model"
