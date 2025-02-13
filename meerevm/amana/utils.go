@@ -1,7 +1,6 @@
 package amana
 
 import (
-	"github.com/Qitmeer/qng/consensus/model"
 	mmeer "github.com/Qitmeer/qng/consensus/model/meer"
 	qtypes "github.com/Qitmeer/qng/core/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -71,7 +70,7 @@ func (cr *fakeChainReader) GetBlock(hash common.Hash, number uint64) *types.Bloc
 func (cr *fakeChainReader) GetTd(hash common.Hash, number uint64) *big.Int          { return nil }
 
 func BuildEVMBlock(block *qtypes.SerializedBlock) (*mmeer.Block, error) {
-	result := &mmeer.Block{Id: block.Hash(), Txs: []model.Tx{}, Time: block.Block().Header.Timestamp}
+	result := &mmeer.Block{Id: block.Hash(), Txs: []mmeer.Tx{}, Time: block.Block().Header.Timestamp}
 
 	for idx, tx := range block.Transactions() {
 		if idx == 0 {

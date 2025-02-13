@@ -180,7 +180,7 @@ func (b *BlockChain) ProcessBlockBySnap(sds []*SnapData) (meerdag.IBlock, error)
 						tx.Object = vtx
 					}
 					if vtx.ExportData != nil {
-						err = b.meerChain.MeerPool().CheckMeerChangeExportTx(vtx.ETx, vtx.ExportData, view)
+						err = b.meerChain.TxPool().CheckMeerChangeExportTx(vtx.ETx, vtx.ExportData, view)
 						if err != nil {
 							return returnFun(err)
 						}

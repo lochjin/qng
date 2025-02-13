@@ -5,6 +5,7 @@ package blockchain
 import (
 	"container/list"
 	"fmt"
+	"github.com/Qitmeer/qng/meerevm/amana"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -138,7 +139,7 @@ type BlockChain struct {
 	wg      sync.WaitGroup
 	quit    chan struct{}
 
-	meerChain         *meer.MeerChain
+	meerChain         model.MeerChain
 	difficultyManager model.DifficultyManager
 
 	processQueueMap sync.Map
@@ -1083,15 +1084,21 @@ func New(consensus model.Consensus) (*BlockChain, error) {
 	b.bd.SetCacheSize(config.DAGCacheSize, config.BlockDataCacheSize)
 
 	b.InitServices()
-	b.Services().RegisterService(b.bd)
-
-	mchain, err := meer.NewMeerChain(consensus)
+	err := b.Services().RegisterService(b.bd)
+	if err != nil {
+		return nil, err
+	}
+	var mchain model.MeerChain
+	if consensus.Config().Amana {
+		mchain, err = amana.NewBlockChain(consensus)
+	} else {
+		mchain, err = meer.NewBlockChain(consensus)
+	}
 	if err != nil {
 		return nil, err
 	}
 	b.meerChain = mchain
-	b.Services().RegisterService(b.meerChain)
-	return &b, nil
+	return &b, b.Services().RegisterService(b.meerChain)
 }
 
 func init() {

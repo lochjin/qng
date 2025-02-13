@@ -1,9 +1,14 @@
 package meer
 
 import (
-	"github.com/Qitmeer/qng/consensus/model"
+	"fmt"
 	mmeer "github.com/Qitmeer/qng/consensus/model/meer"
+	"github.com/Qitmeer/qng/core/address"
+	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	qtypes "github.com/Qitmeer/qng/core/types"
+	"github.com/Qitmeer/qng/crypto/ecc"
+	"github.com/Qitmeer/qng/engine/txscript"
+	qparams "github.com/Qitmeer/qng/params"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
@@ -71,7 +76,7 @@ func (cr *fakeChainReader) GetBlock(hash common.Hash, number uint64) *types.Bloc
 func (cr *fakeChainReader) GetTd(hash common.Hash, number uint64) *big.Int          { return nil }
 
 func BuildEVMBlock(block *qtypes.SerializedBlock) (*mmeer.Block, error) {
-	result := &mmeer.Block{Id: block.Hash(), Txs: []model.Tx{}, Time: block.Block().Header.Timestamp}
+	result := &mmeer.Block{Id: block.Hash(), Txs: []mmeer.Tx{}, Time: block.Block().Header.Timestamp}
 
 	for idx, tx := range block.Transactions() {
 		if idx == 0 {
@@ -118,4 +123,39 @@ func BuildEVMBlock(block *qtypes.SerializedBlock) (*mmeer.Block, error) {
 		}
 	}
 	return result, nil
+}
+
+func CheckUTXOPubkey(pubKey ecc.PublicKey, entry *utxo.UtxoEntry) ([]byte, error) {
+	if len(entry.PkScript()) <= 0 {
+		return nil, fmt.Errorf("PkScript is empty")
+	}
+
+	addrUn, err := address.NewSecpPubKeyAddress(pubKey.SerializeUncompressed(), qparams.ActiveNetParams.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	addr, err := address.NewSecpPubKeyAddress(pubKey.SerializeCompressed(), qparams.ActiveNetParams.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	scriptClass, pksAddrs, _, err := txscript.ExtractPkScriptAddrs(entry.PkScript(), qparams.ActiveNetParams.Params)
+	if err != nil {
+		return nil, err
+	}
+	if len(pksAddrs) != 1 {
+		return nil, fmt.Errorf("PKScript num no support:%d", len(pksAddrs))
+	}
+
+	switch scriptClass {
+	case txscript.PubKeyHashTy, txscript.PubkeyHashAltTy, txscript.PubKeyTy, txscript.PubkeyAltTy:
+		if pksAddrs[0].Encode() == addr.PKHAddress().String() ||
+			pksAddrs[0].Encode() == addrUn.PKHAddress().String() {
+			return pubKey.SerializeUncompressed(), nil
+		}
+	default:
+		return nil, fmt.Errorf("UTXO error about no support %s", scriptClass.String())
+	}
+	return nil, fmt.Errorf("UTXO error")
 }

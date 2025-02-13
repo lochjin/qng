@@ -6,7 +6,15 @@ package meer
 
 import "github.com/Qitmeer/qng/core/types"
 
-type Tx struct {
+type Tx interface {
+	GetTxType() types.TxType
+	GetFrom() []byte
+	GetTo() []byte
+	GetValue() uint64
+	GetData() []byte
+}
+
+type Transaction struct {
 	Type  types.TxType
 	From  []byte
 	To    []byte
@@ -14,19 +22,19 @@ type Tx struct {
 	Data  []byte
 }
 
-func (tx *Tx) GetTxType() types.TxType {
+func (tx *Transaction) GetTxType() types.TxType {
 	return tx.Type
 }
 
-func (tx *Tx) GetFrom() []byte {
+func (tx *Transaction) GetFrom() []byte {
 	return tx.From
 }
-func (tx *Tx) GetTo() []byte {
+func (tx *Transaction) GetTo() []byte {
 	return tx.To
 }
-func (tx *Tx) GetValue() uint64 {
+func (tx *Transaction) GetValue() uint64 {
 	return tx.Value
 }
-func (tx *Tx) GetData() []byte {
+func (tx *Transaction) GetData() []byte {
 	return tx.Data
 }

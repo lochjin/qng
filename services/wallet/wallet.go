@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/config"
+	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/log"
-	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/Qitmeer/qng/rpc/client/cmds"
@@ -48,9 +48,9 @@ func (wm *WalletManager) APIs() []api.API {
 	}
 }
 
-func New(cfg *config.Config, evm *meer.MeerChain, _am *acct.AccountManager, _tm *tx.TxManager, _events *event.Feed) (*WalletManager, error) {
-	conf := evm.ETHChain().Config().Node
-	keydir := evm.ETHChain().Node().KeyStoreDir()
+func New(cfg *config.Config, evm model.MeerChain, _am *acct.AccountManager, _tm *tx.TxManager, _events *event.Feed) (*WalletManager, error) {
+	conf := evm.Node().Config()
+	keydir := evm.Node().KeyStoreDir()
 
 	n, p := keystore.StandardScryptN, keystore.StandardScryptP
 	if conf.UseLightweightKDF {

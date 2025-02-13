@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/meerevm/meer"
 	"math"
 )
 
@@ -23,7 +22,7 @@ func (api *PublicAccountManagerAPI) GetBalance(addr string, coinID types.CoinID)
 	if coinID == types.MEERA {
 		return api.a.GetBalance(addr)
 	} else if coinID == types.MEERB {
-		return api.a.chain.MeerChain().(*meer.MeerChain).GetBalance(addr)
+		return api.a.chain.MeerChain().GetBalance(addr)
 	}
 	return nil, fmt.Errorf("Not support %v", coinID)
 }
@@ -71,7 +70,7 @@ func (api *PublicAccountManagerAPI) GetBalanceInfo(addr string, coinID types.Coi
 		}
 		return result, nil
 	} else if coinID == types.MEERB {
-		ba, err := api.a.chain.MeerChain().(*meer.MeerChain).GetBalance(addr)
+		ba, err := api.a.chain.MeerChain().GetBalance(addr)
 		if err != nil {
 			return nil, err
 		}

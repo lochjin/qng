@@ -29,15 +29,15 @@ type MeerChangeInfo struct {
 	Fork    string `json:"fork,omitempty"`
 }
 
-type PublicMeerChainAPI struct {
-	mc *MeerChain
+type PublicBlockChainAPI struct {
+	mc *blockChain
 }
 
-func NewPublicMeerChainAPI(mc *MeerChain) *PublicMeerChainAPI {
-	return &PublicMeerChainAPI{mc}
+func NewPublicBlockChainAPI(mc *blockChain) *PublicBlockChainAPI {
+	return &PublicBlockChainAPI{mc}
 }
 
-func (api *PublicMeerChainAPI) GetMeerChainInfo() (interface{}, error) {
+func (api *PublicBlockChainAPI) GetMeerChainInfo() (interface{}, error) {
 	mi := MeerChainInfo{
 		MeerVer:   Version,
 		EvmVer:    api.mc.chain.Config().Node.Version,
@@ -78,11 +78,11 @@ func (api *PublicMeerChainAPI) GetMeerChainInfo() (interface{}, error) {
 	return mi, nil
 }
 
-func (api *PublicMeerChainAPI) GetMeerChangeAddr() (interface{}, error) {
+func (api *PublicBlockChainAPI) GetMeerChangeAddr() (interface{}, error) {
 	return meerchange.ContractAddr.String(), nil
 }
 
-func (api *PublicMeerChainAPI) DeployMeerChange(owner common.Address) (interface{}, error) {
+func (api *PublicBlockChainAPI) DeployMeerChange(owner common.Address) (interface{}, error) {
 	if api.mc.IsMeerChangeDeployed() {
 		log.Info("MeerChange has already been deployed, so ignore this operation")
 		return nil, nil
@@ -94,7 +94,7 @@ func (api *PublicMeerChainAPI) DeployMeerChange(owner common.Address) (interface
 	return txHash.String(), nil
 }
 
-func (api *PublicMeerChainAPI) HasMeerState(hashOrNumber string) (interface{}, error) {
+func (api *PublicBlockChainAPI) HasMeerState(hashOrNumber string) (interface{}, error) {
 	hn, err := rpcapi.NewHashOrNumber(hashOrNumber)
 	if err != nil {
 		return false, err
@@ -105,15 +105,15 @@ func (api *PublicMeerChainAPI) HasMeerState(hashOrNumber string) (interface{}, e
 	return true, nil
 }
 
-type PrivateMeerChainAPI struct {
-	mc *MeerChain
+type PrivateBlockChainAPI struct {
+	mc *blockChain
 }
 
-func NewPrivateMeerChainAPI(mc *MeerChain) *PrivateMeerChainAPI {
-	return &PrivateMeerChainAPI{mc}
+func NewPrivateBlockChainAPI(mc *blockChain) *PrivateBlockChainAPI {
+	return &PrivateBlockChainAPI{mc}
 }
 
-func (api *PrivateMeerChainAPI) CalcExportSig(ops string, fee uint64, privKeyHex string) (interface{}, error) {
+func (api *PrivateBlockChainAPI) CalcExportSig(ops string, fee uint64, privKeyHex string) (interface{}, error) {
 	sig, err := meerchange.CalcExportSig(meerchange.CalcExportHash(ops, fee), privKeyHex)
 	if err != nil {
 		return nil, err

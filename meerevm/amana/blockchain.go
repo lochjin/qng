@@ -12,7 +12,6 @@ import (
 	"github.com/Qitmeer/qng/consensus/model"
 	mmeer "github.com/Qitmeer/qng/consensus/model/meer"
 	"github.com/Qitmeer/qng/core/address"
-	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	qtypes "github.com/Qitmeer/qng/core/types"
 	qcommon "github.com/Qitmeer/qng/meerevm/common"
 	"github.com/Qitmeer/qng/meerevm/eth"
@@ -32,6 +31,7 @@ import (
 	eeth "github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
 	"math/big"
@@ -47,7 +47,7 @@ const (
 type blockChain struct {
 	service.Service
 	chain     *eth.ETHChain
-	pool      *TxPool
+	txpool    *TxPool
 	consensus model.Consensus
 
 	block   *mmeer.Block
@@ -92,7 +92,7 @@ func (b *blockChain) Start() error {
 		log.Debug(fmt.Sprintf("Alloc address:%v balance:%v", addr.String(), state.GetBalance(addr)))
 	}
 
-	b.pool.Start()
+	b.txpool.Start()
 	return nil
 }
 
@@ -108,7 +108,7 @@ func (b *blockChain) Stop() error {
 		log.Error(err.Error())
 	}
 
-	b.pool.Stop()
+	b.txpool.Stop()
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (b *blockChain) finalized(block *types.Block) error {
 	return nil
 }
 
-func (b *blockChain) buildBlock(parent *types.Header, qtxs []model.Tx, timestamp int64) (*types.Block, types.Receipts, *state.StateDB, error) {
+func (b *blockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp int64) (*types.Block, types.Receipts, *state.StateDB, error) {
 	config := b.chain.Config().Eth.Genesis.Config
 	engine := b.chain.Ether().Engine()
 	parentBlock := types.NewBlockWithHeader(parent)
@@ -208,7 +208,7 @@ func (b *blockChain) buildBlock(parent *types.Header, qtxs []model.Tx, timestamp
 	return block, receipts, statedb, nil
 }
 
-func (b *blockChain) fillBlock(qtxs []model.Tx, header *types.Header, statedb *state.StateDB) ([]*types.Transaction, []*types.Receipt, error) {
+func (b *blockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *state.StateDB) ([]*types.Transaction, []*types.Receipt, error) {
 	txs := []*types.Transaction{}
 	receipts := []*types.Receipt{}
 
@@ -324,8 +324,8 @@ func (b *blockChain) RegisterAPIs(apis []api.API) {
 	b.chain.Node().RegisterAPIs(eapis)
 }
 
-func (b *blockChain) TxPool() *TxPool {
-	return b.pool
+func (b *blockChain) TxPool() mmeer.TxPool {
+	return b.txpool
 }
 
 func (b *blockChain) ETHChain() *eth.ETHChain {
@@ -511,7 +511,7 @@ func (b *blockChain) validateTx(tx *types.Transaction, checkState bool) error {
 	return nil
 }
 
-func (b *blockChain) VerifyTx(tx *mmeer.VMTx, utxoView *utxo.UtxoViewpoint) (int64, error) {
+func (b *blockChain) VerifyTx(tx *mmeer.VMTx, view interface{}) (int64, error) {
 	if tx.GetTxType() == qtypes.TxTypeCrossChainVM {
 		txe := tx.ETx
 		err := b.validateTx(txe, true)
@@ -613,6 +613,10 @@ func (b *blockChain) Ether() *eeth.Ethereum {
 	return b.chain.Ether()
 }
 
+func (b *blockChain) Node() *node.Node {
+	return b.chain.Node()
+}
+
 func (b *blockChain) Client() *ethclient.Client {
 	return b.client
 }
@@ -640,6 +644,14 @@ func (b *blockChain) GetPivot() uint64 {
 		return 0
 	}
 	return *pivot
+}
+
+func (b *blockChain) SetMainTxPool(tp model.TxPool) {
+	b.txpool.SetTxPool(tp)
+}
+
+func (b *blockChain) SetP2P(ser model.P2PService) {
+	b.txpool.SetP2P(ser)
 }
 
 func (b *blockChain) APIs() []api.API {
@@ -675,7 +687,7 @@ func NewBlockChain(consensus model.Consensus) (*blockChain, error) {
 
 	mchain := &blockChain{
 		chain:     chain,
-		pool:      newTxPool(consensus, chain.Ether()),
+		txpool:    newTxPool(consensus, chain.Ether()),
 		consensus: consensus,
 	}
 	mchain.InitContext()

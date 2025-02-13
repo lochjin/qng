@@ -26,7 +26,6 @@ import (
 	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/engine/txscript"
 	"github.com/Qitmeer/qng/meerdag"
-	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/rpc"
@@ -532,7 +531,7 @@ func (m *Miner) updateBlockTemplate(force bool) error {
 		m.stats.TotalGbts++ //gbt generates
 		start := time.Now().UnixMilli()
 		totalGbts.Update(m.stats.TotalGbts)
-		err := m.consensus.BlockChain().MeerChain().(*meer.MeerChain).MeerPool().ResetTemplate()
+		err := m.consensus.BlockChain().MeerChain().TxPool().ResetTemplate()
 		if err != nil {
 			log.Warn(err.Error())
 			return err

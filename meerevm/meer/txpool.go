@@ -44,7 +44,7 @@ type snapshotTx struct {
 	eHash common.Hash
 }
 
-type MeerPool struct {
+type TxPool struct {
 	wg      sync.WaitGroup
 	quit    chan struct{}
 	running int32
@@ -75,7 +75,7 @@ type MeerPool struct {
 	p2pSer model.P2PService
 }
 
-func (m *MeerPool) Start() {
+func (m *TxPool) Start() {
 	if m.isRunning() {
 		log.Info("Meer pool was started")
 		return
@@ -90,7 +90,7 @@ func (m *MeerPool) Start() {
 	m.updateTemplate(true)
 }
 
-func (m *MeerPool) Stop() {
+func (m *TxPool) Stop() {
 	if !m.isRunning() {
 		log.Info("Meer pool was stopped")
 		return
@@ -104,11 +104,11 @@ func (m *MeerPool) Stop() {
 	log.Info(fmt.Sprintf("Meer pool stopped"))
 }
 
-func (m *MeerPool) isRunning() bool {
+func (m *TxPool) isRunning() bool {
 	return atomic.LoadInt32(&m.running) == 1
 }
 
-func (m *MeerPool) handler() {
+func (m *TxPool) handler() {
 	defer m.txsSub.Unsubscribe()
 	defer m.chainHeadSub.Unsubscribe()
 	defer m.wg.Done()
@@ -159,7 +159,7 @@ func (m *MeerPool) handler() {
 	}
 }
 
-func (m *MeerPool) prepareMeerChangeTxs(txs []*types.Transaction) []*types.Transaction {
+func (m *TxPool) prepareMeerChangeTxs(txs []*types.Transaction) []*types.Transaction {
 	remaining := []*types.Transaction{}
 	for _, tx := range txs {
 		if meerchange.IsMeerChangeTx(tx) {
@@ -181,7 +181,7 @@ func (m *MeerPool) prepareMeerChangeTxs(txs []*types.Transaction) []*types.Trans
 	return remaining
 }
 
-func (m *MeerPool) handleStallSample() {
+func (m *TxPool) handleStallSample() {
 	if m.p2pSer == nil {
 		// The service is not ready yet, try again next time
 		return
@@ -207,7 +207,7 @@ func (m *MeerPool) handleStallSample() {
 	go m.ResetTemplate()
 }
 
-func (m *MeerPool) updateTemplate(force bool) error {
+func (m *TxPool) updateTemplate(force bool) error {
 	if m.syncing.Load() {
 		return nil
 	}
@@ -247,12 +247,12 @@ func (m *MeerPool) updateTemplate(force bool) error {
 		}
 	}
 	//
-	log.Debug("meerpool update block template", "txs", txsNum)
+	log.Debug("meer txpool update block template", "txs", txsNum)
 	m.dirty.Store(false)
 	return nil
 }
 
-func (m *MeerPool) GetTxs() ([]*qtypes.Tx, []*hash.Hash, error) {
+func (m *TxPool) GetTxs() ([]*qtypes.Tx, []*hash.Hash, error) {
 	m.snapshotMu.RLock()
 	defer m.snapshotMu.RUnlock()
 
@@ -274,14 +274,14 @@ func (m *MeerPool) GetTxs() ([]*qtypes.Tx, []*hash.Hash, error) {
 }
 
 // all: contain txs in pending and queue
-func (m *MeerPool) HasTx(h *hash.Hash) bool {
+func (m *TxPool) HasTx(h *hash.Hash) bool {
 	m.snapshotMu.RLock()
 	_, ok := m.snapshotQTxsM[h.String()]
 	m.snapshotMu.RUnlock()
 	return ok
 }
 
-func (m *MeerPool) GetSize() int64 {
+func (m *TxPool) GetSize() int64 {
 	m.snapshotMu.RLock()
 	defer m.snapshotMu.RUnlock()
 
@@ -291,7 +291,7 @@ func (m *MeerPool) GetSize() int64 {
 	return 0
 }
 
-func (m *MeerPool) AddTx(tx *qtypes.Tx) (int64, error) {
+func (m *TxPool) AddTx(tx *qtypes.Tx) (int64, error) {
 	h := qcommon.ToEVMHash(&tx.Tx.TxIn[0].PreviousOut.Hash)
 	if m.eth.TxPool().Has(h) {
 		return 0, fmt.Errorf("already exists:%s (evm:%s)", tx.Hash().String(), h.String())
@@ -317,7 +317,7 @@ func (m *MeerPool) AddTx(tx *qtypes.Tx) (int64, error) {
 	return cost.Int64(), nil
 }
 
-func (m *MeerPool) RemoveTx(tx *qtypes.Tx) error {
+func (m *TxPool) RemoveTx(tx *qtypes.Tx) error {
 	if !m.isRunning() {
 		return fmt.Errorf("meer pool is not running")
 	}
@@ -332,7 +332,7 @@ func (m *MeerPool) RemoveTx(tx *qtypes.Tx) error {
 	return nil
 }
 
-func (m *MeerPool) ResetTemplate() error {
+func (m *TxPool) ResetTemplate() error {
 	if !m.isRunning() {
 		err := errors.New("meer pool is not running")
 		log.Warn(err.Error())
@@ -352,15 +352,15 @@ func (m *MeerPool) ResetTemplate() error {
 	return nil
 }
 
-func (m *MeerPool) SetTxPool(tp model.TxPool) {
+func (m *TxPool) SetTxPool(tp model.TxPool) {
 	m.qTxPool = tp
 }
 
-func (m *MeerPool) SetP2P(ser model.P2PService) {
+func (m *TxPool) SetP2P(ser model.P2PService) {
 	m.p2pSer = ser
 }
 
-func (m *MeerPool) subscribe() {
+func (m *TxPool) subscribe() {
 	ch := make(chan *qevent.Event)
 	sub := m.consensus.Events().Subscribe(ch)
 	go func() {
@@ -390,7 +390,7 @@ func (m *MeerPool) subscribe() {
 	}()
 }
 
-func (m *MeerPool) AnnounceNewTransactions(txs []*types.Transaction) error {
+func (m *TxPool) AnnounceNewTransactions(txs []*types.Transaction) error {
 	txds := []*qtypes.TxDesc{}
 
 	for _, tx := range txs {
@@ -422,9 +422,9 @@ func (m *MeerPool) AnnounceNewTransactions(txs []*types.Transaction) error {
 	return nil
 }
 
-func newMeerPool(consensus model.Consensus, eth *eth.Ethereum) *MeerPool {
+func newTxPool(consensus model.Consensus, eth *eth.Ethereum) *TxPool {
 	log.Info(fmt.Sprintf("New Meer pool"))
-	m := &MeerPool{}
+	m := &TxPool{}
 	m.consensus = consensus
 	m.eth = eth
 	m.txsCh = make(chan core.NewTxsEvent, txChanSize)

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
-	qcommon "github.com/Qitmeer/qng/meerevm/common"
 	ecommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"strconv"
@@ -752,7 +751,7 @@ func (api *PublicTxAPI) GetMeerEVMTxHashByID(txid hash.Hash) (interface{}, error
 }
 
 func (api *PublicTxAPI) GetTxIDByMeerEVMTxHash(etxh hash.Hash) (interface{}, error) {
-	etxs, txhs, err := api.txManager.GetChain().MeerChain().(*meer.MeerChain).MeerPool().GetTxs()
+	etxs, txhs, err := api.txManager.GetChain().MeerChain().TxPool().GetTxs()
 	if err != nil {
 		return nil, err
 	}
@@ -1225,7 +1224,7 @@ func (api *PublicTxAPI) CheckUTXO(txid hash.Hash, idx uint32, sig string) (inter
 	if err != nil {
 		return nil, err
 	}
-	return qcommon.CheckUTXOPubkey(pubKey, entry)
+	return meer.CheckUTXOPubkey(pubKey, entry)
 }
 
 func (api *PrivateTxAPI) CalcUTXOSig(txid hash.Hash, idx uint32, privKeyHex string) (interface{}, error) {

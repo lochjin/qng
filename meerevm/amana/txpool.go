@@ -389,6 +389,10 @@ func (m *TxPool) AnnounceNewTransactions(txs []*types.Transaction) error {
 	return nil
 }
 
+func (m *TxPool) CheckMeerChangeExportTx(tx *types.Transaction, ced interface{}, utxoView interface{}) error {
+	return fmt.Errorf("No support MeerChange")
+}
+
 func newTxPool(consensus model.Consensus, eth *eth.Ethereum) *TxPool {
 	log.Info(fmt.Sprintf("New Amana pool"))
 	m := &TxPool{}

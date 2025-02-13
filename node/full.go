@@ -14,7 +14,6 @@ import (
 	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/coinbase"
 	"github.com/Qitmeer/qng/engine/txscript"
-	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/p2p"
 	"github.com/Qitmeer/qng/rpc"
@@ -147,7 +146,7 @@ func (qm *QitmeerFull) RegisterAccountService(cfg *config.Config) error {
 }
 
 func (qm *QitmeerFull) RegisterWalletService(cfg *config.Config) error {
-	walletmgr, err := wallet.New(cfg, qm.node.consensus.BlockChain().MeerChain().(*meer.MeerChain),
+	walletmgr, err := wallet.New(cfg, qm.node.consensus.BlockChain().MeerChain(),
 		qm.GetAccountManager(), qm.GetTxManager(), qm.node.consensus.Events())
 	if err != nil {
 		return err
@@ -291,8 +290,8 @@ func newQitmeerFullNode(node *Node) (*QitmeerFull, error) {
 	qm.GetPeerServer().SetNotify(qm.nfManager)
 
 	//
-	bc.MeerChain().(*meer.MeerChain).MeerPool().SetTxPool(txManager.MemPool())
-	bc.MeerChain().(*meer.MeerChain).MeerPool().SetP2P(qm.GetPeerServer())
+	bc.MeerChain().SetMainTxPool(txManager.MemPool())
+	bc.MeerChain().SetP2P(qm.GetPeerServer())
 	//
 	if err := qm.RegisterMinerService(); err != nil {
 		return nil, err
