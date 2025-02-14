@@ -3,8 +3,8 @@ package testutils
 import (
 	"encoding/json"
 	"github.com/Qitmeer/qng/config"
+	"github.com/Qitmeer/qng/consensus/pow"
 	qjson "github.com/Qitmeer/qng/core/json"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"sync"
 	"testing"
 )

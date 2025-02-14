@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/pow"
 	"math/big"
 	"strconv"
 	"strings"

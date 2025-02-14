@@ -1,7 +1,7 @@
 package ghostdag
 
 import (
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/Qitmeer/qng/meerdag/ghostdag/model"
 )
 

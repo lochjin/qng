@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/Qitmeer/qng/common/hash"
 	cmodel "github.com/Qitmeer/qng/consensus/model"
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/Qitmeer/qng/meerdag/ghostdag/model"
 	"github.com/Qitmeer/qng/params"
 	"math/big"

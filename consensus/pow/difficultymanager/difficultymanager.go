@@ -2,7 +2,7 @@ package difficultymanager
 
 import (
 	"github.com/Qitmeer/qng/consensus/model"
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/Qitmeer/qng/params"
 )
 

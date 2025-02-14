@@ -2,8 +2,8 @@ package miner
 
 import (
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/Qitmeer/qng/core/json"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/services/mining"
 )
 

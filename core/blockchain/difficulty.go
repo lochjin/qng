@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Qitmeer/qng/consensus/model"
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/pow"
 )
 
 // CalcEasiestDifficulty calculates the easiest possible difficulty that a block

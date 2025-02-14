@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Qitmeer/qng/common/encode/base58"
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +18,7 @@ func TestPowLimitToBits(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("0x%x", compact), "0x1f03ffff")
 }
 
-//test blake2bd percent params
+// test blake2bd percent params
 func TestPercent(t *testing.T) {
 	types := []pow.PowType{pow.BLAKE2BD, pow.CUCKAROO, pow.CUCKATOO, pow.CUCKAROOM}
 	for _, powType := range types {
