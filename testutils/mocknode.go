@@ -15,7 +15,7 @@ import (
 
 	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/config"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/blockchain"
 	_ "github.com/Qitmeer/qng/database/legacydb/ffldb"
 	"github.com/Qitmeer/qng/log"

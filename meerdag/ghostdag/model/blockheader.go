@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 )
 
 type BlockHeader interface {

@@ -2,8 +2,8 @@ package ghostdag
 
 import (
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	cmodel "github.com/Qitmeer/qng/consensus/model"
-	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/Qitmeer/qng/meerdag/ghostdag/model"
 	"github.com/pkg/errors"
 	"math/big"

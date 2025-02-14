@@ -3,7 +3,7 @@ package testutils
 import (
 	"encoding/json"
 	"github.com/Qitmeer/qng/config"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	qjson "github.com/Qitmeer/qng/core/json"
 	"sync"
 	"testing"

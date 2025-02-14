@@ -13,7 +13,7 @@ import (
 
 	"github.com/Qitmeer/qng/cmd/miner/common"
 	"github.com/Qitmeer/qng/cmd/miner/common/socks"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 )
 
 // ErrJsonType is an error for json that we do not expect.

@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/Qitmeer/qng/common/hash"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
 	qparams "github.com/Qitmeer/qng/params"

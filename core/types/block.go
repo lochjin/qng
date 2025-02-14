@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	s "github.com/Qitmeer/qng/core/serialization"
 	"io"
 	"math/big"

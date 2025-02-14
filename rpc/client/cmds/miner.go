@@ -7,7 +7,7 @@ package cmds
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/types"
 )
 

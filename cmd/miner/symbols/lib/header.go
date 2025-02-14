@@ -3,7 +3,7 @@ package lib
 import (
 	"bytes"
 	"github.com/Qitmeer/qng/common/hash"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/json"
 	s "github.com/Qitmeer/qng/core/serialization"
 	"github.com/Qitmeer/qng/core/types"
@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-//qitmeer block header
+// qitmeer block header
 type BlockHeader struct {
 	sync.Mutex
 	// block version
@@ -54,7 +54,7 @@ func (h *BlockHeader) SetTxs(transactions []*types.Tx) {
 	h.transactions = transactions
 }
 
-//qitmeer block header
+// qitmeer block header
 func BlockDataWithProof(h *types.BlockHeader) []byte {
 	var buf bytes.Buffer
 	// TODO, redefine the protocol version and storage

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Qitmeer/qng/common/encode/base58"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -15,8 +15,8 @@ import (
 
 	"github.com/Qitmeer/qng/common/marshal"
 	"github.com/Qitmeer/qng/common/roughtime"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/forks"
-	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/meerdag"

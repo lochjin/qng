@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/crypto/seed"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/qx"

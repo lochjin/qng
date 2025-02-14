@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/forks"
 	"github.com/Qitmeer/qng/consensus/model"
 	mmeer "github.com/Qitmeer/qng/consensus/model/meer"
-	"github.com/Qitmeer/qng/consensus/pow"
 	"github.com/Qitmeer/qng/core/blockchain/opreturn"
 	"github.com/Qitmeer/qng/core/blockchain/token"
 	"github.com/Qitmeer/qng/core/blockchain/utxo"

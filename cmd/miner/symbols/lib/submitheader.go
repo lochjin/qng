@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/Qitmeer/qng/cmd/miner/common"
 	"github.com/Qitmeer/qng/common/hash"
-	"github.com/Qitmeer/qng/consensus/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/types"
 	"math/big"
 )
@@ -39,7 +39,7 @@ func BlockComputePoolData(b []byte) []byte {
 	return bb
 }
 
-//the pool work submit structure
+// the pool work submit structure
 func (this *MinerBlockData) PackagePoolHeader(work *QitmeerWork, powType pow.PowType) {
 	this.HeaderData = BlockComputePoolData(work.PoolWork.WorkData) // 128
 	this.TargetDiff = work.stra.Target
@@ -55,7 +55,7 @@ func (this *MinerBlockData) PackagePoolHeader(work *QitmeerWork, powType pow.Pow
 	this.Height = uint64(work.PoolWork.Height)
 }
 
-//the solo work submit structure
+// the solo work submit structure
 func (this *MinerBlockData) PackageRpcHeader(work *QitmeerWork) {
 	bitesBy, _ := hex.DecodeString(work.Block.Target)
 	this.Target2 = common.Reverse(bitesBy[0:32])
