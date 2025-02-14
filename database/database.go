@@ -9,7 +9,6 @@ import (
 	"github.com/Qitmeer/qng/database/chaindb"
 	"github.com/Qitmeer/qng/database/legacychaindb"
 	_ "github.com/Qitmeer/qng/database/legacydb/ffldb"
-	"github.com/Qitmeer/qng/meerevm/amana"
 	"github.com/Qitmeer/qng/meerevm/meer"
 	"os"
 )
@@ -41,7 +40,6 @@ func Cleanup(cfg *config.Config) {
 	}
 
 	meer.Cleanup(cfg)
-	amana.Cleanup(cfg)
 	err := shutdown.NewTracker(cfg.DataDir).Done()
 	if err != nil {
 		log.Error(err.Error())

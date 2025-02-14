@@ -5,7 +5,6 @@ package blockchain
 import (
 	"container/list"
 	"fmt"
-	"github.com/Qitmeer/qng/meerevm/amana"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -1088,12 +1087,7 @@ func New(consensus model.Consensus) (*BlockChain, error) {
 	if err != nil {
 		return nil, err
 	}
-	var mchain model.MeerChain
-	if consensus.Config().Amana {
-		mchain, err = amana.NewBlockChain(consensus)
-	} else {
-		mchain, err = meer.NewBlockChain(consensus)
-	}
+	mchain, err := meer.NewBlockChain(consensus)
 	if err != nil {
 		return nil, err
 	}

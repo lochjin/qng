@@ -144,6 +144,4 @@ var TestNetParams = Params{
 	},
 	EmptyBlockForkBlock: big.NewInt(0),
 	GasLimitForkBlock:   big.NewInt(0),
-
-	AmanaConfig: amanaChainConfig,
 }

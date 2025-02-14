@@ -4,7 +4,6 @@ package cmd
 
 import (
 	"github.com/Qitmeer/qng/config"
-	"github.com/Qitmeer/qng/meerevm/amana"
 	"github.com/Qitmeer/qng/meerevm/eth"
 	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/ethereum/go-ethereum/cmd/utils"
@@ -27,7 +26,6 @@ var (
 		utils.ShowDeprecated,
 		// See snapshot.go
 		snapshotCommand,
-		setHeadCommand,
 	}
 )
 
@@ -37,18 +35,10 @@ func makeConfigNode(ctx *cli.Context, cfg *config.Config) (*node.Node, *eth.Conf
 	var ecfg *eth.Config
 	var args []string
 	var err error
-	if cfg.Amana {
-		ecfg, args, err = amana.MakeParams(cfg)
-		if err != nil {
-			log.Error(err.Error())
-			return nil, nil
-		}
-	} else {
-		ecfg, args, err = meer.MakeParams(cfg)
-		if err != nil {
-			log.Error(err.Error())
-			return nil, nil
-		}
+	ecfg, args, err = meer.MakeParams(cfg)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, nil
 	}
 	var n *node.Node
 	n, _, err = eth.MakeNakedNode(ecfg, args)
@@ -62,18 +52,10 @@ func makeConfigNode(ctx *cli.Context, cfg *config.Config) (*node.Node, *eth.Conf
 func makeConfig(cfg *config.Config) (*eth.Config, error) {
 	var ecfg *eth.Config
 	var err error
-	if cfg.Amana {
-		ecfg, err = amana.MakeConfig(cfg)
-		if err != nil {
-			log.Error(err.Error())
-			return nil, nil
-		}
-	} else {
-		ecfg, err = meer.MakeConfig(cfg)
-		if err != nil {
-			log.Error(err.Error())
-			return nil, nil
-		}
+	ecfg, err = meer.MakeConfig(cfg)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, nil
 	}
 	return ecfg, nil
 }

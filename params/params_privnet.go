@@ -191,6 +191,4 @@ var PrivNetParams = Params{
 	GasLimitForkBlock:   big.NewInt(0),
 	CancunForkBlock:     big.NewInt(0),
 	MeerChangeForkBlock: big.NewInt(0),
-
-	AmanaConfig: amanaChainConfig,
 }

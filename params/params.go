@@ -245,8 +245,6 @@ type Params struct {
 	// evm
 	MeerConfig *eparams.ChainConfig
 
-	AmanaConfig *eparams.ChainConfig
-
 	MeerEVMForkBlock    *big.Int // MeerEVM is enabled  and new subsidy calculation
 	MeerUTXOForkBlock   *big.Int // What main height can transfer the locked utxo in genesis to MeerEVM, Must after MeerEVMForkMainHeight
 	EmptyBlockForkBlock *big.Int // main height

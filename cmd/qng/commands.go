@@ -7,7 +7,6 @@ import (
 	"github.com/Qitmeer/qng/consensus"
 	"github.com/Qitmeer/qng/database"
 	"github.com/Qitmeer/qng/log"
-	"github.com/Qitmeer/qng/meerevm/amana"
 	"github.com/Qitmeer/qng/meerevm/cmd"
 	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/p2p"
@@ -112,7 +111,6 @@ func consensusCmd() *cli.Command {
 					defer db.Close()
 
 					meer.Cleanup(cfg)
-					amana.Cleanup(cfg)
 					//
 					cfg.InvalidTxIndex = false
 					cfg.AddrIndex = false

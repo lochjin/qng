@@ -1,6 +1,7 @@
 package meer
 
 import (
+	"encoding/json"
 	"github.com/Qitmeer/qng/config"
 	"github.com/Qitmeer/qng/core/protocol"
 	mcommon "github.com/Qitmeer/qng/meerevm/common"
@@ -19,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/params"
 	"math/big"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -32,7 +34,7 @@ var (
 
 func MakeConfig(cfg *config.Config) (*eth.Config, error) {
 	datadir := cfg.DataDir
-	genesis := CurrentGenesis()
+	genesis := CurrentGenesis(cfg.EVMGenesis)
 
 	econfig := ethconfig.Defaults
 
@@ -105,8 +107,10 @@ func getDefaultPort() (int, int, int) {
 		return 18535, 18536, 18537
 	case protocol.MixNet:
 		return 28535, 28536, 28537
-	default:
+	case protocol.PrivNet:
 		return 38535, 38536, 38537
+	default:
+		return 48535, 48536, 48537
 	}
 }
 
@@ -134,6 +138,29 @@ func Genesis(net *qparams.Params, alloc types.GenesisAlloc) *core.Genesis {
 	return gen
 }
 
-func CurrentGenesis() *core.Genesis {
+func CurrentGenesis(filePath string) *core.Genesis {
+	if len(filePath) > 0 {
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Error(err.Error())
+			return nil
+		}
+		defer file.Close()
+
+		genesis := new(core.Genesis)
+		if err := json.NewDecoder(file).Decode(genesis); err != nil {
+			log.Error(err.Error())
+			return nil
+		}
+		fileName := filepath.Base(filePath)
+		extension := filepath.Ext(filePath)
+		fileName = fileName[:len(fileName)-len(extension)]
+		err = params.AddMeerChainConfig(&params.MeerChainConfig{ChainID: genesis.Config.ChainID, Name: fileName, Type: params.Amana})
+		if err != nil {
+			log.Error(err.Error())
+			return nil
+		}
+		return genesis
+	}
 	return Genesis(qparams.ActiveNetParams.Params, nil)
 }

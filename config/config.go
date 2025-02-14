@@ -33,6 +33,7 @@ type Config struct {
 	TestNet            bool     `long:"testnet" description:"Use the test network"`
 	MixNet             bool     `long:"mixnet" description:"Use the test mix pow network"`
 	PrivNet            bool     `long:"privnet" description:"Use the private network"`
+	AmanaNet           bool     `long:"amananet" description:"Use the Amana network"`
 	DbType             string   `long:"dbtype" description:"Database backend to use for the Block Chain"`
 	Profile            string   `long:"profile" description:"Enable HTTP profiling on given [addr:]port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile         string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
@@ -148,8 +149,6 @@ type Config struct {
 	PowDiffMode int `long:"powdiffmode" description:"Pow difficult mode:(0:meer,1:ghostdag,2:develop)"`
 
 	TranferTxLegacyMode bool `long:"tranfertxlegacymode" description:"Support transaction transmission mode compatible with older versions before the snapsync P2P"`
-
-	Amana bool `long:"amana" description:"Enable Amana"`
 }
 
 func (c *Config) GetMinningAddrs() []types.Address {

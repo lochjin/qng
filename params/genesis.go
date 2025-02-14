@@ -22,7 +22,7 @@ var genesisTime = time.Unix(1632913200, 0) //  2021-09-29 19:00:00 GMT+08:00
 
 // genesisCoinbaseTx is the coinbase transaction for the genesis blocks for
 // the main network.
-func buildGenesisCoinbaseTx(net protocol.Network) types.Transaction {
+func buildGenesisCoinbaseTx() types.Transaction {
 	tx := types.Transaction{
 		Version: 1,
 		TxIn: []*types.TxInput{
@@ -90,7 +90,7 @@ func buildGenesisMappingTx(net protocol.Network) types.Transaction {
 	return tx
 }
 
-var genesisCoinbaseTx = buildGenesisCoinbaseTx(protocol.MainNet)
+var genesisCoinbaseTx = buildGenesisCoinbaseTx()
 var genesisMappingTx = buildGenesisMappingTx(protocol.MainNet)
 var genesisTxs = []*types.Transaction{
 	&genesisCoinbaseTx,
@@ -451,3 +451,44 @@ var mixNetGenesisBlock = types.Block{
 // testNetGenesisHash is the hash of the first block in the block chain for the
 // test network.
 var mixNetGenesisHash = mixNetGenesisBlock.BlockHash()
+
+// AmanaNet -------------------------------------------------------------------------
+
+var amanaNetGenesisCoinbaseTx = types.Transaction{
+	Version: 1,
+	TxIn: []*types.TxInput{
+		{
+			PreviousOut: types.TxOutPoint{
+				Hash:     hash.Hash{},
+				OutIndex: 0xffffffff,
+			},
+			Sequence:   0xffffffff,
+			SignScript: []byte{},
+		},
+	},
+	TxOut: []*types.TxOutput{
+		{
+			Amount:   types.Amount{Value: 0x00000000, Id: types.MEERA},
+			PkScript: []byte{},
+		},
+	},
+	LockTime: 0,
+	Expire:   0,
+}
+
+var amanaNetGenesisBlock = types.Block{
+	Header: types.BlockHeader{
+		ParentRoot: zeroHash,
+		TxRoot:     *merkle.CalcMerkleRoot([]*types.Transaction{&amanaNetGenesisCoinbaseTx}),
+		StateRoot: hash.Hash([32]byte{ // Make go vet happy.
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		}),
+		Timestamp: time.Unix(1739265196, 0), // 2025-02-11 17:13:16.322784
+	},
+	Transactions: []*types.Transaction{&amanaNetGenesisCoinbaseTx},
+}
+
+var amanaNetGenesisHash = amanaNetGenesisBlock.BlockHash()

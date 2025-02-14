@@ -105,6 +105,8 @@ func Ledger(tx *types.Transaction, netType protocol.Network) {
 		initMix()
 	case protocol.PrivNet:
 		initPriv()
+	case protocol.AmanaNet:
+		initAmana()
 	}
 
 	// Block one is a special block that might pay out tokens to a ledger.

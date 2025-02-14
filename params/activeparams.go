@@ -41,4 +41,10 @@ var MixNetParam = netParams{
 	RpcPort: "28131",
 }
 
-var AllNetParams = []*netParams{&MainNetParam, &TestNetParam, &PrivNetParam, &MixNetParam}
+// MixNetParam contains parameters specific to the mix pow test network
+var AmanaNetParam = netParams{
+	Params:  &AmanaNetParams,
+	RpcPort: "48131",
+}
+
+var AllNetParams = []*netParams{&MainNetParam, &TestNetParam, &PrivNetParam, &MixNetParam, &AmanaNetParam}

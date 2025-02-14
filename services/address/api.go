@@ -69,8 +69,10 @@ func (api *PublicAddressAPI) CheckAddress(address string, network string) (inter
 		p = &params.MainNetParams
 	case "mixnet":
 		p = &params.MixNetParams
+	case "amananet":
+		p = &params.AmanaNetParams
 	default:
-		return false, rpc.RpcInvalidError("Invalid network : privnet | testnet | mainnet | mixnet")
+		return false, rpc.RpcInvalidError("Invalid network : privnet | testnet | mainnet | mixnet | amananet")
 	}
 	if p.PubKeyHashAddrID != ver {
 		return false, rpc.RpcRuleError("address prefix error , need %s , actual: %s,network not match,please check it",

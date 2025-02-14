@@ -150,6 +150,4 @@ var MainNetParams = Params{
 	MeerEVMForkBlock:  big.NewInt(951100),
 	MeerUTXOForkBlock: big.NewInt(1200000),
 	GasLimitForkBlock: big.NewInt(606567),
-
-	AmanaConfig: amanaChainConfig,
 }

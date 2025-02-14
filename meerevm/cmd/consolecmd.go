@@ -4,7 +4,6 @@ package cmd
 
 import (
 	"github.com/Qitmeer/qng/config"
-	"github.com/Qitmeer/qng/meerevm/amana"
 	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/console"
@@ -40,11 +39,7 @@ func remoteConsole(ctx *cli.Context) error {
 		nconfig.DataDir = ctx.String(utils.DataDirFlag.Name)
 	}
 	if endpoint == "" {
-		if config.Cfg.Amana {
-			nconfig.IPCPath = amana.ClientIdentifier + ".ipc"
-		} else {
-			nconfig.IPCPath = meer.ClientIdentifier + ".ipc"
-		}
+		nconfig.IPCPath = meer.ClientIdentifier + ".ipc"
 		endpoint = nconfig.IPCEndpoint()
 
 	}

@@ -42,6 +42,12 @@ func (n *QitmeerBase58checkVersionFlag) Set(s string) error {
 		} else {
 			n.Ver = append(n.Ver, params.MixNetParams.PubKeyHashAddrID[0:]...)
 		}
+	case "amananet":
+		if n.PK {
+			n.Ver = append(n.Ver, params.AmanaNetParams.PubKeyAddrID[0:]...)
+		} else {
+			n.Ver = append(n.Ver, params.AmanaNetParams.PubKeyHashAddrID[0:]...)
+		}
 	default:
 		v, err := hex.DecodeString(s)
 		if err != nil {

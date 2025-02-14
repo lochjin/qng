@@ -215,12 +215,13 @@ func SetupConfig(cfg *config.Config) error {
 		numNets++
 		params.ActiveNetParams = &params.MixNetParam
 	}
+	if cfg.AmanaNet {
+		numNets++
+		params.ActiveNetParams = &params.AmanaNetParam
+	}
 	// Multiple networks can't be selected simultaneously.
 	if numNets > 1 {
 		return fmt.Errorf("SetupConfig: the testnet and simnet params can't be used together -- choose one of the three")
-	}
-	if cfg.Amana && numNets != 0 {
-		return fmt.Errorf("SetupConfig: Amana only support MainNet params")
 	}
 	// default p2p port
 	if len(cfg.DefaultPort) > 0 {

@@ -236,6 +236,11 @@ var (
 			Usage:       "Use the private network",
 			Destination: &cfg.PrivNet,
 		},
+		&cli.BoolFlag{
+			Name:        "amananet",
+			Usage:       "Use the amana network",
+			Destination: &cfg.AmanaNet,
+		},
 		&cli.StringFlag{
 			Name:        "dbtype",
 			Usage:       "Database backend to use for the Block Chain",
@@ -543,11 +548,6 @@ var (
 			Usage:       "Block data cache size",
 			Value:       defaultMinBlockDataCache,
 			Destination: &cfg.BlockDataCacheSize,
-		},
-		&cli.BoolFlag{
-			Name:        "amana",
-			Usage:       "Enable Amana",
-			Destination: &cfg.Amana,
 		},
 		&cli.StringFlag{
 			Name:        "evmgen",

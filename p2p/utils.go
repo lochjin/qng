@@ -150,8 +150,10 @@ func ProtocolDHT() protocol.ID {
 		return "/qitmeer/kad/1.0.0/testnet"
 	case qprotocol.MixNet:
 		return "/qitmeer/kad/1.0.0/mixnet"
-	default:
+	case qprotocol.PrivNet:
 		return "/qitmeer/kad/1.0.0/privnet"
+	default:
+		return "/qitmeer/kad/1.0.0/amananet"
 	}
 }
 
