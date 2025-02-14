@@ -109,7 +109,7 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 // minimum difficulty using the passed bits field from the header of a block.
 func getDifficultyRatio(target *big.Int, params *params.Params, powType pow.PowType) float64 {
 	instance := pow.GetInstance(powType, 0, []byte{})
-	instance.SetParams(params.PowConfig)
+	instance.SetParams(params.ToPOWConfig().PowConfig)
 	// The minimum difficulty is the max possible proof-of-work limit bits
 	// converted back to a number.  Note this is not the same as the proof of
 	// work limit directly because the block difficulty is encoded in a block

@@ -145,7 +145,7 @@ func LoadConfig() (*Config, []string, error) {
 		return nil, nil, err
 	}
 
-	if err := params.ActiveNetParams.PowConfig.Check(); err != nil {
+	if err := params.ActiveNetParams.ConsensusConfig.Check(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return nil, nil, err
 	}

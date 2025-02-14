@@ -642,19 +642,19 @@ example:
 			instance := &pow.Cuckaroo{}
 			instance.SetMainHeight(pow.MainHeight(mheight))
 			instance.SetEdgeBits(uint8(edgeBits))
-			instance.SetParams(p.PowConfig)
+			instance.SetParams(p.ToPOWConfig().PowConfig)
 			return int(instance.GraphWeight())
 		case "cuckaroom":
 			instance := &pow.Cuckaroom{}
 			instance.SetMainHeight(pow.MainHeight(mheight))
 			instance.SetEdgeBits(uint8(edgeBits))
-			instance.SetParams(p.PowConfig)
+			instance.SetParams(p.ToPOWConfig().PowConfig)
 			return int(instance.GraphWeight())
 		case "cuckatoo":
 			instance := &pow.Cuckaroo{}
 			instance.SetMainHeight(pow.MainHeight(mheight))
 			instance.SetEdgeBits(uint8(edgeBits))
-			instance.SetParams(p.PowConfig)
+			instance.SetParams(p.ToPOWConfig().PowConfig)
 			return int(instance.GraphWeight())
 		}
 		return 0

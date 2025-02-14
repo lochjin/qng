@@ -437,7 +437,7 @@ func (w *CPUWorker) solveBlock() *types.Block {
 		instance := pow.GetInstance(w.miner.powType, 0, []byte{})
 		instance.SetNonce(uint64(i))
 		instance.SetMainHeight(pow.MainHeight(w.miner.template.Height))
-		instance.SetParams(params.ActiveNetParams.Params.PowConfig)
+		instance.SetParams(params.ActiveNetParams.Params.ToPOWConfig().PowConfig)
 		hashesCompleted += 2
 		header.Pow = instance
 		if params.ActiveNetParams.Params.IsDevelopDiff() {

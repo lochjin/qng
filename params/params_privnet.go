@@ -7,11 +7,12 @@
 package params
 
 import (
+	"github.com/Qitmeer/qng/consensus/engine/config"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"math/big"
 	"time"
 
 	"github.com/Qitmeer/qng/common"
-	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/ledger"
@@ -42,61 +43,6 @@ var PrivNetParams = Params{
 	// Chain parameters
 	GenesisBlock: types.NewBlock(&privNetGenesisBlock),
 	GenesisHash:  &privNetGenesisHash,
-	LedgerParams: ledger.LedgerParams{
-		GenesisAmountUnit: 1000 * 1e8,
-		MaxLockHeight:     10 * 365 * 5,
-	},
-	PowConfig: &pow.PowConfig{
-		Blake2bdPowLimit:             privNetPowLimit,
-		Blake2bdPowLimitBits:         0x207fffff,
-		X8r16PowLimit:                privNetPowLimit,
-		X8r16PowLimitBits:            0x207fffff,
-		X16rv3PowLimit:               privNetPowLimit,
-		X16rv3PowLimitBits:           0x207fffff,
-		QitmeerKeccak256PowLimit:     privNetPowLimit,
-		QitmeerKeccak256PowLimitBits: 0x207fffff,
-		MeerXKeccakV1PowLimit:        privNetPowLimit,
-		MeerXKeccakV1PowLimitBits:    0x207fffff,
-		//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
-		// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
-		// 24 edge_bits only need hash 1 times use for privnet if GPS is 2. need 50 /2 = 25s find once
-		CuckarooMinDifficulty:  0x1300000,
-		CuckatooMinDifficulty:  0x1300000,
-		CuckaroomMinDifficulty: 0x1300000,
-
-		Percent: map[pow.MainHeight]pow.PercentItem{
-			pow.MainHeight(0): {
-				pow.BLAKE2BD:      10,
-				pow.CUCKAROO:      10,
-				pow.CUCKATOO:      20,
-				pow.CUCKAROOM:     10,
-				pow.X16RV3:        10,
-				pow.X8R16:         20,
-				pow.MEERXKECCAKV1: 20,
-			},
-			pow.MainHeight(50): {
-				pow.BLAKE2BD:         0,
-				pow.CUCKAROO:         30,
-				pow.CUCKATOO:         0,
-				pow.CUCKAROOM:        30,
-				pow.X16RV3:           10,
-				pow.X8R16:            0,
-				pow.QITMEERKECCAK256: 0,
-				pow.MEERXKECCAKV1:    30,
-			},
-			pow.MainHeight(100): {
-				pow.BLAKE2BD:      0,
-				pow.CUCKAROO:      0,
-				pow.CUCKATOO:      0,
-				pow.CUCKAROOM:     70,
-				pow.X16RV3:        0,
-				pow.X8R16:         0,
-				pow.MEERXKECCAKV1: 30,
-			},
-		},
-		// after this height the big graph will be the main pow graph
-		AdjustmentStartMainHeight: 45 * 1440 * 60 / privTargetTimePerBlock,
-	},
 	CoinbaseConfig: CoinbaseConfigs{
 		{
 			Height:  0,
@@ -115,17 +61,75 @@ var PrivNetParams = Params{
 			ExtraDataIncludedNodeInfo: true,
 		},
 	},
-	ReduceMinDifficulty:      false,
-	MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
-	GenerateSupported:        true,
-	MaximumBlockSizes:        []int{1000000, 1310720},
-	MaxTxSize:                1000000,
-	WorkDiffAlpha:            1,
-	WorkDiffWindowSize:       60,
-	WorkDiffWindows:          20,
-	TargetTimePerBlock:       time.Second * privTargetTimePerBlock,
-	TargetTimespan:           time.Second * privTargetTimePerBlock * 60, // TimePerBlock * WindowSize
-	RetargetAdjustmentFactor: 2,
+	LedgerParams: ledger.LedgerParams{
+		GenesisAmountUnit: 1000 * 1e8,
+		MaxLockHeight:     10 * 365 * 5,
+	},
+	ConsensusConfig: &config.POWConfig{
+		PowConfig: &pow.PowConfig{
+			Blake2bdPowLimit:             privNetPowLimit,
+			Blake2bdPowLimitBits:         0x207fffff,
+			X8r16PowLimit:                privNetPowLimit,
+			X8r16PowLimitBits:            0x207fffff,
+			X16rv3PowLimit:               privNetPowLimit,
+			X16rv3PowLimitBits:           0x207fffff,
+			QitmeerKeccak256PowLimit:     privNetPowLimit,
+			QitmeerKeccak256PowLimitBits: 0x207fffff,
+			MeerXKeccakV1PowLimit:        privNetPowLimit,
+			MeerXKeccakV1PowLimitBits:    0x207fffff,
+			//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
+			// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
+			// 24 edge_bits only need hash 1 times use for privnet if GPS is 2. need 50 /2 = 25s find once
+			CuckarooMinDifficulty:  0x1300000,
+			CuckatooMinDifficulty:  0x1300000,
+			CuckaroomMinDifficulty: 0x1300000,
+
+			Percent: map[pow.MainHeight]pow.PercentItem{
+				pow.MainHeight(0): {
+					pow.BLAKE2BD:      10,
+					pow.CUCKAROO:      10,
+					pow.CUCKATOO:      20,
+					pow.CUCKAROOM:     10,
+					pow.X16RV3:        10,
+					pow.X8R16:         20,
+					pow.MEERXKECCAKV1: 20,
+				},
+				pow.MainHeight(50): {
+					pow.BLAKE2BD:         0,
+					pow.CUCKAROO:         30,
+					pow.CUCKATOO:         0,
+					pow.CUCKAROOM:        30,
+					pow.X16RV3:           10,
+					pow.X8R16:            0,
+					pow.QITMEERKECCAK256: 0,
+					pow.MEERXKECCAKV1:    30,
+				},
+				pow.MainHeight(100): {
+					pow.BLAKE2BD:      0,
+					pow.CUCKAROO:      0,
+					pow.CUCKATOO:      0,
+					pow.CUCKAROOM:     70,
+					pow.X16RV3:        0,
+					pow.X8R16:         0,
+					pow.MEERXKECCAKV1: 30,
+				},
+			},
+			// after this height the big graph will be the main pow graph
+			AdjustmentStartMainHeight: 45 * 1440 * 60 / privTargetTimePerBlock,
+		},
+		ReduceMinDifficulty:      false,
+		MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
+		WorkDiffAlpha:            1,
+		WorkDiffWindowSize:       60,
+		WorkDiffWindows:          20,
+		RetargetAdjustmentFactor: 2,
+	},
+
+	GenerateSupported:  true,
+	MaximumBlockSizes:  []int{1000000, 1310720},
+	MaxTxSize:          1000000,
+	TargetTimePerBlock: time.Second * privTargetTimePerBlock,
+	TargetTimespan:     time.Second * privTargetTimePerBlock * 60, // TimePerBlock * WindowSize
 
 	// Subsidy parameters.
 	BaseSubsidy:              50000000000,

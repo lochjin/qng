@@ -30,10 +30,10 @@ type MeerChangeInfo struct {
 }
 
 type PublicBlockChainAPI struct {
-	mc *blockChain
+	mc *BlockChain
 }
 
-func NewPublicBlockChainAPI(mc *blockChain) *PublicBlockChainAPI {
+func NewPublicBlockChainAPI(mc *BlockChain) *PublicBlockChainAPI {
 	return &PublicBlockChainAPI{mc}
 }
 
@@ -106,10 +106,10 @@ func (api *PublicBlockChainAPI) HasMeerState(hashOrNumber string) (interface{}, 
 }
 
 type PrivateBlockChainAPI struct {
-	mc *blockChain
+	mc *BlockChain
 }
 
-func NewPrivateBlockChainAPI(mc *blockChain) *PrivateBlockChainAPI {
+func NewPrivateBlockChainAPI(mc *BlockChain) *PrivateBlockChainAPI {
 	return &PrivateBlockChainAPI{mc}
 }
 

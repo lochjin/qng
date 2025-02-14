@@ -7,16 +7,16 @@ import (
 )
 
 func NewDiffManager(con model.Consensus, cfg *params.Params) model.DifficultyManager {
-	switch cfg.PowConfig.DifficultyMode {
+	switch cfg.ToPOWConfig().PowConfig.DifficultyMode {
 	case pow.DIFFICULTY_MODE_GHOSTDAG:
 		return &ghostdagDiff{
 			con:                            con,
 			b:                              con.BlockChain(),
-			powMax:                         cfg.PowConfig.MeerXKeccakV1PowLimit,
-			difficultyAdjustmentWindowSize: int(cfg.WorkDiffWindowSize),
+			powMax:                         cfg.ToPOWConfig().PowConfig.MeerXKeccakV1PowLimit,
+			difficultyAdjustmentWindowSize: int(cfg.ToPOWConfig().WorkDiffWindowSize),
 			disableDifficultyAdjustment:    false,
 			targetTimePerBlock:             cfg.TargetTimePerBlock,
-			genesisBits:                    cfg.PowConfig.MeerXKeccakV1PowLimitBits,
+			genesisBits:                    cfg.ToPOWConfig().PowConfig.MeerXKeccakV1PowLimitBits,
 			cfg:                            cfg,
 		}
 	case pow.DIFFICULTY_MODE_DEVELOP:

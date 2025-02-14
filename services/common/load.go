@@ -240,11 +240,13 @@ func SetupConfig(cfg *config.Config) error {
 		cfg.P2PUDPPort = params.ActiveNetParams.DefaultUDPPort
 	}
 	//
-	if err := params.ActiveNetParams.PowConfig.Check(); err != nil {
+	if err := params.ActiveNetParams.ConsensusConfig.Check(); err != nil {
 		return err
 	}
-	if cfg.PowDiffMode != defaultPowDiffMode {
-		params.ActiveNetParams.PowConfig.DifficultyMode = cfg.PowDiffMode
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPOW() {
+		if cfg.PowDiffMode != defaultPowDiffMode {
+			params.ActiveNetParams.ToPOWConfig().PowConfig.DifficultyMode = cfg.PowDiffMode
+		}
 	}
 
 	// Add default port to all rpc listener addresses if needed and remove

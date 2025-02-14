@@ -7,17 +7,15 @@
 package params
 
 import (
+	"github.com/Qitmeer/qng/consensus/engine/config"
 	"math/big"
 	"time"
 
-	"github.com/Qitmeer/qng/common"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/ledger"
 	eparams "github.com/ethereum/go-ethereum/params"
 )
-
-var amanaNetPowLimit = new(big.Int).Sub(new(big.Int).Lsh(common.Big1, 255), common.Big1)
 
 const amanaTargetTimePerBlock = 3
 
@@ -28,18 +26,22 @@ var AmanaNetParams = Params{
 	DefaultUDPPort: 48140,
 	Bootstrap:      []string{},
 
-	GenesisBlock: types.NewBlock(&amanaNetGenesisBlock),
-	GenesisHash:  &amanaNetGenesisHash,
+	GenesisBlock:   types.NewBlock(&amanaNetGenesisBlock),
+	GenesisHash:    &amanaNetGenesisHash,
+	CoinbaseConfig: CoinbaseConfigs{},
 	LedgerParams: ledger.LedgerParams{
 		GenesisAmountUnit: 1000 * 1e8,
 		MaxLockHeight:     10 * 365 * 5,
 	},
-	GenerateSupported:        true,
-	MaximumBlockSizes:        []int{1000000, 1310720},
-	MaxTxSize:                1000000,
-	TargetTimePerBlock:       time.Second * amanaTargetTimePerBlock,
-	TargetTimespan:           time.Second * amanaTargetTimePerBlock * 60, // TimePerBlock * WindowSize
-	RetargetAdjustmentFactor: 2,
+	ConsensusConfig: &config.POAConfig{
+		Period: amanaTargetTimePerBlock,
+		Epoch:  100,
+	},
+	GenerateSupported:  true,
+	MaximumBlockSizes:  []int{1000000, 1310720},
+	MaxTxSize:          1000000,
+	TargetTimePerBlock: time.Second * amanaTargetTimePerBlock,
+	TargetTimespan:     time.Second * amanaTargetTimePerBlock * 100,
 
 	// Subsidy parameters.
 	BaseSubsidy:              50000000000,
@@ -80,7 +82,7 @@ var AmanaNetParams = Params{
 	CoinbaseMaturity: 16,
 
 	MeerConfig: &eparams.ChainConfig{
-		ChainID:                       eparams.QngPrivnetChainConfig.ChainID,
+		ChainID:                       eparams.AmanaChainConfig.ChainID,
 		HomesteadBlock:                big.NewInt(0),
 		DAOForkBlock:                  big.NewInt(0),
 		DAOForkSupport:                false,

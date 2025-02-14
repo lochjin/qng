@@ -638,7 +638,8 @@ func (m *Miner) submitBlock(block *types.SerializedBlock) (interface{}, error) {
 		// Occasionally errors are given out for timing errors with
 		// ReduceMinDifficulty and high block works that is above
 		// the target. Feed these to debug.
-		if params.ActiveNetParams.Params.ReduceMinDifficulty &&
+		if params.ActiveNetParams.Params.ConsensusConfig.Type().IsPOW() &&
+			params.ActiveNetParams.Params.ToPOWConfig().ReduceMinDifficulty &&
 			rErr.ErrorCode == blockchain.ErrHighHash {
 			return nil, fmt.Errorf("Block submitted via miner rejected "+
 				"because of ReduceMinDifficulty time sync failure: %v (%s)",

@@ -7,6 +7,8 @@
 package params
 
 import (
+	"github.com/Qitmeer/qng/consensus/engine/config"
+	"github.com/Qitmeer/qng/ledger"
 	eparams "github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"time"
@@ -16,7 +18,6 @@ import (
 	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/ledger"
 )
 
 // testNetPowLimit is the highest proof of work value a block can
@@ -43,51 +44,54 @@ var TestNetParams = Params{
 		"/dns4/ns1.qitmeer.info/tcp/18132/p2p/16Uiu2HAmLZmu4rBkAXeeHKofb1MECv6N2dbQBuyCs5Wywi7PVi4c",
 		"/dns4/ns2.qitmeer.info/tcp/8130/p2p/16Uiu2HAmGtiMWoDVKtJd3VNWW8NvrM8DcyzteNpKae8ZuZWvUKCy",
 	},
+	// Chain parameters
+	GenesisBlock:   types.NewBlock(&testNetGenesisBlock),
+	GenesisHash:    &testNetGenesisHash,
+	CoinbaseConfig: CoinbaseConfigs{},
 	LedgerParams: ledger.LedgerParams{ // lock tx release rule in genesis
 		GenesisAmountUnit: 1000 * 1e8, // 1000 MEER every utxo
 		MaxLockHeight:     2880 * 365 * 5,
 	},
-	// Chain parameters
-	GenesisBlock: types.NewBlock(&testNetGenesisBlock),
-	GenesisHash:  &testNetGenesisHash,
-	PowConfig: &pow.PowConfig{
-		Blake2bdPowLimit:             maxNetPowLimit,
-		Blake2bdPowLimitBits:         0x0, // compact from of testNetPowLimit 0
-		X16rv3PowLimit:               maxNetPowLimit,
-		X16rv3PowLimitBits:           0x0, // compact from of testNetPowLimit 0
-		X8r16PowLimit:                maxNetPowLimit,
-		X8r16PowLimitBits:            0x0, // compact from of testNetPowLimit 0
-		QitmeerKeccak256PowLimit:     maxNetPowLimit,
-		QitmeerKeccak256PowLimitBits: 0x0, // compact from of testNetPowLimit 0
-		MeerXKeccakV1PowLimit:        testNetPowLimit,
-		MeerXKeccakV1PowLimitBits:    0x1f0198f2, // compact from of testNetPowLimit (2^242-1)
-		//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
-		// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
-		// 24 edge_bits only need hash 1*4 times use for privnet if GPS is 2. need 50 /2 * 4 = 1min find once
-		CuckarooMinDifficulty:  0x87fffff, // diff: max int64
-		CuckatooMinDifficulty:  0x87fffff, // diff: max int64
-		CuckaroomMinDifficulty: 0x87fffff, // diff: max int64
+	ConsensusConfig: &config.POWConfig{
+		PowConfig: &pow.PowConfig{
+			Blake2bdPowLimit:             maxNetPowLimit,
+			Blake2bdPowLimitBits:         0x0, // compact from of testNetPowLimit 0
+			X16rv3PowLimit:               maxNetPowLimit,
+			X16rv3PowLimitBits:           0x0, // compact from of testNetPowLimit 0
+			X8r16PowLimit:                maxNetPowLimit,
+			X8r16PowLimitBits:            0x0, // compact from of testNetPowLimit 0
+			QitmeerKeccak256PowLimit:     maxNetPowLimit,
+			QitmeerKeccak256PowLimitBits: 0x0, // compact from of testNetPowLimit 0
+			MeerXKeccakV1PowLimit:        testNetPowLimit,
+			MeerXKeccakV1PowLimitBits:    0x1f0198f2, // compact from of testNetPowLimit (2^242-1)
+			//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
+			// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
+			// 24 edge_bits only need hash 1*4 times use for privnet if GPS is 2. need 50 /2 * 4 = 1min find once
+			CuckarooMinDifficulty:  0x87fffff, // diff: max int64
+			CuckatooMinDifficulty:  0x87fffff, // diff: max int64
+			CuckaroomMinDifficulty: 0x87fffff, // diff: max int64
 
-		Percent: map[pow.MainHeight]pow.PercentItem{
-			pow.MainHeight(0): {
-				pow.MEERXKECCAKV1: 100,
+			Percent: map[pow.MainHeight]pow.PercentItem{
+				pow.MainHeight(0): {
+					pow.MEERXKECCAKV1: 100,
+				},
 			},
+			// after this height the big graph will be the main pow graph
+			AdjustmentStartMainHeight: 365 * 1440 * 60 / testTargetTimePerBlock,
 		},
-		// after this height the big graph will be the main pow graph
-		AdjustmentStartMainHeight: 365 * 1440 * 60 / testTargetTimePerBlock,
+		ReduceMinDifficulty:      false,
+		MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
+		WorkDiffAlpha:            1,
+		WorkDiffWindowSize:       testWorkDiffWindowSize,
+		WorkDiffWindows:          20,
+		RetargetAdjustmentFactor: 2, // equal to 2 hour vs. 4
 	},
-	CoinbaseConfig:           CoinbaseConfigs{},
-	ReduceMinDifficulty:      false,
-	MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
-	GenerateSupported:        true,
-	WorkDiffAlpha:            1,
-	WorkDiffWindowSize:       testWorkDiffWindowSize,
-	WorkDiffWindows:          20,
-	MaximumBlockSizes:        []int{1310720},
-	MaxTxSize:                1000000,
-	TargetTimePerBlock:       time.Second * testTargetTimePerBlock,
-	TargetTimespan:           time.Second * testTargetTimePerBlock * testWorkDiffWindowSize, // TimePerBlock * WindowSize
-	RetargetAdjustmentFactor: 2,                                                             // equal to 2 hour vs. 4
+
+	GenerateSupported:  true,
+	MaximumBlockSizes:  []int{1310720},
+	MaxTxSize:          1000000,
+	TargetTimePerBlock: time.Second * testTargetTimePerBlock,
+	TargetTimespan:     time.Second * testTargetTimePerBlock * testWorkDiffWindowSize, // TimePerBlock * WindowSize
 
 	// Subsidy parameters.
 	BaseSubsidy:              12000000000, // 120 Coin , daily supply is 120*2*60*24 = 345600 ~ 345600 * 2 (DAG factor)

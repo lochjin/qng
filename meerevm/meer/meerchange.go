@@ -177,7 +177,7 @@ func (m *TxPool) checkSignature(ced *meerchange.MeerchangeExportData, entrys []*
 	return pubKey.SerializeUncompressed(), nil
 }
 
-func (mc *blockChain) GetMeerChangeCode() ([]byte, error) {
+func (mc *BlockChain) GetMeerChangeCode() ([]byte, error) {
 	if len(meerchange.Bytecode) > 0 {
 		return meerchange.Bytecode, nil
 	}
@@ -189,7 +189,7 @@ func (mc *blockChain) GetMeerChangeCode() ([]byte, error) {
 	return bytecode, nil
 }
 
-func (mc *blockChain) CheckMeerChangeDeploy() (bool, []byte) {
+func (mc *BlockChain) CheckMeerChangeDeploy() (bool, []byte) {
 	bytecode, err := mc.GetMeerChangeCode()
 	if err != nil {
 		log.Warn(err.Error())
@@ -201,7 +201,7 @@ func (mc *blockChain) CheckMeerChangeDeploy() (bool, []byte) {
 	return true, bytecode
 }
 
-func (mc *blockChain) IsMeerChangeDeployed() bool {
+func (mc *BlockChain) IsMeerChangeDeployed() bool {
 	ret, _ := mc.CheckMeerChangeDeploy()
 	return ret
 }

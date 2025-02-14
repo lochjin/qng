@@ -39,14 +39,14 @@ type meerDiff struct {
 func (m *meerDiff) CalcEasiestDifficulty(bits uint32, duration time.Duration, powInstance pow.IPow) uint32 {
 	// Convert types used in the calculations below.
 	durationVal := int64(duration)
-	adjustmentFactor := big.NewInt(m.cfg.RetargetAdjustmentFactor)
+	adjustmentFactor := big.NewInt(m.cfg.ToPOWConfig().RetargetAdjustmentFactor)
 	maxRetargetTimespan := int64(m.cfg.TargetTimespan) *
-		m.cfg.RetargetAdjustmentFactor
+		m.cfg.ToPOWConfig().RetargetAdjustmentFactor
 	target := powInstance.GetSafeDiff(0)
 	// The test network rules allow minimum difficulty blocks once too much
 	// time has elapsed without mining a block.
-	if m.cfg.ReduceMinDifficulty {
-		if durationVal > int64(m.cfg.MinDiffReductionTime) {
+	if m.cfg.ToPOWConfig().ReduceMinDifficulty {
+		if durationVal > int64(m.cfg.ToPOWConfig().MinDiffReductionTime) {
 			return pow.BigToCompact(target)
 		}
 	}
@@ -80,7 +80,7 @@ func (m *meerDiff) findPrevTestNetDifficulty(startBlock model.Block, powInstance
 	// the special rule applied.
 	target := powInstance.GetSafeDiff(0)
 	lastBits := pow.BigToCompact(target)
-	blocksPerRetarget := uint64(m.cfg.WorkDiffWindowSize * m.cfg.WorkDiffWindows)
+	blocksPerRetarget := uint64(m.cfg.ToPOWConfig().WorkDiffWindowSize * m.cfg.ToPOWConfig().WorkDiffWindows)
 	iterBlock := startBlock
 	if iterBlock == nil ||
 		uint64(iterBlock.GetHeight())%blocksPerRetarget == 0 {
@@ -119,7 +119,7 @@ func (m *meerDiff) RequiredDifficulty(block model.Block, newBlockTime time.Time,
 	// just return this.
 	oldDiff := curNode.Difficulty
 	oldDiffBig := pow.CompactToBig(curNode.Difficulty)
-	windowsSizeBig := big.NewInt(m.cfg.WorkDiffWindowSize)
+	windowsSizeBig := big.NewInt(m.cfg.ToPOWConfig().WorkDiffWindowSize)
 	// percent is *100 * 2^32
 	windowsSizeBig.Mul(windowsSizeBig, powInstance.PowPercent())
 	windowsSizeBig.Div(windowsSizeBig, big.NewInt(100))
@@ -130,10 +130,10 @@ func (m *meerDiff) RequiredDifficulty(block model.Block, newBlockTime time.Time,
 		// For networks that support it, allow special reduction of the
 		// required difficulty once too much time has elapsed without
 		// mining a block.
-		if m.cfg.ReduceMinDifficulty {
+		if m.cfg.ToPOWConfig().ReduceMinDifficulty {
 			// Return minimum difficulty when more than the desired
 			// amount of time has elapsed without mining a block.
-			reductionTime := int64(m.cfg.MinDiffReductionTime /
+			reductionTime := int64(m.cfg.ToPOWConfig().MinDiffReductionTime /
 				time.Second)
 			allowMinTime := curNode.Timestamp.Unix() + reductionTime
 
@@ -171,23 +171,23 @@ func (m *meerDiff) RequiredDifficulty(block model.Block, newBlockTime time.Time,
 		return oldDiff, nil
 	}
 	// Declare some useful variables.
-	RAFBig := big.NewInt(m.cfg.RetargetAdjustmentFactor)
+	RAFBig := big.NewInt(m.cfg.ToPOWConfig().RetargetAdjustmentFactor)
 	nextDiffBigMin := pow.CompactToBig(curNode.Difficulty)
 	nextDiffBigMin.Div(nextDiffBigMin, RAFBig)
 	nextDiffBigMax := pow.CompactToBig(curNode.Difficulty)
 	nextDiffBigMax.Mul(nextDiffBigMax, RAFBig)
 
-	alpha := m.cfg.WorkDiffAlpha
+	alpha := m.cfg.ToPOWConfig().WorkDiffAlpha
 
 	// Number of nodes to traverse while calculating difficulty.
-	nodesToTraverse := needAjustCount * m.cfg.WorkDiffWindows
-	percentStatsRecentCount := m.cfg.WorkDiffWindowSize * m.cfg.WorkDiffWindows
+	nodesToTraverse := needAjustCount * m.cfg.ToPOWConfig().WorkDiffWindows
+	percentStatsRecentCount := m.cfg.ToPOWConfig().WorkDiffWindowSize * m.cfg.ToPOWConfig().WorkDiffWindows
 	//calc pow block count in last nodesToTraverse blocks
 	currentPowBlockCount := m.calcCurrentPowCount(originCurrentBlock, percentStatsRecentCount, powInstance.GetPowType())
 
 	// Initialize bigInt slice for the percentage changes for each window period
 	// above or below the target.
-	windowChanges := make([]*big.Int, m.cfg.WorkDiffWindows)
+	windowChanges := make([]*big.Int, m.cfg.ToPOWConfig().WorkDiffWindows)
 
 	// Regress through all of the previous blocks and store the percent changes
 	// per window period; use bigInts to emulate 64.32 bit fixed point.
@@ -219,10 +219,10 @@ func (m *meerDiff) RequiredDifficulty(block model.Block, newBlockTime time.Time,
 			// Weight it exponentially. Be aware that this could at some point
 			// overflow if alpha or the number of blocks used is really large.
 			windowAdjusted = windowAdjusted.Lsh(windowAdjusted,
-				uint((m.cfg.WorkDiffWindows-windowPeriod)*alpha))
+				uint((m.cfg.ToPOWConfig().WorkDiffWindows-windowPeriod)*alpha))
 
 			// Sum up all the different weights incrementally.
-			weights += 1 << uint64((m.cfg.WorkDiffWindows-windowPeriod)*
+			weights += 1 << uint64((m.cfg.ToPOWConfig().WorkDiffWindows-windowPeriod)*
 				alpha)
 
 			// Store it in the slice.
@@ -259,7 +259,7 @@ func (m *meerDiff) RequiredDifficulty(block model.Block, newBlockTime time.Time,
 	}
 	// Sum up the weighted window periods.
 	weightedSum := big.NewInt(0)
-	for i := int64(0); i < m.cfg.WorkDiffWindows; i++ {
+	for i := int64(0); i < m.cfg.ToPOWConfig().WorkDiffWindows; i++ {
 		weightedSum.Add(weightedSum, windowChanges[i])
 	}
 
@@ -349,7 +349,7 @@ func (m *meerDiff) calcCurrentPowCount(block model.Block, nodesToTraverse int64,
 func (m *meerDiff) needAjustPowDifficulty(block model.Block, powType pow.PowType, needAjustCount int64) bool {
 	countFromLastAdjustment := m.getDistanceFromLastAdjustment(block, powType, needAjustCount)
 	// countFromLastAdjustment stats m.b.params.WorkDiffWindows Multiple count
-	countFromLastAdjustment /= m.cfg.WorkDiffWindows
+	countFromLastAdjustment /= m.cfg.ToPOWConfig().WorkDiffWindows
 	return countFromLastAdjustment > 0 && countFromLastAdjustment%needAjustCount == 0
 }
 
@@ -381,7 +381,7 @@ func (m *meerDiff) getDistanceFromLastAdjustment(block model.Block, powType pow.
 		// or count >= needAjustCount
 		if (count > 1 && currentTime-curNode.Timestamp.Unix() > (count-1)*int64(m.cfg.TargetTimespan/time.Second)) ||
 			count >= needAjustCount {
-			return needAjustCount * m.cfg.WorkDiffWindows
+			return needAjustCount * m.cfg.ToPOWConfig().WorkDiffWindows
 		}
 		if !block.HasParents() {
 			return count
@@ -420,7 +420,7 @@ func (m *meerDiff) getPowTypeNode(block model.Block, powType pow.PowType) model.
 // find block node by pow type
 func (m *meerDiff) GetCurrentPowDiff(ib model.Block, powType pow.PowType) *big.Int {
 	instance := pow.GetInstance(powType, 0, []byte{})
-	instance.SetParams(m.cfg.PowConfig)
+	instance.SetParams(m.cfg.ToPOWConfig().PowConfig)
 	safeBigDiff := instance.GetSafeDiff(0)
 	for {
 		curNode := m.b.GetBlockHeader(ib)

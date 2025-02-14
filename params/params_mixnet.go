@@ -7,6 +7,9 @@
 package params
 
 import (
+	"github.com/Qitmeer/qng/consensus/engine/config"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
+	"github.com/Qitmeer/qng/ledger"
 	eparams "github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"time"
@@ -14,9 +17,7 @@ import (
 	"github.com/Qitmeer/qng/core/types"
 
 	"github.com/Qitmeer/qng/common"
-	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/protocol"
-	"github.com/Qitmeer/qng/ledger"
 )
 
 // testMixNetPowLimit is the highest proof of work value a block can
@@ -43,54 +44,55 @@ var MixNetParams = Params{
 	},
 
 	// Chain parameters
-	GenesisBlock:         types.NewBlock(&mixNetGenesisBlock),
-	GenesisHash:          &mixNetGenesisHash,
-	ReduceMinDifficulty:  false,
-	MinDiffReductionTime: 0, // Does not apply since ReduceMinDifficulty false
-	GenerateSupported:    true,
+	GenesisBlock:   types.NewBlock(&mixNetGenesisBlock),
+	GenesisHash:    &mixNetGenesisHash,
+	CoinbaseConfig: CoinbaseConfigs{},
 	LedgerParams: ledger.LedgerParams{
 		GenesisAmountUnit: 1000 * 1e8,                              // 1000 MEER every utxo
 		MaxLockHeight:     86400 / mixTargetTimePerBlock * 365 * 5, // max lock height
 	},
-	CoinbaseConfig: CoinbaseConfigs{},
-	PowConfig: &pow.PowConfig{
-		Blake2bdPowLimit:             testMixNetPowLimit,
-		Blake2bdPowLimitBits:         0x2003ffff,
-		X16rv3PowLimit:               testMixNetPowLimit,
-		X16rv3PowLimitBits:           0x2003ffff,
-		X8r16PowLimit:                testMixNetPowLimit,
-		X8r16PowLimitBits:            0x2003ffff,
-		QitmeerKeccak256PowLimit:     testMixNetPowLimit,
-		QitmeerKeccak256PowLimitBits: 0x2003ffff,
-		CryptoNightPowLimit:          testMixNetPowLimit,
-		CryptoNightPowLimitBits:      0x2003ffff,
-		MeerXKeccakV1PowLimit:        testMixNetPowLimit,
-		MeerXKeccakV1PowLimitBits:    0x1f0198f2,
-		//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
-		// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
-		// 24 edge_bits only need hash 1*4 times use for privnet if GPS is 2. need 50 /2 * 2 ≈ 1min find once
-		CuckarooMinDifficulty:  0x1600000, // 96
-		CuckatooMinDifficulty:  0x1600000, // 96
-		CuckaroomMinDifficulty: 0x1600000, // 96
+	ConsensusConfig: &config.POWConfig{
+		PowConfig: &pow.PowConfig{
+			Blake2bdPowLimit:             testMixNetPowLimit,
+			Blake2bdPowLimitBits:         0x2003ffff,
+			X16rv3PowLimit:               testMixNetPowLimit,
+			X16rv3PowLimitBits:           0x2003ffff,
+			X8r16PowLimit:                testMixNetPowLimit,
+			X8r16PowLimitBits:            0x2003ffff,
+			QitmeerKeccak256PowLimit:     testMixNetPowLimit,
+			QitmeerKeccak256PowLimitBits: 0x2003ffff,
+			CryptoNightPowLimit:          testMixNetPowLimit,
+			CryptoNightPowLimitBits:      0x2003ffff,
+			MeerXKeccakV1PowLimit:        testMixNetPowLimit,
+			MeerXKeccakV1PowLimitBits:    0x1f0198f2,
+			//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
+			// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
+			// 24 edge_bits only need hash 1*4 times use for privnet if GPS is 2. need 50 /2 * 2 ≈ 1min find once
+			CuckarooMinDifficulty:  0x1600000, // 96
+			CuckatooMinDifficulty:  0x1600000, // 96
+			CuckaroomMinDifficulty: 0x1600000, // 96
 
-		Percent: map[pow.MainHeight]pow.PercentItem{
-			pow.MainHeight(0): {
-				pow.MEERXKECCAKV1: 100,
+			Percent: map[pow.MainHeight]pow.PercentItem{
+				pow.MainHeight(0): {
+					pow.MEERXKECCAKV1: 100,
+				},
 			},
+			// after this height the big graph will be the main pow graph
+			AdjustmentStartMainHeight: 1440 * 15 / mixTargetTimePerBlock,
+			DifficultyMode:            pow.DIFFICULTY_MODE_MEER,
 		},
-		// after this height the big graph will be the main pow graph
-		AdjustmentStartMainHeight: 1440 * 15 / mixTargetTimePerBlock,
-		DifficultyMode:            pow.DIFFICULTY_MODE_MEER,
+		ReduceMinDifficulty:      false,
+		MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
+		WorkDiffAlpha:            1,
+		WorkDiffWindowSize:       mixWorkDiffWindowSize,
+		WorkDiffWindows:          20,
+		RetargetAdjustmentFactor: 2,
 	},
-
-	WorkDiffAlpha:            1,
-	WorkDiffWindowSize:       mixWorkDiffWindowSize,
-	WorkDiffWindows:          20,
-	MaximumBlockSizes:        []int{1310720},
-	MaxTxSize:                1000000,
-	TargetTimePerBlock:       time.Second * mixTargetTimePerBlock,
-	TargetTimespan:           time.Second * mixTargetTimePerBlock * mixWorkDiffWindowSize, // TimePerBlock * WindowSize
-	RetargetAdjustmentFactor: 2,
+	GenerateSupported:  true,
+	MaximumBlockSizes:  []int{1310720},
+	MaxTxSize:          1000000,
+	TargetTimePerBlock: time.Second * mixTargetTimePerBlock,
+	TargetTimespan:     time.Second * mixTargetTimePerBlock * mixWorkDiffWindowSize, // TimePerBlock * WindowSize
 
 	// Subsidy parameters.
 	BaseSubsidy:              10 * 1e8, // 10 Coin, stay same with testnet

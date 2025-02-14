@@ -8,6 +8,7 @@ package params
 import (
 	"encoding/hex"
 	"errors"
+	"github.com/Qitmeer/qng/consensus/engine/config"
 	eparams "github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"strings"
@@ -80,21 +81,6 @@ type Params struct {
 	// GenesisHash is the starting block hash.
 	GenesisHash *hash.Hash
 
-	// PowConfig defines the highest allowed proof of work value for a block or lowest difficulty for a block
-	PowConfig *pow.PowConfig
-
-	// WorkDiffAlpha is the stake difficulty EMA calculation alpha (smoothing)
-	// value. It is different from a normal EMA alpha. Closer to 1 --> smoother.
-	WorkDiffAlpha int64
-
-	// WorkDiffWindowSize is the number of windows (intervals) used for calculation
-	// of the exponentially weighted average.
-	WorkDiffWindowSize int64
-
-	// WorkDiffWindows is the number of windows (intervals) used for calculation
-	// of the exponentially weighted average.
-	WorkDiffWindows int64
-
 	// CoinbaseMaturity is the number of blocks required before newly mined
 	// coins (coinbase transactions) can be spent.
 	CoinbaseMaturity uint16
@@ -108,23 +94,6 @@ type Params struct {
 	// TargetTimePerBlock is the desired amount of time to generate each
 	// block.
 	TargetTimePerBlock time.Duration
-
-	// RetargetAdjustmentFactor is the adjustment factor used to limit
-	// the minimum and maximum amount of adjustment that can occur between
-	// difficulty retargets.
-	RetargetAdjustmentFactor int64
-
-	// ReduceMinDifficulty defines whether the network should reduce the
-	// minimum required difficulty after a long enough period of time has
-	// passed without finding a block.  This is really only useful for test
-	// networks and should not be set on a main network.
-	ReduceMinDifficulty bool
-
-	// MinDiffReductionTime is the amount of time after which the minimum
-	// required difficulty should be reduced when a block hasn't been found.
-	//
-	// NOTE: This only applies if ReduceMinDifficulty is true.
-	MinDiffReductionTime time.Duration
 
 	// GenerateSupported specifies whether or not CPU mining is allowed.
 	GenerateSupported bool
@@ -251,6 +220,9 @@ type Params struct {
 	GasLimitForkBlock   *big.Int // gaslimit fork meerevm block number
 	CancunForkBlock     *big.Int // use custom diff when cancun fork
 	MeerChangeForkBlock *big.Int // MeerChange system contract
+
+	// consensus engine config
+	ConsensusConfig config.Config
 }
 
 type CoinbaseConfig struct {
@@ -287,6 +259,20 @@ func (cf *CoinbaseConfigs) GetCurrentConfig(curHeight int64) *CoinbaseConfig {
 	return cc
 }
 
+func (p *Params) ToPOWConfig() *config.POWConfig {
+	if p.ConsensusConfig.Type().IsPOW() {
+		return p.ConsensusConfig.(*config.POWConfig)
+	}
+	return nil
+}
+
+func (p *Params) ToPOAConfig() *config.POAConfig {
+	if p.ConsensusConfig.Type().IsPOA() {
+		return p.ConsensusConfig.(*config.POAConfig)
+	}
+	return nil
+}
+
 // TotalSubsidyProportions is the sum of POW Reward, POS Reward, and Tax
 // proportions.
 func (p *Params) TotalSubsidyProportions() uint16 {
@@ -303,7 +289,7 @@ func (p *Params) HasTax() bool {
 }
 
 func (p *Params) IsDevelopDiff() bool {
-	return p.PowConfig.DifficultyMode == pow.DIFFICULTY_MODE_DEVELOP
+	return p.ToPOWConfig().PowConfig.DifficultyMode == pow.DIFFICULTY_MODE_DEVELOP
 }
 
 func (p *Params) IsMeerEVMFork(height int64) bool {
@@ -452,29 +438,3 @@ func isBlockForked(s, head *big.Int) bool {
 }
 
 func newUint64(val uint64) *uint64 { return &val }
-
-// Amana
-var amanaChainConfig = &eparams.ChainConfig{
-	ChainID:             eparams.AmanaChainConfig.ChainID,
-	HomesteadBlock:      big.NewInt(0),
-	DAOForkBlock:        big.NewInt(0),
-	DAOForkSupport:      false,
-	EIP150Block:         big.NewInt(0),
-	EIP155Block:         big.NewInt(0),
-	EIP158Block:         big.NewInt(0),
-	ByzantiumBlock:      big.NewInt(0),
-	ConstantinopleBlock: big.NewInt(0),
-	PetersburgBlock:     big.NewInt(0),
-	IstanbulBlock:       big.NewInt(0),
-	MuirGlacierBlock:    big.NewInt(0),
-	BerlinBlock:         big.NewInt(0),
-	LondonBlock:         big.NewInt(0),
-	ArrowGlacierBlock:   big.NewInt(0),
-	GrayGlacierBlock:    big.NewInt(0),
-	ShanghaiTime:        newUint64(0),
-	CancunTime:          newUint64(0),
-	Clique: &eparams.CliqueConfig{
-		Period: 3,
-		Epoch:  100,
-	},
-}

@@ -487,6 +487,7 @@ var amanaNetGenesisBlock = types.Block{
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		}),
 		Timestamp: time.Unix(1739265196, 0), // 2025-02-11 17:13:16.322784
+		Pow:       pow.GetInstance(pow.BLAKE2BD, 0, []byte{}),
 	},
 	Transactions: []*types.Transaction{&amanaNetGenesisCoinbaseTx},
 }
