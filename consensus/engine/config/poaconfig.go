@@ -2,15 +2,15 @@ package config
 
 import "github.com/Qitmeer/qng/consensus/engine"
 
-type POAConfig struct {
+type PoAConfig struct {
 	Period uint64 // Number of seconds between blocks to enforce
 	Epoch  uint64 // Epoch length to reset votes and checkpoint
 }
 
-func (c *POAConfig) Type() engine.EngineType {
-	return engine.POAEngineType
+func (c *PoAConfig) Type() engine.EngineType {
+	return engine.PoAEngineType
 }
 
-func (c *POAConfig) Check() error {
+func (c *PoAConfig) Check() error {
 	return nil
 }

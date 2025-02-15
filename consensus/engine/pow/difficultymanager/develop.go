@@ -28,14 +28,14 @@ type developDiff struct {
 func (m *developDiff) CalcEasiestDifficulty(bits uint32, duration time.Duration, powInstance pow.IPow) uint32 {
 	// Convert types used in the calculations below.
 	durationVal := int64(duration)
-	adjustmentFactor := big.NewInt(m.cfg.ToPOWConfig().RetargetAdjustmentFactor)
+	adjustmentFactor := big.NewInt(m.cfg.ToPoWConfig().RetargetAdjustmentFactor)
 	maxRetargetTimespan := int64(m.cfg.TargetTimespan) *
-		m.cfg.ToPOWConfig().RetargetAdjustmentFactor
+		m.cfg.ToPoWConfig().RetargetAdjustmentFactor
 	target := powInstance.GetSafeDiff(0)
 	// The test network rules allow minimum difficulty blocks once too much
 	// time has elapsed without mining a block.
-	if m.cfg.ToPOWConfig().ReduceMinDifficulty {
-		if durationVal > int64(m.cfg.ToPOWConfig().MinDiffReductionTime) {
+	if m.cfg.ToPoWConfig().ReduceMinDifficulty {
+		if durationVal > int64(m.cfg.ToPoWConfig().MinDiffReductionTime) {
 			return pow.BigToCompact(target)
 		}
 	}
@@ -69,7 +69,7 @@ func (m *developDiff) findPrevTestNetDifficulty(startBlock model.Block, powInsta
 	// the special rule applied.
 	target := powInstance.GetSafeDiff(0)
 	lastBits := pow.BigToCompact(target)
-	blocksPerRetarget := uint64(m.cfg.ToPOWConfig().WorkDiffWindowSize * m.cfg.ToPOWConfig().WorkDiffWindows)
+	blocksPerRetarget := uint64(m.cfg.ToPoWConfig().WorkDiffWindowSize * m.cfg.ToPoWConfig().WorkDiffWindows)
 	iterBlock := startBlock
 	if iterBlock == nil ||
 		uint64(iterBlock.GetHeight())%blocksPerRetarget == 0 {
@@ -96,7 +96,7 @@ func (m *developDiff) RequiredDifficulty(block model.Block, newBlockTime time.Ti
 // find block node by pow type
 func (m *developDiff) GetCurrentPowDiff(ib model.Block, powType pow.PowType) *big.Int {
 	instance := pow.GetInstance(powType, 0, []byte{})
-	instance.SetParams(m.cfg.ToPOWConfig().PowConfig)
+	instance.SetParams(m.cfg.ToPoWConfig().PowConfig)
 	safeBigDiff := instance.GetSafeDiff(0)
 	return safeBigDiff
 }

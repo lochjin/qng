@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type POWConfig struct {
+type PoWConfig struct {
 	// PowConfig defines the highest allowed proof of work value for a block or lowest difficulty for a block
 	PowConfig *pow.PowConfig
 	// WorkDiffAlpha is the stake difficulty EMA calculation alpha (smoothing)
@@ -39,10 +39,10 @@ type POWConfig struct {
 	MinDiffReductionTime time.Duration
 }
 
-func (c *POWConfig) Type() engine.EngineType {
-	return engine.POWEngineType
+func (c *PoWConfig) Type() engine.EngineType {
+	return engine.PoWEngineType
 }
 
-func (c *POWConfig) Check() error {
+func (c *PoWConfig) Check() error {
 	return c.PowConfig.Check()
 }

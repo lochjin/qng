@@ -59,7 +59,7 @@ func TestMining(t *testing.T) {
 		instance := pow.GetInstance(powType, 0, []byte{})
 		instance.SetNonce(i)
 		instance.SetMainHeight(pow.MainHeight(height))
-		instance.SetParams(params.ActiveNetParams.Params.ToPOWConfig().PowConfig)
+		instance.SetParams(params.ActiveNetParams.Params.ToPoWConfig().PowConfig)
 		hashesCompleted += 2
 		header.Pow = instance
 

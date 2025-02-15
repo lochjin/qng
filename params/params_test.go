@@ -23,9 +23,9 @@ func TestPercent(t *testing.T) {
 	types := []pow.PowType{pow.BLAKE2BD, pow.CUCKAROO, pow.CUCKATOO, pow.CUCKAROOM}
 	for _, powType := range types {
 		instance := pow.GetInstance(powType, 0, []byte{})
-		instance.SetParams(PrivNetParam.ToPOWConfig().PowConfig)
+		instance.SetParams(PrivNetParam.ToPoWConfig().PowConfig)
 		percent := new(big.Int)
-		for mheight, pi := range PrivNetParam.ToPOWConfig().PowConfig.Percent {
+		for mheight, pi := range PrivNetParam.ToPoWConfig().PowConfig.Percent {
 			instance.SetMainHeight(pow.MainHeight(mheight + 1))
 			percent.SetInt64(int64(pi[powType]))
 

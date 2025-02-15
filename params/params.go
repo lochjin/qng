@@ -259,16 +259,16 @@ func (cf *CoinbaseConfigs) GetCurrentConfig(curHeight int64) *CoinbaseConfig {
 	return cc
 }
 
-func (p *Params) ToPOWConfig() *config.POWConfig {
-	if p.ConsensusConfig.Type().IsPOW() {
-		return p.ConsensusConfig.(*config.POWConfig)
+func (p *Params) ToPoWConfig() *config.PoWConfig {
+	if p.ConsensusConfig.Type().IsPoW() {
+		return p.ConsensusConfig.(*config.PoWConfig)
 	}
 	return nil
 }
 
-func (p *Params) ToPOAConfig() *config.POAConfig {
-	if p.ConsensusConfig.Type().IsPOA() {
-		return p.ConsensusConfig.(*config.POAConfig)
+func (p *Params) ToPoAConfig() *config.PoAConfig {
+	if p.ConsensusConfig.Type().IsPoA() {
+		return p.ConsensusConfig.(*config.PoAConfig)
 	}
 	return nil
 }
@@ -289,7 +289,7 @@ func (p *Params) HasTax() bool {
 }
 
 func (p *Params) IsDevelopDiff() bool {
-	return p.ToPOWConfig().PowConfig.DifficultyMode == pow.DIFFICULTY_MODE_DEVELOP
+	return p.ToPoWConfig().PowConfig.DifficultyMode == pow.DIFFICULTY_MODE_DEVELOP
 }
 
 func (p *Params) IsMeerEVMFork(height int64) bool {

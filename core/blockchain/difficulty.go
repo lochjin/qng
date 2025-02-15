@@ -35,7 +35,7 @@ func (b *BlockChain) CalcNextRequiredDifficulty(timestamp time.Time, powType pow
 	b.ChainRLock()
 	block := b.bd.GetMainChainTip()
 	instance := pow.GetInstance(powType, 0, []byte{})
-	instance.SetParams(b.params.ToPOWConfig().PowConfig)
+	instance.SetParams(b.params.ToPoWConfig().PowConfig)
 	instance.SetMainHeight(pow.MainHeight(block.GetHeight() + 1))
 	difficulty, err := b.difficultyManager.RequiredDifficulty(block, timestamp, instance)
 	b.ChainRUnlock()

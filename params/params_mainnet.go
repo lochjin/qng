@@ -51,7 +51,7 @@ var MainNetParams = Params{
 		GenesisAmountUnit: 1000 * 1e8,                               // 1000 MEER every utxo
 		MaxLockHeight:     86400 / mainTargetTimePerBlock * 365 * 5, // max lock height
 	},
-	ConsensusConfig: &config.POWConfig{
+	ConsensusConfig: &config.PoWConfig{
 		PowConfig: &pow.PowConfig{
 			Blake2bdPowLimit:             mainPowLimit,
 			Blake2bdPowLimitBits:         0x1b0fffff,

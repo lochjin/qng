@@ -5,27 +5,40 @@ import "fmt"
 type EngineType byte
 
 const (
-	POWEngineType EngineType = 100
+	PoWEngineType EngineType = 100
 
-	POAEngineType EngineType = 101
+	PoAEngineType EngineType = 101
+
+	PoSEngineType EngineType = 102
+
+	DPoSEngineType EngineType = 103
+
+	BFTEngineType EngineType = 104
 )
 
 var etStrings = map[EngineType]string{
-	POWEngineType: "POWEngineType",
-	POAEngineType: "POAEngineType",
+	PoWEngineType:  "PoWEngineType",
+	PoAEngineType:  "PoAEngineType",
+	PoSEngineType:  "PoSEngineType",
+	DPoSEngineType: "DPoSEngineType",
+	BFTEngineType:  "BFTEngineType",
 }
 
 func (et EngineType) String() string {
-	if s, ok := etStrings[et]; ok {
+	ret := et
+	if ret.IsPoW() {
+		ret = PoWEngineType
+	}
+	if s, ok := etStrings[ret]; ok {
 		return s
 	}
 	return fmt.Sprintf("Unknown EngineType (%d)", byte(et))
 }
 
-func (et EngineType) IsPOW() bool {
-	return et == POWEngineType
+func (et EngineType) IsPoW() bool {
+	return et <= PoWEngineType
 }
 
-func (et EngineType) IsPOA() bool {
-	return et == POAEngineType
+func (et EngineType) IsPoA() bool {
+	return et == PoAEngineType
 }

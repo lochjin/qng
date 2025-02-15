@@ -65,7 +65,7 @@ var PrivNetParams = Params{
 		GenesisAmountUnit: 1000 * 1e8,
 		MaxLockHeight:     10 * 365 * 5,
 	},
-	ConsensusConfig: &config.POWConfig{
+	ConsensusConfig: &config.PoWConfig{
 		PowConfig: &pow.PowConfig{
 			Blake2bdPowLimit:             privNetPowLimit,
 			Blake2bdPowLimitBits:         0x207fffff,

@@ -4,9 +4,13 @@
 package pow
 
 import (
+	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine"
 	"github.com/Qitmeer/qng/core/json"
+	"io"
 	"math/big"
 )
 
@@ -92,6 +96,8 @@ type IPow interface {
 	CheckAvailable() bool
 	CompareDiff(newtarget *big.Int, target *big.Int) bool
 	FindSolver(headerData []byte, blockHash hash.Hash, targetDiffBits uint32) bool
+
+	Type() engine.EngineType
 }
 
 type Pow struct {
@@ -102,7 +108,7 @@ type Pow struct {
 	mainHeight MainHeight
 }
 
-//get pow instance
+// get pow instance
 func GetInstance(powType PowType, nonce uint64, proofData []byte) IPow {
 	var instance IPow
 	switch powType {
@@ -161,7 +167,7 @@ func (this *Pow) GetProofData() string {
 	return this.ProofData.String()
 }
 
-//set proof data except pow type
+// set proof data except pow type
 func (this *Pow) SetProofData(data []byte) {
 	l := len(data)
 	copy(this.ProofData[0:l], data[:])
@@ -173,7 +179,38 @@ func (this *Pow) PowPercent() *big.Int {
 	return targetPercent
 }
 
-//check pow is available
+// check pow is available
 func (this *Pow) CheckAvailable() bool {
 	return this.params.GetPercentByHeightAndType(this.mainHeight, this.PowType) > 0
+}
+
+func (this *Pow) Type() engine.EngineType {
+	return engine.EngineType(this.GetPowType())
+}
+
+func (this *Pow) Name() string {
+	return fmt.Sprintf("%s Proof of Work", GetPowName(this.PowType))
+}
+
+func New(r io.Reader, powType byte) (IPow, error) {
+	// pow 9 bytes
+	// powtype 1 byte
+	// nonce 8 bytes
+	nonce := make([]byte, 8)
+	_, err := io.ReadFull(r, nonce)
+	if err != nil {
+		return nil, err
+	}
+	pt := PowType(powType)
+	if _, ok := PowMapString[pt]; !ok {
+		return nil, fmt.Errorf("powType:%d don't supported!", pt)
+	}
+	leftBytes := make([]byte, PROOFDATA_LENGTH)
+	// different pow store different bytes
+	_, err = io.ReadFull(r, leftBytes)
+	if err != nil {
+		return nil, err
+	}
+	// set pow type 1 bytes nonce 8 bytes and proof data except types
+	return GetInstance(pt, binary.LittleEndian.Uint64(nonce), leftBytes), nil
 }

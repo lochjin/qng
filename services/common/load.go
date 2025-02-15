@@ -243,9 +243,9 @@ func SetupConfig(cfg *config.Config) error {
 	if err := params.ActiveNetParams.ConsensusConfig.Check(); err != nil {
 		return err
 	}
-	if params.ActiveNetParams.ConsensusConfig.Type().IsPOW() {
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
 		if cfg.PowDiffMode != defaultPowDiffMode {
-			params.ActiveNetParams.ToPOWConfig().PowConfig.DifficultyMode = cfg.PowDiffMode
+			params.ActiveNetParams.ToPoWConfig().PowConfig.DifficultyMode = cfg.PowDiffMode
 		}
 	}
 

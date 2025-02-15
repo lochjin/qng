@@ -3,9 +3,10 @@ package serialization
 
 import (
 	"encoding/binary"
-	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine"
 	"github.com/Qitmeer/qng/consensus/engine/pow"
+	"github.com/Qitmeer/qng/consensus/engine/utils"
 	"github.com/Qitmeer/qng/core/protocol"
 	"io"
 	"time"
@@ -154,30 +155,13 @@ func readElement(r io.Reader, element interface{}) error {
 		*e = protocol.Network(rv)
 		return nil
 
-	case *pow.IPow:
-		// pow 9 bytes
-		// powtype 1 byte
-		// nonce 8 bytes
-		b := make([]byte, pow.POW_LENGTH-pow.PROOFDATA_LENGTH)
-		_, err := io.ReadFull(r, b)
+	case *engine.Engine:
+		ce, err := utils.NewConsensusEngine(r)
 		if err != nil {
 			return err
 		}
-		// powType 1 bytes + nonce 8 bytes
-		powType := pow.PowType(b[0:1][0])
-		if _, ok := pow.PowMapString[powType]; !ok {
-			return fmt.Errorf("powType:%d don't supported!", powType)
-		}
-		leftBytes := make([]byte, pow.PROOFDATA_LENGTH)
-		// different pow store different bytes
-		_, err = io.ReadFull(r, leftBytes)
-		if err != nil {
-			return err
-		}
-		// set pow type 1 bytes nonce 8 bytes and proof data except types
-		*e = pow.GetInstance(powType, littleEndian.Uint64(b[1:9]), leftBytes)
+		*e = ce
 		return nil
-
 	}
 
 	// Fall back to the slower binary.Read if a fast path was not available

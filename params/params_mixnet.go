@@ -51,7 +51,7 @@ var MixNetParams = Params{
 		GenesisAmountUnit: 1000 * 1e8,                              // 1000 MEER every utxo
 		MaxLockHeight:     86400 / mixTargetTimePerBlock * 365 * 5, // max lock height
 	},
-	ConsensusConfig: &config.POWConfig{
+	ConsensusConfig: &config.PoWConfig{
 		PowConfig: &pow.PowConfig{
 			Blake2bdPowLimit:             testMixNetPowLimit,
 			Blake2bdPowLimitBits:         0x2003ffff,

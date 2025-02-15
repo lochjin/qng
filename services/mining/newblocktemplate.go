@@ -608,7 +608,7 @@ func UpdateBlockTime(msgBlock *types.Block, chain *blockchain.BlockChain, timeSo
 
 	// If running on a network that requires recalculating the difficulty,
 	// do so now.
-	if activeNetParams.ConsensusConfig.Type().IsPOW() && activeNetParams.ToPOWConfig().ReduceMinDifficulty {
+	if activeNetParams.ConsensusConfig.Type().IsPoW() && activeNetParams.ToPoWConfig().ReduceMinDifficulty {
 		difficulty, err := chain.CalcNextRequiredDifficulty(
 			newTimestamp, msgBlock.Header.Pow.GetPowType())
 		if err != nil {

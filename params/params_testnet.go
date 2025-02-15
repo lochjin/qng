@@ -52,7 +52,7 @@ var TestNetParams = Params{
 		GenesisAmountUnit: 1000 * 1e8, // 1000 MEER every utxo
 		MaxLockHeight:     2880 * 365 * 5,
 	},
-	ConsensusConfig: &config.POWConfig{
+	ConsensusConfig: &config.PoWConfig{
 		PowConfig: &pow.PowConfig{
 			Blake2bdPowLimit:             maxNetPowLimit,
 			Blake2bdPowLimitBits:         0x0, // compact from of testNetPowLimit 0

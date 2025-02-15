@@ -33,7 +33,7 @@ var AmanaNetParams = Params{
 		GenesisAmountUnit: 1000 * 1e8,
 		MaxLockHeight:     10 * 365 * 5,
 	},
-	ConsensusConfig: &config.POAConfig{
+	ConsensusConfig: &config.PoAConfig{
 		Period: amanaTargetTimePerBlock,
 		Epoch:  100,
 	},

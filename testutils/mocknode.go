@@ -178,7 +178,7 @@ func (mn *MockNode) setup() error {
 
 	log.Info("Import default key", "addr", account.String())
 
-	params.ActiveNetParams.ToPOWConfig().PowConfig.DifficultyMode = pow.DIFFICULTY_MODE_DEVELOP
+	params.ActiveNetParams.ToPoWConfig().PowConfig.DifficultyMode = pow.DIFFICULTY_MODE_DEVELOP
 	return nil
 }
 
