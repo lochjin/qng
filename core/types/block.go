@@ -32,13 +32,6 @@ const MaxTxPerBlock = (MaxBlockPayload / minTxPayload) + 1
 // Limited parents quantity
 const MaxParentsPerBlock = 50
 
-// blockHeaderLen is a constant that represents the number of bytes for a block
-// header. common header need 117 bytes , proof data need extra 169 bytes
-const blockHeaderLen = 117 + 169
-
-// MaxBlocksPerMsg is the maximum number of blocks allowed per message.
-const MaxBlocksPerMsg = 500
-
 type BlockHeader struct {
 
 	// block version
@@ -98,16 +91,49 @@ func (bh *BlockHeader) Digest() []byte {
 	// transactions.  Ignore the error returns since there is no way the
 	// encode could fail except being out of memory which would cause a
 	// run-time panic.
-	buf := bytes.NewBuffer(make([]byte, 0, MaxBlockHeaderPayload))
+	var buf bytes.Buffer
 	// TODO, redefine the protocol version and storage
 	sec := uint32(bh.Timestamp.Unix())
-	_ = s.WriteElements(buf, bh.Version, &bh.ParentRoot, &bh.TxRoot,
+	_ = s.WriteElements(&buf, bh.Version, &bh.ParentRoot, &bh.TxRoot,
 		&bh.StateRoot, bh.Difficulty, sec, bh.Engine.Digest())
 	return buf.Bytes()
 }
 
 func (h *BlockHeader) PoW() pow.IPow {
 	return h.Engine.(pow.IPow)
+}
+
+// Serialize encodes a block header from r into the receiver using a format
+// that is suitable for long-term storage such as a database while respecting
+// the Version field.
+func (h *BlockHeader) Serialize(w io.Writer) error {
+	// At the current time, there is no difference between the wire encoding
+	// at protocol version 0 and the stable long-term storage format.  As
+	// a result, make use of writeBlockHeader.
+	return writeBlockHeader(w, 0, h)
+}
+
+// Deserialize decodes a block header from r into the receiver using a format
+// that is suitable for long-term storage such as a database while respecting
+// the Version field.
+func (h *BlockHeader) Deserialize(r io.Reader) error {
+	// At the current time, there is no difference between the wire encoding
+	// at protocol version 0 and the stable long-term storage format.  As
+	// a result, make use of readBlockHeader.
+	return readBlockHeader(r, 0, h)
+}
+
+func (h *BlockHeader) Bytes() []byte {
+	var buf bytes.Buffer
+	err := h.Serialize(&buf)
+	if err != nil {
+		return nil
+	}
+	return buf.Bytes()
+}
+
+func (h *BlockHeader) Size() int {
+	return len(h.Bytes())
 }
 
 // readBlockHeader reads a block header from io reader.  See Deserialize for
@@ -132,39 +158,6 @@ func writeBlockHeader(w io.Writer, pver uint32, bh *BlockHeader) error {
 		&bh.StateRoot, bh.Difficulty, sec, bh.Engine.Bytes())
 }
 
-// This function get the simple hash use each parents string, so it can't use to
-// check for block body .At present we use the merkles tree.
-func GetParentsRoot(parents []*hash.Hash) hash.Hash {
-	if len(parents) == 0 {
-		return hash.Hash{}
-	}
-	hashStr := ""
-	for _, v := range parents {
-		hashStr += v.String()
-	}
-	return hash.DoubleHashH([]byte(hashStr))
-}
-
-// Serialize encodes a block header from r into the receiver using a format
-// that is suitable for long-term storage such as a database while respecting
-// the Version field.
-func (h *BlockHeader) Serialize(w io.Writer) error {
-	// At the current time, there is no difference between the wire encoding
-	// at protocol version 0 and the stable long-term storage format.  As
-	// a result, make use of writeBlockHeader.
-	return writeBlockHeader(w, 0, h)
-}
-
-// Deserialize decodes a block header from r into the receiver using a format
-// that is suitable for long-term storage such as a database while respecting
-// the Version field.
-func (h *BlockHeader) Deserialize(r io.Reader) error {
-	// At the current time, there is no difference between the wire encoding
-	// at protocol version 0 and the stable long-term storage format.  As
-	// a result, make use of readBlockHeader.
-	return readBlockHeader(r, 0, h)
-}
-
 type Block struct {
 	Header       BlockHeader
 	Parents      []*hash.Hash
@@ -187,7 +180,7 @@ func (block *Block) SerializeSize() int {
 	// transactions + Serialized varint size for the number of
 	// stake transactions
 
-	n := blockHeaderLen + s.VarIntSerializeSize(uint64(len(block.Parents))) + s.VarIntSerializeSize(uint64(len(block.Transactions)))
+	n := block.Header.Size() + s.VarIntSerializeSize(uint64(len(block.Parents))) + s.VarIntSerializeSize(uint64(len(block.Transactions)))
 
 	for i := 0; i < len(block.Parents); i++ {
 		n += hash.HashSize
