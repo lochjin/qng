@@ -314,13 +314,11 @@ var privNetGenesisTxs = []*types.Transaction{
 // the main network.
 var privNetGenesisMerkleRoot = merkle.CalcMerkleRoot(privNetGenesisTxs)
 
-var zeroHash = hash.ZeroHash
-
 // privNetGenesisBlock defines the genesis block of the block chain which serves
 // as the public transaction ledger for the simulation test network.
 var privNetGenesisBlock = types.Block{
 	Header: types.BlockHeader{
-		ParentRoot: zeroHash,
+		ParentRoot: hash.ZeroHash,
 		TxRoot:     *privNetGenesisMerkleRoot,
 		StateRoot: hash.Hash([32]byte{ // Make go vet happy.
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -454,43 +452,14 @@ var mixNetGenesisBlock = types.Block{
 var mixNetGenesisHash = mixNetGenesisBlock.BlockHash()
 
 // AmanaNet -------------------------------------------------------------------------
-
-var amanaNetGenesisCoinbaseTx = types.Transaction{
-	Version: 1,
-	TxIn: []*types.TxInput{
-		{
-			PreviousOut: types.TxOutPoint{
-				Hash:     hash.Hash{},
-				OutIndex: 0xffffffff,
-			},
-			Sequence:   0xffffffff,
-			SignScript: []byte{},
-		},
-	},
-	TxOut: []*types.TxOutput{
-		{
-			Amount:   types.Amount{Value: 0x00000000, Id: types.MEERA},
-			PkScript: []byte{},
-		},
-	},
-	LockTime: 0,
-	Expire:   0,
-}
-
 var amanaNetGenesisBlock = types.Block{
 	Header: types.BlockHeader{
-		ParentRoot: zeroHash,
-		TxRoot:     *merkle.CalcMerkleRoot([]*types.Transaction{&amanaNetGenesisCoinbaseTx}),
-		StateRoot: hash.Hash([32]byte{ // Make go vet happy.
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		}),
-		Timestamp: time.Unix(1739265196, 0), // 2025-02-11 17:13:16.322784
-		Engine:    ptypes.Default(),
+		ParentRoot: hash.ZeroHash,
+		TxRoot:     *merkle.CalcMerkleRoot([]*types.Transaction{}),
+		StateRoot:  hash.ZeroHash,
+		Timestamp:  time.Unix(1739265196, 0), // 2025-02-11 17:13:16.322784
+		Engine:     ptypes.Default(),
 	},
-	Transactions: []*types.Transaction{&amanaNetGenesisCoinbaseTx},
+	Transactions: []*types.Transaction{},
 }
-
 var amanaNetGenesisHash = amanaNetGenesisBlock.BlockHash()

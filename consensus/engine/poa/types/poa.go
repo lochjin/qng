@@ -53,7 +53,7 @@ func (p *PoA) Bytes() []byte {
 	}
 	var buff bytes.Buffer
 	bs := make([]byte, headSize)
-	binary.BigEndian.PutUint64(bs, uint64(dataSize))
+	binary.BigEndian.PutUint32(bs, uint32(dataSize))
 	size, err := buff.Write(bs)
 	if err != nil {
 		panic(err)
@@ -93,7 +93,7 @@ func (p *PoA) Digest() []byte {
 	}
 	var buff bytes.Buffer
 	bs := make([]byte, headSize)
-	binary.BigEndian.PutUint64(bs, uint64(dataSize))
+	binary.BigEndian.PutUint32(bs, uint32(dataSize))
 	size, err := buff.Write(bs)
 	if err != nil {
 		panic(err)
