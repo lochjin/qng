@@ -61,9 +61,9 @@ func TestMining(t *testing.T) {
 		instance.SetMainHeight(pow.MainHeight(height))
 		instance.SetParams(params.ActiveNetParams.Params.ToPoWConfig().PowConfig)
 		hashesCompleted += 2
-		header.Pow = instance
+		header.Engine = instance
 
-		if header.Pow.FindSolver(header.BlockData(), header.BlockHash(), header.Difficulty) {
+		if header.PoW().FindSolver(header.BlockData(), header.BlockHash(), header.Difficulty) {
 			t.Logf("Find %s (hash) at %d (nonce) %d (height) %d (hashes)", header.BlockHash().String(), i, height, hashesCompleted)
 			var headerBuf bytes.Buffer
 			err = header.Serialize(&headerBuf)

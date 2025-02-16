@@ -705,7 +705,7 @@ func (m *Miner) submitBlockHeader(header *types.BlockHeader, extraNonce uint64) 
 
 	block.Header.Difficulty = header.Difficulty
 	block.Header.Timestamp = header.Timestamp
-	block.Header.Pow = header.Pow
+	block.Header.Engine = header.Engine
 	res, err := m.submitBlock(types.NewBlock(block))
 	if err == nil {
 		m.StatsSubmit(start, header.BlockHash().String(), len(block.Transactions)-1)

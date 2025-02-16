@@ -188,7 +188,7 @@ func (m *ghostdagDiff) GetCurrentPowDiff(ib model.Block, powType pow.PowType) *b
 		if curNode == nil {
 			return safeBigDiff
 		}
-		if curNode.Pow.GetPowType() == powType {
+		if curNode.PoW().GetPowType() == powType {
 			return pow.CompactToBig(curNode.Difficulty)
 		}
 

@@ -328,7 +328,7 @@ func (b *BlockChain) createChainState() error {
 		return err
 	}
 	// Store the current best chain state into the database.
-	err = dbPutBestState(b.DB(), b.stateSnapshot, pow.CalcWork(header.Difficulty, header.Pow.GetPowType()))
+	err = dbPutBestState(b.DB(), b.stateSnapshot, pow.CalcWork(header.Difficulty, header.PoW().GetPowType()))
 	if err != nil {
 		return err
 	}

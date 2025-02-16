@@ -246,7 +246,7 @@ func (gd *GhostDAG) UpdateOrders() error {
 // ---------------
 // implementation
 func (gd *GhostDAG) BlockHeader(dbContext model.DBReader, stagingArea *cmodel.StagingArea, blockHash *hash.Hash) (model.BlockHeader, error) {
-	return ghostdag.NewBlockHeader(params.ActiveNetParams.GenesisBlock.Block().Header.Difficulty, params.ActiveNetParams.GenesisBlock.Block().Header.Pow), nil
+	return ghostdag.NewBlockHeader(params.ActiveNetParams.GenesisBlock.Block().Header.Difficulty, params.ActiveNetParams.GenesisBlock.Block().Header.PoW()), nil
 }
 
 func (gd *GhostDAG) HasBlockHeader(dbContext model.DBReader, stagingArea *cmodel.StagingArea, blockHash *hash.Hash) (bool, error) {

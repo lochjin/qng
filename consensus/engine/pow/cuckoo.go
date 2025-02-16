@@ -71,14 +71,14 @@ func ConvertBytesToUint32Array(data []byte) []uint32 {
 	return nonces
 }
 
-//get sip hash
-//first header data 113 bytes hash
+// get sip hash
+// first header data 113 bytes hash
 func (this *Cuckoo) GetSipHash(headerData []byte) hash.Hash {
 	return hash.HashH(headerData[:len(headerData)-PROOF_DATA_CIRCLE_NONCE_END])
 }
 
-//cuckoo pow proof data
-func (this *Cuckoo) Bytes() PowBytes {
+// cuckoo pow proof data
+func (this *Cuckoo) Bytes() []byte {
 	r := make(PowBytes, 0)
 	// write pow type 1 byte
 	r = append(r, []byte{byte(this.PowType)}...)
@@ -90,7 +90,7 @@ func (this *Cuckoo) Bytes() PowBytes {
 
 	//write ProofData 169 bytes
 	r = append(r, this.ProofData[:]...)
-	return PowBytes(r)
+	return r
 }
 
 // compare the target
@@ -100,7 +100,7 @@ func (this *Cuckoo) CompareDiff(newTarget *big.Int, target *big.Int) bool {
 }
 
 // pow proof data
-func (this *Cuckoo) BlockData() PowBytes {
+func (this *Cuckoo) Digest() []byte {
 	return this.Bytes()
 }
 

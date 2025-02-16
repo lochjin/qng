@@ -663,7 +663,7 @@ func (c *DagPoA) Seal(chain econsensus.ChainHeaderReader, block *types.Block, re
 		log.Trace("Out-of-turn signing requested", "wiggle", common.PrettyDuration(wiggle))
 	}
 	// Sign all the things!
-	sighash, err := signFn(accounts.Account{Address: signer}, accounts.MimetypeClique, DagPOARLP(header))
+	sighash, err := signFn(accounts.Account{Address: signer}, accounts.MimetypeClique, DagPoARLP(header))
 	if err != nil {
 		return err
 	}
@@ -736,14 +736,14 @@ func SealHash(header *types.Header) (hash common.Hash) {
 	return hash
 }
 
-// AmanaRLP returns the rlp bytes which needs to be signed for the proof-of-authority
+// DagPoARLP returns the rlp bytes which needs to be signed for the proof-of-authority
 // sealing. The RLP to sign consists of the entire header apart from the 65 byte signature
 // contained at the end of the extra data.
 //
 // Note, the method requires the extra data to be at least 65 bytes, otherwise it
 // panics. This is done to avoid accidentally using both forms (signature present
 // or not), which could be abused to produce different hashes for the same header.
-func DagPOARLP(header *types.Header) []byte {
+func DagPoARLP(header *types.Header) []byte {
 	b := new(bytes.Buffer)
 	encodeSigHeader(b, header)
 	return b.Bytes()

@@ -341,7 +341,7 @@ func MarshalJsonBlock(block meerdag.IBlock, b *types.SerializedBlock, inclTx boo
 		{Key: "stateRoot", Val: head.StateRoot.String()},
 		{Key: "bits", Val: strconv.FormatUint(uint64(head.Difficulty), 16)},
 		{Key: "difficulty", Val: head.Difficulty},
-		{Key: "pow", Val: head.Pow.GetPowResult()},
+		{Key: "pow", Val: head.PoW().GetPowResult()},
 		{Key: "timestamp", Val: head.Timestamp.Format(time.RFC3339)},
 		{Key: "parentroot", Val: head.ParentRoot.String()},
 	}...)

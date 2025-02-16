@@ -370,7 +370,7 @@ func (b *BlockChain) ForeachBlueBlocks(start model.Block, depth uint, powType po
 		if blockHeader == nil {
 			return false, fmt.Errorf("No blockHeader:%s", block.GetHash().String())
 		}
-		if blockHeader.Pow.GetPowType() != powType {
+		if blockHeader.PoW().GetPowType() != powType {
 			return false, nil
 		}
 		return true, fn(block, blockHeader)

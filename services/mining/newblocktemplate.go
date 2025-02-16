@@ -544,7 +544,7 @@ mempool:
 		StateRoot:  *bc.CalculateStateRoot(blockTxns),
 		Timestamp:  ts,
 		Difficulty: reqCompactDifficulty,
-		Pow:        pow.GetInstance(powType, 0, []byte{}),
+		Engine:     pow.GetInstance(powType, 0, []byte{}),
 		// Size declared below
 	}
 	for _, pb := range parents {
@@ -610,7 +610,7 @@ func UpdateBlockTime(msgBlock *types.Block, chain *blockchain.BlockChain, timeSo
 	// do so now.
 	if activeNetParams.ConsensusConfig.Type().IsPoW() && activeNetParams.ToPoWConfig().ReduceMinDifficulty {
 		difficulty, err := chain.CalcNextRequiredDifficulty(
-			newTimestamp, msgBlock.Header.Pow.GetPowType())
+			newTimestamp, msgBlock.Header.PoW().GetPowType())
 		if err != nil {
 			return miningRuleError(ErrGettingDifficulty, err.Error())
 		}

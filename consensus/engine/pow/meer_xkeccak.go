@@ -86,7 +86,7 @@ func (this *MeerXKeccakV1) CompareDiff(newTarget *big.Int, target *big.Int) bool
 }
 
 // pow proof data
-func (this *MeerXKeccakV1) Bytes() PowBytes {
+func (this *MeerXKeccakV1) Bytes() []byte {
 	r := make(PowBytes, 0)
 	//write pow type 1 byte
 	r = append(r, []byte{byte(this.PowType)}...)
@@ -96,16 +96,16 @@ func (this *MeerXKeccakV1) Bytes() PowBytes {
 	r = append(r, n...)
 	//write ProofData 169 bytes
 	r = append(r, this.ProofData[:]...)
-	return PowBytes(r)
+	return r
 }
 
 // pow proof data
-func (this *MeerXKeccakV1) BlockData() PowBytes {
+func (this *MeerXKeccakV1) Digest() []byte {
 	l := len(this.Bytes())
-	return PowBytes(this.Bytes()[:l-PROOFDATA_LENGTH])
+	return this.Bytes()[:l-PROOFDATA_LENGTH]
 }
 
-//not support
+// not support
 func (this *MeerXKeccakV1) FindSolver(headerData []byte, blockHash hash.Hash, targetDiffBits uint32) bool {
 	if err := this.Verify(headerData, blockHash, targetDiffBits); err == nil {
 		return true

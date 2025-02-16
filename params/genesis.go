@@ -7,6 +7,7 @@
 package params
 
 import (
+	ptypes "github.com/Qitmeer/qng/consensus/engine/poa/types"
 	"time"
 
 	"github.com/Qitmeer/qng/common/hash"
@@ -125,7 +126,7 @@ var genesisBlock = types.Block{
 		StateRoot:  hash.Hash{},
 		Timestamp:  genesisTime,
 		Difficulty: 0x1b0fffff, // Difficulty 17 T
-		Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 	},
 	Transactions: genesisTxs,
 }
@@ -208,7 +209,7 @@ var testNetGenesisBlock = types.Block{
 		TxRoot:     testNetGenesisMerkleRoot,
 		Timestamp:  testNetGenesisCoinbaseTx.Timestamp, // same with the tx timestamp (added since 0.9)
 		Difficulty: 0x1f0198f2,                         // 67108864
-		Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 	},
 	Transactions: []*types.Transaction{&testNetGenesisCoinbaseTx},
 }
@@ -329,7 +330,7 @@ var privNetGenesisBlock = types.Block{
 		}),
 		Timestamp:  time.Unix(1530833717, 0), // 2018-07-05 23:35:17 GMT
 		Difficulty: 0x207fffff,               // 545259519
-		Pow:        pow.GetInstance(pow.BLAKE2BD, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.BLAKE2BD, 0, []byte{}),
 	},
 	Transactions: privNetGenesisTxs,
 }
@@ -442,7 +443,7 @@ var mixNetGenesisBlock = types.Block{
 		TxRoot:     *testPowNetGenesisMerkleRoot,
 		Timestamp:  mixnetGenesisTime,
 		Difficulty: 0x1f0198f2, //
-		Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 	},
 	Transactions: mixNetGenesisTxs,
 	Parents:      []*hash.Hash{},
@@ -487,7 +488,7 @@ var amanaNetGenesisBlock = types.Block{
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		}),
 		Timestamp: time.Unix(1739265196, 0), // 2025-02-11 17:13:16.322784
-		Pow:       pow.GetInstance(pow.BLAKE2BD, 0, []byte{}),
+		Engine:    ptypes.Default(),
 	},
 	Transactions: []*types.Transaction{&amanaNetGenesisCoinbaseTx},
 }

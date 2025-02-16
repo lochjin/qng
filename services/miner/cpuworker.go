@@ -439,11 +439,11 @@ func (w *CPUWorker) solveBlock() *types.Block {
 		instance.SetMainHeight(pow.MainHeight(w.miner.template.Height))
 		instance.SetParams(params.ActiveNetParams.Params.ToPoWConfig().PowConfig)
 		hashesCompleted += 2
-		header.Pow = instance
+		header.Engine = instance
 		if params.ActiveNetParams.Params.IsDevelopDiff() {
 			return block
 		}
-		if header.Pow.FindSolver(header.BlockData(), header.BlockHash(), header.Difficulty) {
+		if header.PoW().FindSolver(header.Digest(), header.BlockHash(), header.Difficulty) {
 			w.updateHashes <- hashesCompleted
 			return block
 		}

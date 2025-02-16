@@ -238,11 +238,11 @@ func (b *BlockChain) checkBlockSanity(block *types.SerializedBlock, timeSource m
 // The flags do not modify the behavior of this function directly, however they
 // are needed to pass along to checkProofOfWork.
 func checkBlockHeaderSanity(header *types.BlockHeader, timeSource model.MedianTimeSource, flags BehaviorFlags, chainParams *params.Params, mHeight uint) error {
-	instance := pow.GetInstance(header.Pow.GetPowType(), 0, []byte{})
+	instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
 	instance.SetMainHeight(pow.MainHeight(mHeight))
 	instance.SetParams(chainParams.ToPoWConfig().PowConfig)
 	if !instance.CheckAvailable() {
-		str := fmt.Sprintf("pow type : %d is not available!", header.Pow.GetPowType())
+		str := fmt.Sprintf("pow type : %d is not available!", header.PoW().GetPowType())
 		return ruleError(ErrInValidPowType, str)
 	}
 	// Ensure the proof of work bits in the block header is in min/max
@@ -288,10 +288,10 @@ func checkProofOfWork(header *types.BlockHeader, powConfig *pow.PowConfig, flags
 	// The block hash must be less than the claimed target unless the flag
 	// to avoid proof of work checks is set.
 	if !flags.Has(BFNoPoWCheck) && !params.ActiveNetParams.Params.IsDevelopDiff() {
-		header.Pow.SetParams(powConfig)
-		header.Pow.SetMainHeight(pow.MainHeight(mHeight))
+		header.PoW().SetParams(powConfig)
+		header.PoW().SetMainHeight(pow.MainHeight(mHeight))
 		// The block hash must be less than the claimed target.
-		return header.Pow.Verify(header.BlockData(), header.BlockHash(), header.Difficulty)
+		return header.PoW().Verify(header.Engine.Digest(), header.BlockHash(), header.Difficulty)
 	}
 
 	return nil
@@ -750,7 +750,7 @@ func (b *BlockChain) checkBlockHeaderContext(block *types.SerializedBlock, prevN
 	header := &block.Block().Header
 	if !flags.Has(BFFastAdd) {
 		if !b.params.IsDevelopDiff() {
-			instance := pow.GetInstance(header.Pow.GetPowType(), 0, []byte{})
+			instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
 			instance.SetMainHeight(pow.MainHeight(prevNode.GetHeight() + 1))
 			instance.SetParams(b.params.ToPoWConfig().PowConfig)
 			// Ensure the difficulty specified in the block header matches

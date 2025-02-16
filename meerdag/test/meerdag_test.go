@@ -246,7 +246,7 @@ func addBlock(tag string, parents []*hash.Hash) (*TestBlock, meerdag.IBlock, err
 
 	b := &types.Block{
 		Header: types.BlockHeader{
-			Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+			Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 			Timestamp:  time.Unix(int64(len(tbMap)), 0),
 			Difficulty: uint32(len(tbMap)),
 		},

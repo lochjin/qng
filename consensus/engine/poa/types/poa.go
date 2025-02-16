@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -8,6 +9,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"io"
+)
+
+const (
+	headSize = 4
 )
 
 var (
@@ -28,22 +33,94 @@ var (
 )
 
 type PoA struct {
-	Ty      engine.EngineType
 	Vanity  []byte
 	Seal    []byte
 	Signers []common.Address
 }
 
 func (p *PoA) Type() engine.EngineType {
-	return p.Ty
+	return engine.PoAEngineType
 }
 
 func (p *PoA) Name() string {
-	return "MeerDAG POA"
+	return "MeerDAG Proof of Authority"
+}
+
+func (p *PoA) Bytes() []byte {
+	dataSize := headSize + VanitySize + SealSize
+	if len(p.Signers) > 0 {
+		dataSize += len(p.Signers) * common.AddressLength
+	}
+	var buff bytes.Buffer
+	bs := make([]byte, headSize)
+	binary.BigEndian.PutUint64(bs, uint64(dataSize))
+	size, err := buff.Write(bs)
+	if err != nil {
+		panic(err)
+	}
+	if size != headSize {
+		panic(fmt.Errorf("Write size error:%d", size))
+	}
+	size, err = buff.Write(p.Vanity)
+	if err != nil {
+		panic(err)
+	}
+	if size != VanitySize {
+		panic(fmt.Errorf("Write size error:%d", size))
+	}
+	size, err = buff.Write(p.Seal)
+	if err != nil {
+		panic(err)
+	}
+	if size != SealSize {
+		panic(fmt.Errorf("Write size error:%d", size))
+	}
+	if len(p.Signers) > 0 {
+		for _, s := range p.Signers {
+			size, err = buff.Write(s.Bytes())
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	return buff.Bytes()
+}
+
+func (p *PoA) Digest() []byte {
+	dataSize := headSize + VanitySize
+	if len(p.Signers) > 0 {
+		dataSize += len(p.Signers) * common.AddressLength
+	}
+	var buff bytes.Buffer
+	bs := make([]byte, headSize)
+	binary.BigEndian.PutUint64(bs, uint64(dataSize))
+	size, err := buff.Write(bs)
+	if err != nil {
+		panic(err)
+	}
+	if size != headSize {
+		panic(fmt.Errorf("Write size error:%d", size))
+	}
+	size, err = buff.Write(p.Vanity)
+	if err != nil {
+		panic(err)
+	}
+	if size != VanitySize {
+		panic(fmt.Errorf("Write size error:%d", size))
+	}
+	if len(p.Signers) > 0 {
+		for _, s := range p.Signers {
+			size, err = buff.Write(s.Bytes())
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	return buff.Bytes()
 }
 
 func New(r io.Reader) (*PoA, error) {
-	lb := make([]byte, 4)
+	lb := make([]byte, headSize)
 	size, err := io.ReadFull(r, lb)
 	if err != nil {
 		return nil, err
@@ -74,7 +151,6 @@ func New(r io.Reader) (*PoA, error) {
 		return nil, fmt.Errorf("Read size error:%d != %d", size, len(lb))
 	}
 	poa := &PoA{
-		Ty:      engine.PoAEngineType,
 		Vanity:  data[:VanitySize],
 		Seal:    data[VanitySize : VanitySize+SealSize],
 		Signers: []common.Address{},
@@ -89,4 +165,22 @@ func New(r io.Reader) (*PoA, error) {
 		}
 	}
 	return poa, nil
+}
+
+func Default() *PoA {
+	return &PoA{
+		Vanity: make([]byte, VanitySize),
+		Seal:   make([]byte, SealSize),
+		Signers: []common.Address{
+			common.HexToAddress("0x71bc4403af41634cda7c32600a8024d54e7f6499"),
+		},
+	}
+}
+
+func Empty() *PoA {
+	return &PoA{
+		Vanity:  make([]byte, VanitySize),
+		Seal:    make([]byte, SealSize),
+		Signers: []common.Address{},
+	}
 }

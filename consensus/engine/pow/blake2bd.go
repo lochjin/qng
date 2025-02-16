@@ -86,7 +86,7 @@ func (this *Blake2bd) CompareDiff(newTarget *big.Int, target *big.Int) bool {
 }
 
 // pow proof data
-func (this *Blake2bd) Bytes() PowBytes {
+func (this *Blake2bd) Bytes() []byte {
 	r := make(PowBytes, 0)
 	// write pow type 1 byte
 	r = append(r, []byte{byte(this.PowType)}...)
@@ -96,17 +96,17 @@ func (this *Blake2bd) Bytes() PowBytes {
 	r = append(r, n...)
 	//write ProofData 169 bytes
 	r = append(r, this.ProofData[:]...)
-	return PowBytes(r)
+	return r
 }
 
 // pow proof data
-func (this *Blake2bd) BlockData() PowBytes {
+func (this *Blake2bd) Digest() []byte {
 	bytes := this.Bytes()
 	l := len(bytes)
-	return PowBytes(bytes[:l-PROOFDATA_LENGTH])
+	return bytes[:l-PROOFDATA_LENGTH]
 }
 
-//solve solution
+// solve solution
 func (this *Blake2bd) FindSolver(headerData []byte, blockHash hash.Hash, targetDiffBits uint32) bool {
 	if err := this.Verify(headerData, blockHash, targetDiffBits); err == nil {
 		return true

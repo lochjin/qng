@@ -333,7 +333,7 @@ func (m *meerDiff) calcCurrentPowCount(block model.Block, nodesToTraverse int64,
 					continue
 				}
 				oldBlock = ob
-				if oldBlock.GetOrder() != 0 && oldNode.Pow.GetPowType() != powType {
+				if oldBlock.GetOrder() != 0 && oldNode.PoW().GetPowType() != powType {
 					currentPowBlockCount--
 				}
 
@@ -367,7 +367,7 @@ func (m *meerDiff) getDistanceFromLastAdjustment(block model.Block, powType pow.
 	count := int64(0)
 	currentTime := curNode.Timestamp.Unix()
 	for {
-		if curNode.Pow.GetPowType() == powType {
+		if curNode.PoW().GetPowType() == powType {
 			if oldBits != curNode.Difficulty {
 				return count
 			}
@@ -403,7 +403,7 @@ func (m *meerDiff) getPowTypeNode(block model.Block, powType pow.PowType) model.
 		if curNode == nil {
 			return nil
 		}
-		if curNode.Pow.GetPowType() == powType {
+		if curNode.PoW().GetPowType() == powType {
 			return block
 		}
 
@@ -427,7 +427,7 @@ func (m *meerDiff) GetCurrentPowDiff(ib model.Block, powType pow.PowType) *big.I
 		if curNode == nil {
 			return safeBigDiff
 		}
-		if curNode.Pow.GetPowType() == powType {
+		if curNode.PoW().GetPowType() == powType {
 			return pow.CompactToBig(curNode.Difficulty)
 		}
 

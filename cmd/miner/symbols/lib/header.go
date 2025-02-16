@@ -65,7 +65,7 @@ func BlockDataWithProof(h *types.BlockHeader) []byte {
 func writeBlockHeaderWithProof(w io.Writer, pver uint32, bh *types.BlockHeader) error {
 	sec := uint32(bh.Timestamp.Unix())
 	return s.WriteElements(w, bh.Version, &bh.ParentRoot, &bh.TxRoot,
-		&bh.StateRoot, bh.Difficulty, sec, bh.Pow.Bytes())
+		&bh.StateRoot, bh.Difficulty, sec, bh.PoW().Bytes())
 }
 
 // readBlockHeader reads a block header from io reader.  See Deserialize for
@@ -77,5 +77,5 @@ func ReadBlockHeader(b []byte, bh *types.BlockHeader) error {
 	// TODO fix time ambiguous
 	return s.ReadElements(r, &bh.Version, &bh.ParentRoot, &bh.TxRoot,
 		&bh.StateRoot, &bh.Difficulty, (*s.Uint32Time)(&bh.Timestamp),
-		&bh.Pow)
+		&bh.Engine)
 }

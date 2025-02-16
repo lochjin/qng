@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine"
 	"github.com/Qitmeer/qng/consensus/engine/pow"
 	s "github.com/Qitmeer/qng/core/serialization"
 	"io"
@@ -74,16 +75,8 @@ type BlockHeader struct {
 	// TimeStamp
 	Timestamp time.Time
 
-	// pow blake2bd | cuckaroo | cuckatoo
-	Pow pow.IPow
-
-	//might extra data here
-
-	// Size is the size of the serialized block/block-header in its entirety.
-
-	// The variable-sized block might require a size serialized & verify-check
-	// BlockSize uint32
-
+	// Consensus Engine
+	Engine engine.Engine
 }
 
 // BlockHash computes the block identifier hash for the given block header.
@@ -92,15 +85,15 @@ func (h *BlockHeader) BlockHash() hash.Hash {
 	// transactions.  Ignore the error returns since there is no way the
 	// encode could fail except being out of memory which would cause a
 	// run-time panic.
-	return hash.DoubleHashH(h.BlockData())
+	return hash.DoubleHashH(h.Digest())
 
 }
 
-// BlockData computes the block data for block hash.
-// Block data has the dynamic length.
+// Digest computes the Digest for block hash.
+// Digest has the dynamic length.
 //   - blake2bd data is 117 bytes .
 //   - cuckoo data is 282 bytes .
-func (bh *BlockHeader) BlockData() []byte {
+func (bh *BlockHeader) Digest() []byte {
 	// Encode the header and hash256 everything prior to the number of
 	// transactions.  Ignore the error returns since there is no way the
 	// encode could fail except being out of memory which would cause a
@@ -109,8 +102,12 @@ func (bh *BlockHeader) BlockData() []byte {
 	// TODO, redefine the protocol version and storage
 	sec := uint32(bh.Timestamp.Unix())
 	_ = s.WriteElements(buf, bh.Version, &bh.ParentRoot, &bh.TxRoot,
-		&bh.StateRoot, bh.Difficulty, sec, bh.Pow.BlockData())
+		&bh.StateRoot, bh.Difficulty, sec, bh.Engine.Digest())
 	return buf.Bytes()
+}
+
+func (h *BlockHeader) PoW() pow.IPow {
+	return h.Engine.(pow.IPow)
 }
 
 // readBlockHeader reads a block header from io reader.  See Deserialize for
@@ -121,7 +118,7 @@ func readBlockHeader(r io.Reader, pver uint32, bh *BlockHeader) error {
 	// TODO fix time ambiguous
 	return s.ReadElements(r, &bh.Version, &bh.ParentRoot, &bh.TxRoot,
 		&bh.StateRoot, &bh.Difficulty, (*s.Uint32Time)(&bh.Timestamp),
-		&bh.Pow)
+		&bh.Engine)
 }
 
 // writeBlockHeader writes a block header to w.  See Serialize for
@@ -132,7 +129,7 @@ func writeBlockHeader(w io.Writer, pver uint32, bh *BlockHeader) error {
 	// TODO fix time ambiguous
 	sec := uint32(bh.Timestamp.Unix())
 	return s.WriteElements(w, bh.Version, &bh.ParentRoot, &bh.TxRoot,
-		&bh.StateRoot, bh.Difficulty, sec, bh.Pow.Bytes())
+		&bh.StateRoot, bh.Difficulty, sec, bh.Engine.Bytes())
 }
 
 // This function get the simple hash use each parents string, so it can't use to

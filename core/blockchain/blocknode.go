@@ -42,7 +42,7 @@ func (node *BlockNode) Difficulty() uint32 {
 }
 
 func (node *BlockNode) Pow() pow.IPow {
-	return node.GetHeader().Pow
+	return node.GetHeader().PoW()
 }
 
 func (node *BlockNode) GetPowType() pow.PowType {
