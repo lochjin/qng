@@ -16,4 +16,6 @@ func TestGenesisHash(t *testing.T) {
 		params.TestNetParams.Name+" genesis hash not equal latest")
 	assert.Equal(t, PrivNetGenesisHash, Genesis(&params.PrivNetParams, nil).ToBlock().Hash().String(),
 		params.PrivNetParam.Name+" genesis hash not equal latest")
+	assert.Equal(t, AmanaNetGenesisHash, Genesis(&params.AmanaNetParams, nil).ToBlock().Hash().String(),
+		params.PrivNetParam.Name+" genesis hash not equal latest")
 }

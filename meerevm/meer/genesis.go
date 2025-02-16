@@ -82,7 +82,7 @@ func DoDecodeAlloc(network *qparams.Params, genesisStr string, burnStr string) t
 	if err := json.NewDecoder(jsonR).Decode(&gds); err != nil {
 		panic(err)
 	}
-	if len(gds) != 4 {
+	if len(gds) != 5 {
 		panic(fmt.Errorf("Error genesis data config"))
 	}
 	var ngd *NetGenesisData
