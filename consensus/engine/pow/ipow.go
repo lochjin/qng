@@ -80,8 +80,6 @@ type IPow interface {
 	GetProofData() string
 	//set proof data
 	SetProofData([]byte)
-	Bytes() []byte
-	Digest() []byte
 	//if cur_reduce_diff > 0 compare cur_reduce_diff with powLimitBits or minDiff ，the cur_reduce_diff should less than powLimitBits , and should more than min diff
 	//if cur_reduce_diff <=0 return powLimit or min diff
 	GetSafeDiff(cur_reduce_diff uint64) *big.Int
@@ -98,6 +96,9 @@ type IPow interface {
 	FindSolver(headerData []byte, blockHash hash.Hash, targetDiffBits uint32) bool
 
 	Type() engine.EngineType
+	Name() string
+	Bytes() []byte
+	Digest() []byte
 }
 
 type Pow struct {

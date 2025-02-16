@@ -28,6 +28,7 @@ type InfoNodeResult struct {
 	ConsensusDeployment map[string]*ConsensusDeploymentDesc `json:"consensusdeployment,omitempty"`
 	Network             string                              `json:"network"`
 	Connections         int32                               `json:"connections"`
+	ConsensusEngine     string                              `json:"consensusengine,omitempty"`
 }
 
 // GetPeerInfoResult models the data returned from the getpeerinfo command.

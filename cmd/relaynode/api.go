@@ -148,6 +148,7 @@ func (api *PublicRelayAPI) GetNodeInfo() (interface{}, error) {
 		Network:         params.ActiveNetParams.Name,
 		Confirmations:   meerdag.StableConfirmations,
 		Modules:         []string{cmds.DefaultServiceNameSpace},
+		ConsensusEngine: params.ActiveNetParams.ConsensusConfig.Type().String(),
 	}
 	hostdns := api.node.HostDNS()
 	if hostdns != nil {

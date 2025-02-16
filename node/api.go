@@ -59,8 +59,6 @@ func NewPublicBlockChainAPI(node *QitmeerFull) *PublicBlockChainAPI {
 // Return the node info
 func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 	best := api.node.GetBlockChain().BestSnapshot()
-	node := api.node.GetBlockChain().BlockDAG().GetBlock(&best.Hash)
-	powNodes := api.node.GetBlockChain().GetCurrentPowDiff(node, pow.MEERXKECCAKV1)
 	ret := &json.InfoNodeResult{
 		ID:              api.node.GetPeerServer().PeerID().String(),
 		Version:         int32(1000000*version.Major + 10000*version.Minor + 100*version.Patch),
@@ -69,13 +67,12 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 		TotalSubsidy:    best.TotalSubsidy,
 		TimeOffset:      int64(api.node.GetBlockChain().TimeSource().Offset().Seconds()),
 		Connections:     int32(len(api.node.GetPeerServer().Peers().Active())),
-		PowDiff: &json.PowDiff{
-			CurrentDiff: getDifficultyRatio(powNodes, api.node.node.Params, pow.MEERXKECCAKV1),
-		},
+
 		Network:          params.ActiveNetParams.Name,
 		Confirmations:    meerdag.StableConfirmations,
 		CoinbaseMaturity: int32(api.node.node.Params.CoinbaseMaturity),
 		Modules:          []string{cmds.DefaultServiceNameSpace, cmds.MinerNameSpace, cmds.TestNameSpace, cmds.LogNameSpace, cmds.P2PNameSpace, cmds.WalletNameSpace},
+		ConsensusEngine:  params.ActiveNetParams.GenesisBlock.Block().Header.Engine.Name(),
 	}
 	ret.GraphState = marshal.GetGraphStateResult(best.GraphState)
 	ret.StateRoot = best.StateRoot.String()
@@ -88,6 +85,11 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 	}
 	if len(api.node.GetPeerServer().HostAddress()) > 0 {
 		ret.Addresss = api.node.GetPeerServer().HostAddress()
+	}
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		node := api.node.GetBlockChain().BlockDAG().GetBlock(&best.Hash)
+		powNodes := api.node.GetBlockChain().GetCurrentPowDiff(node, pow.MEERXKECCAKV1)
+		ret.PowDiff = &json.PowDiff{CurrentDiff: getDifficultyRatio(powNodes, api.node.node.Params, pow.MEERXKECCAKV1)}
 	}
 
 	// soft forks

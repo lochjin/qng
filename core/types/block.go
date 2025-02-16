@@ -136,6 +136,13 @@ func (h *BlockHeader) Size() int {
 	return len(h.Bytes())
 }
 
+func (h *BlockHeader) WorkSum() *big.Int {
+	if h.Engine.Type().IsPoW() {
+		return pow.CalcWork(h.Difficulty, h.PoW().GetPowType())
+	}
+	return big.NewInt(0)
+}
+
 // readBlockHeader reads a block header from io reader.  See Deserialize for
 // decoding block headers stored to disk, such as in a database, as opposed to
 // decoding from the type.

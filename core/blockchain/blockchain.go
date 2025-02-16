@@ -14,7 +14,6 @@ import (
 	"github.com/Qitmeer/qng/common/roughtime"
 	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/common/util"
-	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/engine/pow/difficultymanager"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/blockchain/token"
@@ -179,8 +178,9 @@ func (b *BlockChain) Init() error {
 	for _, v := range tips {
 		log.Info(fmt.Sprintf("hash=%s,order=%s,height=%d", v.GetHash(), meerdag.GetOrderLogStr(v.GetOrder()), v.GetHeight()))
 	}
-
-	b.difficultyManager = difficultymanager.NewDiffManager(b.Consensus(), b.params)
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		b.difficultyManager = difficultymanager.NewDiffManager(b.Consensus(), b.params)
+	}
 	return nil
 }
 
@@ -318,17 +318,8 @@ func (b *BlockChain) createChainState() error {
 	if err != nil {
 		return err
 	}
-	initTS := token.BuildGenesisTokenState()
-	err = initTS.Commit()
-	if err != nil {
-		return err
-	}
-	err = token.DBPutTokenState(b.DB(), ib.GetID(), initTS)
-	if err != nil {
-		return err
-	}
 	// Store the current best chain state into the database.
-	err = dbPutBestState(b.DB(), b.stateSnapshot, pow.CalcWork(header.Difficulty, header.PoW().GetPowType()))
+	err = dbPutBestState(b.DB(), b.stateSnapshot, header.WorkSum())
 	if err != nil {
 		return err
 	}
@@ -337,15 +328,27 @@ func (b *BlockChain) createChainState() error {
 	if err != nil {
 		return err
 	}
-	// Add genesis utxo
-	err = b.dbPutUtxoViewByBlock(genesisBlock)
-	if err != nil {
-		return err
-	}
-	// genesis tx index
-	err = b.DB().PutTxIdxEntrys(genesisBlock, ib)
-	if err != nil {
-		return err
+
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		initTS := token.BuildGenesisTokenState()
+		err = initTS.Commit()
+		if err != nil {
+			return err
+		}
+		err = token.DBPutTokenState(b.DB(), ib.GetID(), initTS)
+		if err != nil {
+			return err
+		}
+		// Add genesis utxo
+		err = b.dbPutUtxoViewByBlock(genesisBlock)
+		if err != nil {
+			return err
+		}
+		// genesis tx index
+		err = b.DB().PutTxIdxEntrys(genesisBlock, ib)
+		if err != nil {
+			return err
+		}
 	}
 	return b.bd.Commit(false)
 }
