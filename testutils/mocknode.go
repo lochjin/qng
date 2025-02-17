@@ -15,8 +15,8 @@ import (
 
 	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/config"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/blockchain"
-	"github.com/Qitmeer/qng/core/types/pow"
 	_ "github.com/Qitmeer/qng/database/legacydb/ffldb"
 	"github.com/Qitmeer/qng/log"
 	_ "github.com/Qitmeer/qng/meerevm/common"
@@ -79,8 +79,8 @@ type MockNode struct {
 	publicWalletManagerAPI  *wallet.PublicWalletManagerAPI
 	evmClient               *ethclient.Client
 	walletManager           *wallet.WalletManager
-	publicMeerChainAPI      *meer.PublicMeerChainAPI
-	privateMeerChainAPI     *meer.PrivateMeerChainAPI
+	publicMeerChainAPI      *meer.PublicBlockChainAPI
+	privateMeerChainAPI     *meer.PrivateBlockChainAPI
 }
 
 func (mn *MockNode) ID() uint {
@@ -156,7 +156,7 @@ func (mn *MockNode) setup() error {
 	}
 
 	//
-	ethchain := mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.MeerChain).ETHChain()
+	ethchain := mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.BlockChain).ETHChain()
 	backends := ethchain.Backend().AccountManager().Backends(keystore.KeyStoreType)
 	if len(backends) == 0 {
 		return fmt.Errorf("Failed to unlock accounts, keystore is not available")
@@ -178,7 +178,7 @@ func (mn *MockNode) setup() error {
 
 	log.Info("Import default key", "addr", account.String())
 
-	params.ActiveNetParams.PowConfig.DifficultyMode = pow.DIFFICULTY_MODE_DEVELOP
+	params.ActiveNetParams.ToPoWConfig().PowConfig.DifficultyMode = pow.DIFFICULTY_MODE_DEVELOP
 	return nil
 }
 
@@ -240,7 +240,7 @@ func (mn *MockNode) GetPrivateWalletManagerAPI() *wallet.PrivateWalletManagerAPI
 
 func (mn *MockNode) GetEvmClient() *ethclient.Client {
 	if mn.evmClient == nil {
-		mn.evmClient = mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.MeerChain).Client()
+		mn.evmClient = mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.BlockChain).Client()
 	}
 	return mn.evmClient
 }
@@ -262,7 +262,7 @@ func (mn *MockNode) GetBuilder() *testprivatekey.Builder {
 }
 
 func (mn *MockNode) DeterministicDeploymentProxy() *proxy.DeterministicDeploymentProxy {
-	return mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.MeerChain).DeterministicDeploymentProxy()
+	return mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.BlockChain).DeterministicDeploymentProxy()
 }
 
 func (mn *MockNode) Node() *node.Node {
@@ -296,16 +296,16 @@ func (mn *MockNode) HasTx(id *hash.Hash) bool {
 	return mn.n.GetQitmeerFull().GetBlockChain().HasTx(id)
 }
 
-func (mn *MockNode) GetPublicMeerChainAPI() *meer.PublicMeerChainAPI {
+func (mn *MockNode) GetPublicMeerChainAPI() *meer.PublicBlockChainAPI {
 	if mn.publicMeerChainAPI == nil {
-		mn.publicMeerChainAPI = meer.NewPublicMeerChainAPI(mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.MeerChain))
+		mn.publicMeerChainAPI = meer.NewPublicBlockChainAPI(mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.BlockChain))
 	}
 	return mn.publicMeerChainAPI
 }
 
-func (mn *MockNode) GetPrivateMeerChainAPI() *meer.PrivateMeerChainAPI {
+func (mn *MockNode) GetPrivateMeerChainAPI() *meer.PrivateBlockChainAPI {
 	if mn.privateMeerChainAPI == nil {
-		mn.privateMeerChainAPI = meer.NewPrivateMeerChainAPI(mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.MeerChain))
+		mn.privateMeerChainAPI = meer.NewPrivateBlockChainAPI(mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.BlockChain))
 	}
 	return mn.privateMeerChainAPI
 }

@@ -17,6 +17,9 @@ import (
 )
 
 func (cdb *LegacyChainDB) TryUpgrade(di *common.DatabaseInfo, interrupt <-chan struct{}) error {
+	if !params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		return nil
+	}
 	if di.Version() == common.CurrentDatabaseVersion {
 		// To fix old data, re index old genesis transaction data.
 		txId := params.ActiveNetParams.GenesisBlock.Transactions()[0].Hash()

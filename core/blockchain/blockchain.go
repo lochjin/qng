@@ -14,6 +14,7 @@ import (
 	"github.com/Qitmeer/qng/common/roughtime"
 	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/common/util"
+	"github.com/Qitmeer/qng/consensus/engine/pow/difficultymanager"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/blockchain/token"
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
@@ -22,8 +23,6 @@ import (
 	"github.com/Qitmeer/qng/core/serialization"
 	"github.com/Qitmeer/qng/core/state"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
-	"github.com/Qitmeer/qng/core/types/pow/difficultymanager"
 	"github.com/Qitmeer/qng/database/common"
 	"github.com/Qitmeer/qng/engine/txscript"
 	l "github.com/Qitmeer/qng/log"
@@ -138,7 +137,7 @@ type BlockChain struct {
 	wg      sync.WaitGroup
 	quit    chan struct{}
 
-	meerChain         *meer.MeerChain
+	meerChain         model.MeerChain
 	difficultyManager model.DifficultyManager
 
 	processQueueMap sync.Map
@@ -179,8 +178,9 @@ func (b *BlockChain) Init() error {
 	for _, v := range tips {
 		log.Info(fmt.Sprintf("hash=%s,order=%s,height=%d", v.GetHash(), meerdag.GetOrderLogStr(v.GetOrder()), v.GetHeight()))
 	}
-
-	b.difficultyManager = difficultymanager.NewDiffManager(b.Consensus(), b.params)
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		b.difficultyManager = difficultymanager.NewDiffManager(b.Consensus(), b.params)
+	}
 	return nil
 }
 
@@ -282,11 +282,15 @@ func (b *BlockChain) initChainState() error {
 	b.stateSnapshot = newBestState(mainTip.GetHash(), mainTipNode.Difficulty(), blockSize, numTxns,
 		b.CalcPastMedianTime(mainTip), state.totalTxns, b.bd.GetMainChainTip().GetState().GetWeight(),
 		b.bd.GetGraphState(), &state.tokenTipHash, *mainTip.GetState().Root())
-	ts := b.GetTokenState(b.TokenTipID)
-	if ts == nil {
-		return fmt.Errorf("token state error")
+
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		ts := b.GetTokenState(b.TokenTipID)
+		if ts == nil {
+			return fmt.Errorf("token state error")
+		}
+		return ts.Commit()
 	}
-	return ts.Commit()
+	return nil
 }
 
 // createChainState initializes both the database and the chain state to the
@@ -318,17 +322,8 @@ func (b *BlockChain) createChainState() error {
 	if err != nil {
 		return err
 	}
-	initTS := token.BuildGenesisTokenState()
-	err = initTS.Commit()
-	if err != nil {
-		return err
-	}
-	err = token.DBPutTokenState(b.DB(), ib.GetID(), initTS)
-	if err != nil {
-		return err
-	}
 	// Store the current best chain state into the database.
-	err = dbPutBestState(b.DB(), b.stateSnapshot, pow.CalcWork(header.Difficulty, header.Pow.GetPowType()))
+	err = dbPutBestState(b.DB(), b.stateSnapshot, header.WorkSum())
 	if err != nil {
 		return err
 	}
@@ -337,15 +332,27 @@ func (b *BlockChain) createChainState() error {
 	if err != nil {
 		return err
 	}
-	// Add genesis utxo
-	err = b.dbPutUtxoViewByBlock(genesisBlock)
-	if err != nil {
-		return err
-	}
-	// genesis tx index
-	err = b.DB().PutTxIdxEntrys(genesisBlock, ib)
-	if err != nil {
-		return err
+
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		initTS := token.BuildGenesisTokenState()
+		err = initTS.Commit()
+		if err != nil {
+			return err
+		}
+		err = token.DBPutTokenState(b.DB(), ib.GetID(), initTS)
+		if err != nil {
+			return err
+		}
+		// Add genesis utxo
+		err = b.dbPutUtxoViewByBlock(genesisBlock)
+		if err != nil {
+			return err
+		}
+		// genesis tx index
+		err = b.DB().PutTxIdxEntrys(genesisBlock, ib)
+		if err != nil {
+			return err
+		}
 	}
 	return b.bd.Commit(false)
 }
@@ -1083,15 +1090,16 @@ func New(consensus model.Consensus) (*BlockChain, error) {
 	b.bd.SetCacheSize(config.DAGCacheSize, config.BlockDataCacheSize)
 
 	b.InitServices()
-	b.Services().RegisterService(b.bd)
-
-	mchain, err := meer.NewMeerChain(consensus)
+	err := b.Services().RegisterService(b.bd)
+	if err != nil {
+		return nil, err
+	}
+	mchain, err := meer.NewBlockChain(consensus)
 	if err != nil {
 		return nil, err
 	}
 	b.meerChain = mchain
-	b.Services().RegisterService(b.meerChain)
-	return &b, nil
+	return &b, b.Services().RegisterService(b.meerChain)
 }
 
 func init() {

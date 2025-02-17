@@ -12,7 +12,7 @@ import (
 	"github.com/Qitmeer/qng/cmd/miner/common"
 	"github.com/Qitmeer/qng/cmd/miner/core"
 	qitmeer "github.com/Qitmeer/qng/common/hash"
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/params"
 	"math/big"
 	"strconv"
@@ -126,7 +126,7 @@ func (s *QitmeerStratum) CalcBasePowLimit() *big.Int {
 	case pow.MEERXKECCAKV1:
 		return new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), s.Cfg.OptionConfig.BaseDiff), big.NewInt(1))
 	}
-	return params.MainNetParams.PowConfig.Blake2bdPowLimit
+	return params.MainNetParams.ToPoWConfig().PowConfig.Blake2bdPowLimit
 }
 
 func (this *QitmeerStratum) HandleReply() {

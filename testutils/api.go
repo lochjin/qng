@@ -7,9 +7,9 @@ package testutils
 import (
 	"encoding/hex"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"strconv"
 )
 

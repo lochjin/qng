@@ -171,10 +171,10 @@ func (b *BlockChain) MeerVerifyTx(tx model.Tx, utxoView *utxo.UtxoViewpoint) (in
 	if ba <= 0 {
 		return 0, fmt.Errorf("Balance (%s) is %d\n", pka.String(), ba)
 	}
-	if ba < itx.Transaction.TxOut[0].Amount.Value {
-		return 0, fmt.Errorf("Balance (%s)  %d < output %d", pka.String(), ba, itx.Transaction.TxOut[0].Amount.Value)
+	if ba < itx.Src.TxOut[0].Amount.Value {
+		return 0, fmt.Errorf("Balance (%s)  %d < output %d", pka.String(), ba, itx.Src.TxOut[0].Amount.Value)
 	}
-	return ba - itx.Transaction.TxOut[0].Amount.Value, nil
+	return ba - itx.Src.TxOut[0].Amount.Value, nil
 }
 
 func (b *BlockChain) VerifyMeerTx(tx model.Tx) error {

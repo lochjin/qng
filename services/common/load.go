@@ -215,11 +215,14 @@ func SetupConfig(cfg *config.Config) error {
 		numNets++
 		params.ActiveNetParams = &params.MixNetParam
 	}
+	if cfg.AmanaNet {
+		numNets++
+		params.ActiveNetParams = &params.AmanaNetParam
+	}
 	// Multiple networks can't be selected simultaneously.
 	if numNets > 1 {
 		return fmt.Errorf("SetupConfig: the testnet and simnet params can't be used together -- choose one of the three")
 	}
-
 	// default p2p port
 	if len(cfg.DefaultPort) > 0 {
 		params.ActiveNetParams.Params.DefaultPort = cfg.DefaultPort
@@ -237,11 +240,13 @@ func SetupConfig(cfg *config.Config) error {
 		cfg.P2PUDPPort = params.ActiveNetParams.DefaultUDPPort
 	}
 	//
-	if err := params.ActiveNetParams.PowConfig.Check(); err != nil {
+	if err := params.ActiveNetParams.ConsensusConfig.Check(); err != nil {
 		return err
 	}
-	if cfg.PowDiffMode != defaultPowDiffMode {
-		params.ActiveNetParams.PowConfig.DifficultyMode = cfg.PowDiffMode
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		if cfg.PowDiffMode != defaultPowDiffMode {
+			params.ActiveNetParams.ToPoWConfig().PowConfig.DifficultyMode = cfg.PowDiffMode
+		}
 	}
 
 	// Add default port to all rpc listener addresses if needed and remove

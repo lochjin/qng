@@ -8,11 +8,8 @@ import (
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/event"
-	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/engine/txscript"
 	"github.com/Qitmeer/qng/log"
-	"github.com/Qitmeer/qng/meerevm/amana"
-	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/services/index"
 )
@@ -32,8 +29,6 @@ type consensus struct {
 
 	blockchain   model.BlockChain
 	indexManager model.IndexManager
-
-	amanaService *amana.AmanaService
 }
 
 // Init initializes consensus
@@ -53,15 +48,6 @@ func (s *consensus) Init() error {
 		return err
 	}
 	s.blockchain = blockchain
-	//
-	if s.cfg.Amana && params.ActiveNetParams.Net != protocol.MainNet {
-		ser, err := amana.New(s.cfg, s)
-		if err != nil {
-			return err
-		}
-		s.amanaService = ser
-	}
-	//
 	s.subscribe()
 	return blockchain.Init()
 }
@@ -108,13 +94,6 @@ func (s *consensus) GenesisHash() *hash.Hash {
 
 func (s *consensus) Params() *params.Params {
 	return params.ActiveNetParams.Params
-}
-
-func (s *consensus) AmanaService() service.IService {
-	if s.amanaService == nil {
-		return nil
-	}
-	return s.amanaService
 }
 
 func (s *consensus) subscribe() {

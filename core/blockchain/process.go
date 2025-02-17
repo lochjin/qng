@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	"github.com/Qitmeer/qng/core/state"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/engine/txscript"
 	l "github.com/Qitmeer/qng/log"
 	"github.com/Qitmeer/qng/meerdag"
@@ -173,9 +173,9 @@ func (b *BlockChain) preProcessBlock(block *types.SerializedBlock, flags Behavio
 			// maximum adjustment allowed by the retarget rules.
 			duration := blockHeader.Timestamp.Sub(checkpointTime)
 			requiredTarget := pow.CompactToBig(b.calcEasiestDifficulty(
-				checkpointNode.Difficulty, duration, block.Block().Header.Pow))
+				checkpointNode.Difficulty, duration, block.Block().Header.PoW()))
 			currentTarget := pow.CompactToBig(blockHeader.Difficulty)
-			if !block.Block().Header.Pow.CompareDiff(currentTarget, requiredTarget) {
+			if !block.Block().Header.PoW().CompareDiff(currentTarget, requiredTarget) {
 				str := fmt.Sprintf("block target difficulty of %064x "+
 					"is too low when compared to the previous "+
 					"checkpoint", currentTarget)

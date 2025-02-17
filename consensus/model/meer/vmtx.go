@@ -14,7 +14,7 @@ import (
 )
 
 type VMTx struct {
-	*Tx
+	*Transaction
 	Coinbase hash.Hash
 	ETx      *etypes.Transaction
 
@@ -45,7 +45,7 @@ func NewVMTx(tx *types.Transaction, coinbase *types.Transaction) (*VMTx, error) 
 	}
 
 	vt := &VMTx{
-		Tx: &Tx{Type: types.TxTypeCrossChainVM, Data: common.ToTxHex(tx.TxIn[0].SignScript)},
+		Transaction: &Transaction{Type: types.TxTypeCrossChainVM, Data: common.ToTxHex(tx.TxIn[0].SignScript)},
 	}
 	if coinbase != nil {
 		err := vt.setCoinbaseTx(coinbase)

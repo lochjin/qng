@@ -15,6 +15,13 @@ type PowResult struct {
 	ProofData *ProofData `json:"proof_data,omitempty"`
 }
 
+// poa json result
+type PoAInfo struct {
+	Vanity  string   `json:"vanity"`
+	Seal    string   `json:"seal"`
+	Signers []string `json:"signers,omitempty"`
+}
+
 // BlockVerboseResult models the data from the getblock command when the
 // verbose flag is set.  When the verbose flag is not set, getblock returns a
 // hex-encoded string.

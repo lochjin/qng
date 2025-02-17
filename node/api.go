@@ -15,10 +15,10 @@ import (
 
 	"github.com/Qitmeer/qng/common/marshal"
 	"github.com/Qitmeer/qng/common/roughtime"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/forks"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/protocol"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/Qitmeer/qng/meerevm/eth"
 	"github.com/Qitmeer/qng/params"
@@ -59,8 +59,6 @@ func NewPublicBlockChainAPI(node *QitmeerFull) *PublicBlockChainAPI {
 // Return the node info
 func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 	best := api.node.GetBlockChain().BestSnapshot()
-	node := api.node.GetBlockChain().BlockDAG().GetBlock(&best.Hash)
-	powNodes := api.node.GetBlockChain().GetCurrentPowDiff(node, pow.MEERXKECCAKV1)
 	ret := &json.InfoNodeResult{
 		ID:              api.node.GetPeerServer().PeerID().String(),
 		Version:         int32(1000000*version.Major + 10000*version.Minor + 100*version.Patch),
@@ -69,13 +67,12 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 		TotalSubsidy:    best.TotalSubsidy,
 		TimeOffset:      int64(api.node.GetBlockChain().TimeSource().Offset().Seconds()),
 		Connections:     int32(len(api.node.GetPeerServer().Peers().Active())),
-		PowDiff: &json.PowDiff{
-			CurrentDiff: getDifficultyRatio(powNodes, api.node.node.Params, pow.MEERXKECCAKV1),
-		},
+
 		Network:          params.ActiveNetParams.Name,
 		Confirmations:    meerdag.StableConfirmations,
 		CoinbaseMaturity: int32(api.node.node.Params.CoinbaseMaturity),
 		Modules:          []string{cmds.DefaultServiceNameSpace, cmds.MinerNameSpace, cmds.TestNameSpace, cmds.LogNameSpace, cmds.P2PNameSpace, cmds.WalletNameSpace},
+		ConsensusEngine:  params.ActiveNetParams.GenesisBlock.Block().Header.Engine.Name(),
 	}
 	ret.GraphState = marshal.GetGraphStateResult(best.GraphState)
 	ret.StateRoot = best.StateRoot.String()
@@ -88,6 +85,11 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 	}
 	if len(api.node.GetPeerServer().HostAddress()) > 0 {
 		ret.Addresss = api.node.GetPeerServer().HostAddress()
+	}
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		node := api.node.GetBlockChain().BlockDAG().GetBlock(&best.Hash)
+		powNodes := api.node.GetBlockChain().GetCurrentPowDiff(node, pow.MEERXKECCAKV1)
+		ret.PowDiff = &json.PowDiff{CurrentDiff: getDifficultyRatio(powNodes, api.node.node.Params, pow.MEERXKECCAKV1)}
 	}
 
 	// soft forks
@@ -102,13 +104,6 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 	} else {
 		ret.ConsensusDeployment["meerevm"] = &json.ConsensusDeploymentDesc{Status: "active"}
 	}
-
-	if api.node.node.Config.Amana {
-		ret.ConsensusDeployment["amana"] = &json.ConsensusDeploymentDesc{Status: "active"}
-	} else {
-		ret.ConsensusDeployment["amana"] = &json.ConsensusDeploymentDesc{Status: "inactive"}
-	}
-
 	return ret, nil
 }
 
@@ -116,7 +111,7 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 // minimum difficulty using the passed bits field from the header of a block.
 func getDifficultyRatio(target *big.Int, params *params.Params, powType pow.PowType) float64 {
 	instance := pow.GetInstance(powType, 0, []byte{})
-	instance.SetParams(params.PowConfig)
+	instance.SetParams(params.ToPoWConfig().PowConfig)
 	// The minimum difficulty is the max possible proof-of-work limit bits
 	// converted back to a number.  Note this is not the same as the proof of
 	// work limit directly because the block difficulty is encoded in a block

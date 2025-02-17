@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/address"
 	"github.com/Qitmeer/qng/core/blockchain"
@@ -12,7 +13,6 @@ import (
 	"github.com/Qitmeer/qng/core/merkle"
 	s "github.com/Qitmeer/qng/core/serialization"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/engine/txscript"
 	"github.com/Qitmeer/qng/log"
 	"github.com/Qitmeer/qng/meerdag"
@@ -544,7 +544,7 @@ mempool:
 		StateRoot:  *bc.CalculateStateRoot(blockTxns),
 		Timestamp:  ts,
 		Difficulty: reqCompactDifficulty,
-		Pow:        pow.GetInstance(powType, 0, []byte{}),
+		Engine:     pow.GetInstance(powType, 0, []byte{}),
 		// Size declared below
 	}
 	for _, pb := range parents {
@@ -608,9 +608,9 @@ func UpdateBlockTime(msgBlock *types.Block, chain *blockchain.BlockChain, timeSo
 
 	// If running on a network that requires recalculating the difficulty,
 	// do so now.
-	if activeNetParams.ReduceMinDifficulty {
+	if activeNetParams.ConsensusConfig.Type().IsPoW() && activeNetParams.ToPoWConfig().ReduceMinDifficulty {
 		difficulty, err := chain.CalcNextRequiredDifficulty(
-			newTimestamp, msgBlock.Header.Pow.GetPowType())
+			newTimestamp, msgBlock.Header.PoW().GetPowType())
 		if err != nil {
 			return miningRuleError(ErrGettingDifficulty, err.Error())
 		}

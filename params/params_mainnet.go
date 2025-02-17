@@ -8,9 +8,10 @@ package params
 
 import (
 	"github.com/Qitmeer/qng/common"
+	"github.com/Qitmeer/qng/consensus/engine/config"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/ledger"
 	eparams "github.com/ethereum/go-ethereum/params"
 	"math/big"
@@ -43,50 +44,52 @@ var MainNetParams = Params{
 		"/dns4/ns1.qitmeer.info/tcp/18132/p2p/16Uiu2HAmLZmu4rBkAXeeHKofb1MECv6N2dbQBuyCs5Wywi7PVi4c",
 		"/dns4/ns2.qitmeer.info/tcp/8130/p2p/16Uiu2HAmGtiMWoDVKtJd3VNWW8NvrM8DcyzteNpKae8ZuZWvUKCy",
 	},
+	GenesisBlock:   types.NewBlock(&genesisBlock),
+	GenesisHash:    &genesisHash,
+	CoinbaseConfig: CoinbaseConfigs{},
 	LedgerParams: ledger.LedgerParams{
 		GenesisAmountUnit: 1000 * 1e8,                               // 1000 MEER every utxo
 		MaxLockHeight:     86400 / mainTargetTimePerBlock * 365 * 5, // max lock height
 	},
-	// Chain parameters
-	GenesisBlock: types.NewBlock(&genesisBlock),
-	GenesisHash:  &genesisHash,
-	PowConfig: &pow.PowConfig{
-		Blake2bdPowLimit:             mainPowLimit,
-		Blake2bdPowLimitBits:         0x1b0fffff,
-		X16rv3PowLimit:               mainPowLimit,
-		X16rv3PowLimitBits:           0x1b0fffff,
-		X8r16PowLimit:                mainPowLimit,
-		X8r16PowLimitBits:            0x1b0fffff,
-		QitmeerKeccak256PowLimit:     mainPowLimit,
-		QitmeerKeccak256PowLimitBits: 0x1b0fffff,
-		//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
-		// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
-		// 24 edge_bits only need hash 1*4 times use for privnet if GPS is 2. need 50 /2 * 4 find once
-		CuckarooMinDifficulty:     0x1300000 * 4,
-		CuckaroomMinDifficulty:    0x1300000 * 4,
-		CuckatooMinDifficulty:     0x1300000 * 4,
-		MeerXKeccakV1PowLimit:     mainPowLimit,
-		MeerXKeccakV1PowLimitBits: 0x1b0fffff,
-		Percent: map[pow.MainHeight]pow.PercentItem{
-			pow.MainHeight(0): {
-				pow.MEERXKECCAKV1: 100,
+	ConsensusConfig: &config.PoWConfig{
+		PowConfig: &pow.PowConfig{
+			Blake2bdPowLimit:             mainPowLimit,
+			Blake2bdPowLimitBits:         0x1b0fffff,
+			X16rv3PowLimit:               mainPowLimit,
+			X16rv3PowLimitBits:           0x1b0fffff,
+			X8r16PowLimit:                mainPowLimit,
+			X8r16PowLimitBits:            0x1b0fffff,
+			QitmeerKeccak256PowLimit:     mainPowLimit,
+			QitmeerKeccak256PowLimitBits: 0x1b0fffff,
+			//hash ffffffffffffffff000000000000000000000000000000000000000000000000 corresponding difficulty is 48 for edge bits 24
+			// Uniform field type uint64 value is 48 . bigToCompact the uint32 value
+			// 24 edge_bits only need hash 1*4 times use for privnet if GPS is 2. need 50 /2 * 4 find once
+			CuckarooMinDifficulty:     0x1300000 * 4,
+			CuckaroomMinDifficulty:    0x1300000 * 4,
+			CuckatooMinDifficulty:     0x1300000 * 4,
+			MeerXKeccakV1PowLimit:     mainPowLimit,
+			MeerXKeccakV1PowLimitBits: 0x1b0fffff,
+			Percent: map[pow.MainHeight]pow.PercentItem{
+				pow.MainHeight(0): {
+					pow.MEERXKECCAKV1: 100,
+				},
 			},
+			// after this height the big graph will be the main pow graph
+			AdjustmentStartMainHeight: 45 * 1440 * 60 / mainTargetTimePerBlock,
 		},
-		// after this height the big graph will be the main pow graph
-		AdjustmentStartMainHeight: 45 * 1440 * 60 / mainTargetTimePerBlock,
+		ReduceMinDifficulty:      false,
+		MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
+		WorkDiffAlpha:            1,
+		WorkDiffWindowSize:       mainWorkDiffWindowSize,
+		WorkDiffWindows:          20,
+		RetargetAdjustmentFactor: 2,
 	},
-	CoinbaseConfig:           CoinbaseConfigs{},
-	ReduceMinDifficulty:      false,
-	MinDiffReductionTime:     0, // Does not apply since ReduceMinDifficulty false
-	GenerateSupported:        false,
-	WorkDiffAlpha:            1,
-	WorkDiffWindowSize:       mainWorkDiffWindowSize,
-	WorkDiffWindows:          20, //
-	MaximumBlockSizes:        []int{1310720},
-	MaxTxSize:                1000000,
-	TargetTimePerBlock:       time.Second * mainTargetTimePerBlock,
-	TargetTimespan:           time.Second * mainTargetTimePerBlock * mainWorkDiffWindowSize, // TimePerBlock * WindowSize
-	RetargetAdjustmentFactor: 2,
+
+	GenerateSupported:  false,
+	MaximumBlockSizes:  []int{1310720},
+	MaxTxSize:          1000000,
+	TargetTimePerBlock: time.Second * mainTargetTimePerBlock,
+	TargetTimespan:     time.Second * mainTargetTimePerBlock * mainWorkDiffWindowSize, // TimePerBlock * WindowSize
 
 	// Subsidy parameters.
 	BaseSubsidy:              10 * 1e8, // POW daily supply is almost 24*60*(60/30)*10 = 28880, ignore the DAG concurrent increment.
@@ -150,6 +153,4 @@ var MainNetParams = Params{
 	MeerEVMForkBlock:  big.NewInt(951100),
 	MeerUTXOForkBlock: big.NewInt(1200000),
 	GasLimitForkBlock: big.NewInt(606567),
-
-	AmanaConfig: amanaChainConfig,
 }

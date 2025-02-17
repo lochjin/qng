@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/crypto/seed"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/qx"
@@ -146,7 +146,7 @@ func main() {
 	base58checkVersion = qx.QitmeerBase58checkVersionFlag{}
 	base58checkVersion.Set("mainnet")
 	base58CheckEncodeCommand.BoolVar(&base58checkVersion.PK, "pk", false, "Input is public key")
-	base58CheckEncodeCommand.Var(&base58checkVersion, "v", "base58check `version` [mainnet|testnet|privnet")
+	base58CheckEncodeCommand.Var(&base58checkVersion, "v", "base58check `version` [mainnet|testnet|privnet|amananet")
 	base58CheckEncodeCommand.StringVar(&base58checkMode, "m", "qitmeer", "base58check encode mode : [qitmeer|btc]")
 	base58CheckEncodeCommand.StringVar(&base58checkHasher, "a", "", "base58check hasher")
 	base58CheckEncodeCommand.IntVar(&base58checkCksumSize, "c", 4, "base58check checksum size")
@@ -178,7 +178,7 @@ func main() {
 	compactToGPSCmd.BoolVar(&printDetail, "p", false, "-p means print details")
 	compactToGPSCmd.IntVar(&cuckoo_blocktime, "t", 43, "blocktime")
 	compactToGPSCmd.IntVar(&mheight, "m", 1, "mheight")
-	compactToGPSCmd.StringVar(&network, "n", "mainnet", "the target network. (mainnet, testnet, privnet,mixnet)")
+	compactToGPSCmd.StringVar(&network, "n", "mainnet", "the target network. (mainnet, testnet, privnet,mixnet,amananet)")
 	compactToGPSCmd.StringVar(&powType, "a", "cuckaroom", "-a means use the selected cuckoo pow algorithm (cuckaroo,cuckaroom, cuckatoo), default is cuckaroom")
 	compactToGPSCmd.Usage = func() {
 		cmdUsage(compactToGPSCmd, "Usage: qx compact-to-gps -e 24 -ct 43 [compact value]\n")
@@ -188,7 +188,7 @@ func main() {
 	gpsToCompactCmd.IntVar(&edgeBits, "e", 29, "edgebits")
 	gpsToCompactCmd.IntVar(&cuckoo_blocktime, "t", 43, "blocktime")
 	gpsToCompactCmd.IntVar(&mheight, "m", 1, "mheight")
-	gpsToCompactCmd.StringVar(&network, "n", "mainnet", "the target network. (mainnet, testnet, privnet,mixnet)")
+	gpsToCompactCmd.StringVar(&network, "n", "mainnet", "the target network. (mainnet, testnet, privnet,mixnet,amananet)")
 	gpsToCompactCmd.StringVar(&powType, "a", "cuckaroom", "-a means use the selected cuckoo pow algorithm (cuckaroo,cuckaroom, cuckatoo), default is cuckaroom")
 	gpsToCompactCmd.Usage = func() {
 		cmdUsage(gpsToCompactCmd, "Usage: qx gps-to-compact -e 29 -t 43 [GPS float64]\n")
@@ -305,19 +305,19 @@ func main() {
 		cmdUsage(hdNewCmd, "Usage: qx hd-new [-v version] [entropy] \n")
 	}
 	hdVer.Set("testnet")
-	hdNewCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|bip32]")
+	hdNewCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|amananet|bip32]")
 
 	hdToPubCmd := flag.NewFlagSet("hd-to-public", flag.ExitOnError)
 	hdToPubCmd.Usage = func() {
 		cmdUsage(hdToPubCmd, "Usage: qx hd-to-public [hd_private_key] \n")
 	}
-	hdToPubCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|bip32]")
+	hdToPubCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|amananet|bip32]")
 
 	hdToEcCmd := flag.NewFlagSet("hd-to-ec", flag.ExitOnError)
 	hdToEcCmd.Usage = func() {
 		cmdUsage(hdToEcCmd, "Usage: qx hd-to-ec [hd_private_key or hd_public_key] \n")
 	}
-	hdToEcCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|bip32]")
+	hdToEcCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|amananet|bip32]")
 
 	hdDecodeCmd := flag.NewFlagSet("hd-decode", flag.ExitOnError)
 	hdDecodeCmd.Usage = func() {
@@ -332,7 +332,7 @@ func main() {
 	hdDeriveCmd.BoolVar(&hdHarden, "d", false, "create a hardened key")
 	derivePath = qx.DerivePathFlag{Path: hd.DerivationPath{}}
 	hdDeriveCmd.Var(&derivePath, "p", "hd derive `path`. ex: m/44'/0'/0'/0")
-	hdDeriveCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|bip32]")
+	hdDeriveCmd.Var(&hdVer, "v", "The HD(BIP32) `version` [mainnet|testnet|privnet|amananet|bip32]")
 
 	// Mnemonic (BIP39)
 	mnemonicNewCmd := flag.NewFlagSet("mnemonic-new", flag.ExitOnError)
@@ -387,14 +387,14 @@ func main() {
 	ecToAddrCmd.Usage = func() {
 		cmdUsage(ecToAddrCmd, "Usage: qx ec-to-addr [ec_public_key] \n")
 	}
-	ecToAddrCmd.Var(&base58checkVersion, "v", "base58check `version` [mainnet|testnet|privnet]")
+	ecToAddrCmd.Var(&base58checkVersion, "v", "base58check `version` [mainnet|testnet|privnet|amananet]")
 
 	// PKAddress
 	ecToPKAddrCmd := flag.NewFlagSet("ec-to-pkaddr", flag.ExitOnError)
 	ecToPKAddrCmd.Usage = func() {
 		cmdUsage(ecToPKAddrCmd, "Usage: qx ec-to-pkaddr [ec_public_key] \n")
 	}
-	ecToPKAddrCmd.Var(&base58checkVersion, "v", "base58check `version` [mainnet|testnet|privnet]")
+	ecToPKAddrCmd.Var(&base58checkVersion, "v", "base58check `version` [mainnet|testnet|privnet|amananet]")
 
 	// ETHAddress
 	ecToETHAddrCmd := flag.NewFlagSet("ec-to-ethaddr", flag.ExitOnError)
@@ -419,7 +419,7 @@ func main() {
 	txDecodeCmd.Usage = func() {
 		cmdUsage(txDecodeCmd, "Usage: qx tx-decode [base16_string] \n")
 	}
-	txDecodeCmd.StringVar(&network, "n", "mainnet", "decode rawtx for the target network. (mainnet, testnet, privnet)")
+	txDecodeCmd.StringVar(&network, "n", "mainnet", "decode rawtx for the target network. (mainnet, testnet, privnet,amananet)")
 
 	txEncodeCmd := flag.NewFlagSet("tx-encode", flag.ExitOnError)
 	txEncodeCmd.Usage = func() {
@@ -632,6 +632,8 @@ example:
 			return &params.MainNetParams
 		case "mixnet":
 			return &params.MixNetParams
+		case "amananet":
+			return &params.AmanaNetParams
 		default:
 			return &params.TestNetParams
 		}
@@ -642,19 +644,19 @@ example:
 			instance := &pow.Cuckaroo{}
 			instance.SetMainHeight(pow.MainHeight(mheight))
 			instance.SetEdgeBits(uint8(edgeBits))
-			instance.SetParams(p.PowConfig)
+			instance.SetParams(p.ToPoWConfig().PowConfig)
 			return int(instance.GraphWeight())
 		case "cuckaroom":
 			instance := &pow.Cuckaroom{}
 			instance.SetMainHeight(pow.MainHeight(mheight))
 			instance.SetEdgeBits(uint8(edgeBits))
-			instance.SetParams(p.PowConfig)
+			instance.SetParams(p.ToPoWConfig().PowConfig)
 			return int(instance.GraphWeight())
 		case "cuckatoo":
 			instance := &pow.Cuckaroo{}
 			instance.SetMainHeight(pow.MainHeight(mheight))
 			instance.SetEdgeBits(uint8(edgeBits))
-			instance.SetParams(p.PowConfig)
+			instance.SetParams(p.ToPoWConfig().PowConfig)
 			return int(instance.GraphWeight())
 		}
 		return 0

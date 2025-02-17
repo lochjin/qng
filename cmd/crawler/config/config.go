@@ -188,7 +188,7 @@ func (c *Config) Load() error {
 		return fmt.Errorf("%s", str)
 	}
 
-	if err := params.ActiveNetParams.PowConfig.Check(); err != nil {
+	if err := params.ActiveNetParams.ConsensusConfig.Check(); err != nil {
 		return err
 	}
 	return nil

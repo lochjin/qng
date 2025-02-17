@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func (m *MeerPool) checkMeerChangeTxs(block *types.Block, receipts types.Receipts) error {
+func (m *TxPool) checkMeerChangeTxs(block *types.Block, receipts types.Receipts) error {
 	txsNum := len(block.Transactions())
 	if txsNum <= 0 {
 		return nil
@@ -41,7 +41,7 @@ func (m *MeerPool) checkMeerChangeTxs(block *types.Block, receipts types.Receipt
 					if err != nil {
 						return err
 					}
-					err = m.CheckMeerChangeExportTx(tx, ccExportEvent, nil)
+					err = m.checkMeerChangeExportTx(tx, ccExportEvent, nil)
 					if err != nil {
 						m.ethTxPool.RemoveTx(tx.Hash(), true)
 						return err
@@ -60,12 +60,27 @@ func (m *MeerPool) checkMeerChangeTxs(block *types.Block, receipts types.Receipt
 	return nil
 }
 
-func (m *MeerPool) HasUtxo(txid *hash.Hash, idx uint32) bool {
+func (m *TxPool) HasUtxo(txid *hash.Hash, idx uint32) bool {
 	ue, err := m.consensus.BlockChain().GetUtxo(*qtypes.NewOutPoint(txid, idx))
 	return err == nil && ue != nil
 }
 
-func (m *MeerPool) CheckMeerChangeExportTx(tx *types.Transaction, ced *meerchange.MeerchangeExportData, utxoView *utxo.UtxoViewpoint) error {
+func (m *TxPool) CheckMeerChangeExportTx(tx *types.Transaction, ced interface{}, utxoView interface{}) error {
+	c, ok := ced.(*meerchange.MeerchangeExportData)
+	if !ok {
+		return fmt.Errorf("No MeerchangeExportData")
+	}
+	var u *utxo.UtxoViewpoint
+	if utxoView != nil {
+		u, ok = utxoView.(*utxo.UtxoViewpoint)
+		if !ok {
+			return fmt.Errorf("No UtxoViewpoint")
+		}
+	}
+	return m.checkMeerChangeExportTx(tx, c, u)
+}
+
+func (m *TxPool) checkMeerChangeExportTx(tx *types.Transaction, ced *meerchange.MeerchangeExportData, utxoView *utxo.UtxoViewpoint) error {
 	ops, err := ced.GetOutPoints()
 	if err != nil {
 		return err
@@ -129,7 +144,7 @@ func (m *MeerPool) CheckMeerChangeExportTx(tx *types.Transaction, ced *meerchang
 	return nil
 }
 
-func (m *MeerPool) checkSignature(ced *meerchange.MeerchangeExportData, entrys []*utxo.UtxoEntry) ([]byte, error) {
+func (m *TxPool) checkSignature(ced *meerchange.MeerchangeExportData, entrys []*utxo.UtxoEntry) ([]byte, error) {
 	eHash := meerchange.CalcExportHash(ced.Opt.Ops, ced.Opt.Fee)
 	sig, err := hex.DecodeString(ced.Opt.Sig)
 	if err != nil {
@@ -149,7 +164,7 @@ func (m *MeerPool) checkSignature(ced *meerchange.MeerchangeExportData, entrys [
 		if len(entry.PkScript()) <= 0 {
 			return nil, fmt.Errorf("PkScript is empty")
 		}
-		_, err := common.CheckUTXOPubkey(pubKey, entry)
+		_, err := CheckUTXOPubkey(pubKey, entry)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +177,7 @@ func (m *MeerPool) checkSignature(ced *meerchange.MeerchangeExportData, entrys [
 	return pubKey.SerializeUncompressed(), nil
 }
 
-func (mc *MeerChain) GetMeerChangeCode() ([]byte, error) {
+func (mc *BlockChain) GetMeerChangeCode() ([]byte, error) {
 	if len(meerchange.Bytecode) > 0 {
 		return meerchange.Bytecode, nil
 	}
@@ -174,7 +189,7 @@ func (mc *MeerChain) GetMeerChangeCode() ([]byte, error) {
 	return bytecode, nil
 }
 
-func (mc *MeerChain) CheckMeerChangeDeploy() (bool, []byte) {
+func (mc *BlockChain) CheckMeerChangeDeploy() (bool, []byte) {
 	bytecode, err := mc.GetMeerChangeCode()
 	if err != nil {
 		log.Warn(err.Error())
@@ -186,7 +201,7 @@ func (mc *MeerChain) CheckMeerChangeDeploy() (bool, []byte) {
 	return true, bytecode
 }
 
-func (mc *MeerChain) IsMeerChangeDeployed() bool {
+func (mc *BlockChain) IsMeerChangeDeployed() bool {
 	ret, _ := mc.CheckMeerChangeDeploy()
 	return ret
 }

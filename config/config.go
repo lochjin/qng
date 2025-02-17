@@ -33,6 +33,7 @@ type Config struct {
 	TestNet            bool     `long:"testnet" description:"Use the test network"`
 	MixNet             bool     `long:"mixnet" description:"Use the test mix pow network"`
 	PrivNet            bool     `long:"privnet" description:"Use the private network"`
+	AmanaNet           bool     `long:"amananet" description:"Use the Amana network"`
 	DbType             string   `long:"dbtype" description:"Database backend to use for the Block Chain"`
 	Profile            string   `long:"profile" description:"Enable HTTP profiling on given [addr:]port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile         string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
@@ -109,8 +110,10 @@ type Config struct {
 	MaxBadResp     int      `long:"maxbadresp" description:"maxbadresp is the maximum number of bad responses from a peer before we stop talking to it."`
 	Circuit        bool     `long:"circuit" description:"All peers will ignore dual channel mode detection"`
 	Consistency    bool     `long:"consistency" description:"Detect data consistency through P2P"`
-	// meerevm environment
-	EVMEnv string `long:"evmenv" description:"meer EVM environment"`
+
+	// evm environment
+	EVMEnv     string `long:"evmenv" description:"meer EVM environment"`
+	EVMGenesis string `long:"evmgen" description:"EVM custom genesis file"`
 
 	Estimatefee bool `long:"estimatefee" description:"Enable estimate fee"`
 
@@ -120,10 +123,6 @@ type Config struct {
 
 	DAGCacheSize       uint64 `long:"dagcachesize" description:"DAG block cache size"`
 	BlockDataCacheSize uint64 `long:"bdcachesize" description:"Block data cache size"`
-
-	Amana        bool   `long:"amana" description:"Enable Amana"`
-	AmanaEnv     string `long:"amanaenv" description:"Amana environment"`
-	AmanaGenesis string `long:"amanagen" description:"Amana custom genesis file"`
 
 	Metrics          bool `long:"metrics" description:"Enable metrics collection and reporting"`
 	MetricsExpensive bool `long:"metrics.expensive" description:"Enable expensive metrics collection and reporting"`

@@ -7,13 +7,14 @@
 package params
 
 import (
+	ptypes "github.com/Qitmeer/qng/consensus/engine/poa/types"
 	"time"
 
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/merkle"
 	"github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/ledger"
 )
 
@@ -22,7 +23,7 @@ var genesisTime = time.Unix(1632913200, 0) //  2021-09-29 19:00:00 GMT+08:00
 
 // genesisCoinbaseTx is the coinbase transaction for the genesis blocks for
 // the main network.
-func buildGenesisCoinbaseTx(net protocol.Network) types.Transaction {
+func buildGenesisCoinbaseTx() types.Transaction {
 	tx := types.Transaction{
 		Version: 1,
 		TxIn: []*types.TxInput{
@@ -90,7 +91,7 @@ func buildGenesisMappingTx(net protocol.Network) types.Transaction {
 	return tx
 }
 
-var genesisCoinbaseTx = buildGenesisCoinbaseTx(protocol.MainNet)
+var genesisCoinbaseTx = buildGenesisCoinbaseTx()
 var genesisMappingTx = buildGenesisMappingTx(protocol.MainNet)
 var genesisTxs = []*types.Transaction{
 	&genesisCoinbaseTx,
@@ -125,7 +126,7 @@ var genesisBlock = types.Block{
 		StateRoot:  hash.Hash{},
 		Timestamp:  genesisTime,
 		Difficulty: 0x1b0fffff, // Difficulty 17 T
-		Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 	},
 	Transactions: genesisTxs,
 }
@@ -208,7 +209,7 @@ var testNetGenesisBlock = types.Block{
 		TxRoot:     testNetGenesisMerkleRoot,
 		Timestamp:  testNetGenesisCoinbaseTx.Timestamp, // same with the tx timestamp (added since 0.9)
 		Difficulty: 0x1f0198f2,                         // 67108864
-		Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 	},
 	Transactions: []*types.Transaction{&testNetGenesisCoinbaseTx},
 }
@@ -313,13 +314,11 @@ var privNetGenesisTxs = []*types.Transaction{
 // the main network.
 var privNetGenesisMerkleRoot = merkle.CalcMerkleRoot(privNetGenesisTxs)
 
-var zeroHash = hash.ZeroHash
-
 // privNetGenesisBlock defines the genesis block of the block chain which serves
 // as the public transaction ledger for the simulation test network.
 var privNetGenesisBlock = types.Block{
 	Header: types.BlockHeader{
-		ParentRoot: zeroHash,
+		ParentRoot: hash.ZeroHash,
 		TxRoot:     *privNetGenesisMerkleRoot,
 		StateRoot: hash.Hash([32]byte{ // Make go vet happy.
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -329,7 +328,7 @@ var privNetGenesisBlock = types.Block{
 		}),
 		Timestamp:  time.Unix(1530833717, 0), // 2018-07-05 23:35:17 GMT
 		Difficulty: 0x207fffff,               // 545259519
-		Pow:        pow.GetInstance(pow.BLAKE2BD, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.BLAKE2BD, 0, []byte{}),
 	},
 	Transactions: privNetGenesisTxs,
 }
@@ -442,7 +441,7 @@ var mixNetGenesisBlock = types.Block{
 		TxRoot:     *testPowNetGenesisMerkleRoot,
 		Timestamp:  mixnetGenesisTime,
 		Difficulty: 0x1f0198f2, //
-		Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+		Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 	},
 	Transactions: mixNetGenesisTxs,
 	Parents:      []*hash.Hash{},
@@ -451,3 +450,16 @@ var mixNetGenesisBlock = types.Block{
 // testNetGenesisHash is the hash of the first block in the block chain for the
 // test network.
 var mixNetGenesisHash = mixNetGenesisBlock.BlockHash()
+
+// AmanaNet -------------------------------------------------------------------------
+var amanaNetGenesisBlock = types.Block{
+	Header: types.BlockHeader{
+		ParentRoot: hash.ZeroHash,
+		TxRoot:     *merkle.CalcMerkleRoot([]*types.Transaction{}),
+		StateRoot:  hash.ZeroHash,
+		Timestamp:  time.Unix(1739265196, 0), // 2025-02-11 17:13:16.322784
+		Engine:     ptypes.Default(),
+	},
+	Transactions: []*types.Transaction{},
+}
+var amanaNetGenesisHash = amanaNetGenesisBlock.BlockHash()

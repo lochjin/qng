@@ -10,8 +10,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/model"
-	"github.com/Qitmeer/qng/core/types/pow"
 )
 
 // CalcEasiestDifficulty calculates the easiest possible difficulty that a block
@@ -35,7 +35,7 @@ func (b *BlockChain) CalcNextRequiredDifficulty(timestamp time.Time, powType pow
 	b.ChainRLock()
 	block := b.bd.GetMainChainTip()
 	instance := pow.GetInstance(powType, 0, []byte{})
-	instance.SetParams(b.params.PowConfig)
+	instance.SetParams(b.params.ToPoWConfig().PowConfig)
 	instance.SetMainHeight(pow.MainHeight(block.GetHeight() + 1))
 	difficulty, err := b.difficultyManager.RequiredDifficulty(block, timestamp, instance)
 	b.ChainRUnlock()

@@ -96,7 +96,7 @@ func (s *Sync) getMerkleBlockDataHandler(ctx context.Context, msg interface{}, s
 		// to the filter for the peer.
 		merkle, _ := bloom.NewMerkleBlock(block, filter)
 		// Finally, send any matched transactions.
-		pbbd := pb.MerkleBlock{Header: merkle.Header.BlockData(),
+		pbbd := pb.MerkleBlock{Header: merkle.Header.Digest(),
 			Transactions: uint64(merkle.Transactions),
 			Hashes:       changeHashsToPBHashs(merkle.Hashes),
 			Flags:        merkle.Flags,

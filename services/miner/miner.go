@@ -17,16 +17,15 @@ import (
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/common/roughtime"
 	"github.com/Qitmeer/qng/config"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/address"
 	"github.com/Qitmeer/qng/core/blockchain"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/engine/txscript"
 	"github.com/Qitmeer/qng/meerdag"
-	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/rpc"
@@ -532,7 +531,7 @@ func (m *Miner) updateBlockTemplate(force bool) error {
 		m.stats.TotalGbts++ //gbt generates
 		start := time.Now().UnixMilli()
 		totalGbts.Update(m.stats.TotalGbts)
-		err := m.consensus.BlockChain().MeerChain().(*meer.MeerChain).MeerPool().ResetTemplate()
+		err := m.consensus.BlockChain().MeerChain().TxPool().ResetTemplate()
 		if err != nil {
 			log.Warn(err.Error())
 			return err
@@ -639,7 +638,8 @@ func (m *Miner) submitBlock(block *types.SerializedBlock) (interface{}, error) {
 		// Occasionally errors are given out for timing errors with
 		// ReduceMinDifficulty and high block works that is above
 		// the target. Feed these to debug.
-		if params.ActiveNetParams.Params.ReduceMinDifficulty &&
+		if params.ActiveNetParams.Params.ConsensusConfig.Type().IsPoW() &&
+			params.ActiveNetParams.Params.ToPoWConfig().ReduceMinDifficulty &&
 			rErr.ErrorCode == blockchain.ErrHighHash {
 			return nil, fmt.Errorf("Block submitted via miner rejected "+
 				"because of ReduceMinDifficulty time sync failure: %v (%s)",
@@ -705,7 +705,7 @@ func (m *Miner) submitBlockHeader(header *types.BlockHeader, extraNonce uint64) 
 
 	block.Header.Difficulty = header.Difficulty
 	block.Header.Timestamp = header.Timestamp
-	block.Header.Pow = header.Pow
+	block.Header.Engine = header.Engine
 	res, err := m.submitBlock(types.NewBlock(block))
 	if err == nil {
 		m.StatsSubmit(start, header.BlockHash().String(), len(block.Transactions)-1)

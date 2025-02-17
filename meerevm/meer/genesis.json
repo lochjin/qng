@@ -103,5 +103,19 @@
         }
       }
     }
+  },
+  {
+    "network": "amananet",
+    "data": {
+      "genesis":{
+        "difficulty": "",
+        "gasLimit": "",
+        "alloc": {
+          "0x71bc4403Af41634Cda7C32600A8024d54e7F6499": {
+            "balance": "100000000000000000000"
+          }
+        }
+      }
+    }
   }
 ]

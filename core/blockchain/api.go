@@ -184,7 +184,7 @@ func (api *PublicBlockAPI) GetBlockHeader(hash hash.Hash, verbose bool) (interfa
 		Difficulty:    blockHeader.Difficulty,
 		Layer:         uint32(layer),
 		Time:          blockHeader.Timestamp.Unix(),
-		PowResult:     blockHeader.Pow.GetPowResult(),
+		PowResult:     blockHeader.PoW().GetPowResult(),
 	}
 
 	return blockHeaderReply, nil
@@ -469,19 +469,23 @@ func (api *PublicBlockAPI) makeBlock(h hash.Hash, verbose *bool, inclTx *bool, f
 		}
 	}
 	api.chain.SetDAGDuplicateTxs(blk, block)
-	coinbaseFees := api.chain.CalculateFees(blk)
-	coinbaseAmout := types.AmountMap{}
+	var coinbaseFees types.AmountMap
+	var coinbaseAmout types.AmountMap
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		coinbaseFees = api.chain.CalculateFees(blk)
+		coinbaseAmout = types.AmountMap{}
 
-	if showFees {
-		coinbaseAmout[blk.Transactions()[0].Tx.TxOut[0].Amount.Id] = blk.Transactions()[0].Tx.TxOut[0].Amount.Value
-	} else {
-		if coinbaseFees == nil {
+		if showFees {
 			coinbaseAmout[blk.Transactions()[0].Tx.TxOut[0].Amount.Id] = blk.Transactions()[0].Tx.TxOut[0].Amount.Value
 		} else {
-			coinbaseAmout = coinbaseFees
-			coinbaseAmout[blk.Transactions()[0].Tx.TxOut[0].Amount.Id] += blk.Transactions()[0].Tx.TxOut[0].Amount.Value
+			if coinbaseFees == nil {
+				coinbaseAmout[blk.Transactions()[0].Tx.TxOut[0].Amount.Id] = blk.Transactions()[0].Tx.TxOut[0].Amount.Value
+			} else {
+				coinbaseAmout = coinbaseFees
+				coinbaseAmout[blk.Transactions()[0].Tx.TxOut[0].Amount.Id] += blk.Transactions()[0].Tx.TxOut[0].Amount.Value
+			}
+			coinbaseFees = nil
 		}
-		coinbaseFees = nil
 	}
 
 	//TODO, refactor marshal api

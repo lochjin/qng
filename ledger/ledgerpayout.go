@@ -1,6 +1,7 @@
 // This file is ignored during the regular build due to the following build tag.
 // It is called by go generate and used to automatically generate pre-computed
 // tables used to accelerate operations.
+//go:build ignore
 // +build ignore
 
 package main
@@ -237,6 +238,8 @@ func savePayoutsFileBySliceShuffle(params *params.Params, genesisLedger []Genesi
 		netName = "priv"
 	case protocol.MixNet:
 		netName = "mix"
+	case protocol.AmanaNet:
+		netName = "amana"
 	}
 	if len(genesisLedger) == 0 {
 		fmt.Println(netName + " network No payouts need to deal with.")

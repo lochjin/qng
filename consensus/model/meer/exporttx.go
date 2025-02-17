@@ -9,7 +9,7 @@ import (
 )
 
 type ExportTx struct {
-	*Tx
+	*Transaction
 }
 
 func NewExportTx(tx *types.Transaction) (*ExportTx, error) {
@@ -17,7 +17,7 @@ func NewExportTx(tx *types.Transaction) (*ExportTx, error) {
 		return nil, fmt.Errorf("Not import tx data:%s", tx.TxHash())
 	}
 
-	etx := &ExportTx{Tx: &Tx{}}
+	etx := &ExportTx{Transaction: &Transaction{}}
 	etx.Type = types.TxTypeCrossChainExport
 
 	if len(tx.TxIn) < 1 || len(tx.TxOut) < 1 {

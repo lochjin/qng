@@ -14,8 +14,8 @@ import (
 )
 
 type ImportTx struct {
-	*Tx
-	*types.Transaction
+	*Transaction
+	Src *types.Transaction
 }
 
 func (itx *ImportTx) GetPKAddress() (*address.SecpPubKeyAddress, error) {
@@ -39,7 +39,7 @@ func (itx *ImportTx) Sign(privateKey ecc.PrivateKey) error {
 		return privateKey, true, nil // compressed is true
 	}
 
-	sigScript, err := txscript.SignTxOutput(params.ActiveNetParams.Params, itx.Transaction, 0, pks, txscript.SigHashAll, kdb, nil, nil, ecc.ECDSA_Secp256k1)
+	sigScript, err := txscript.SignTxOutput(params.ActiveNetParams.Params, itx.Src, 0, pks, txscript.SigHashAll, kdb, nil, nil, ecc.ECDSA_Secp256k1)
 	if err != nil {
 		return err
 	}
@@ -53,22 +53,22 @@ func (itx *ImportTx) Sign(privateKey ecc.PrivateKey) error {
 		return err
 	}
 
-	itx.Transaction.TxIn[0].SignScript = pkaScript
+	itx.Src.TxIn[0].SignScript = pkaScript
 
 	return nil
 }
 
 func (itx *ImportTx) CheckSanity() error {
-	if !types.IsCrossChainImportTx(itx.Transaction) {
+	if !types.IsCrossChainImportTx(itx.Src) {
 		return fmt.Errorf("Not import tx data")
 	}
-	if itx.Transaction.TxOut[0].Amount.Id != types.MEERA {
+	if itx.Src.TxOut[0].Amount.Id != types.MEERA {
 		return fmt.Errorf("Import output must MEER coin")
 	}
-	if len(itx.Transaction.TxOut[0].PkScript) <= 0 {
+	if len(itx.Src.TxOut[0].PkScript) <= 0 {
 		return fmt.Errorf("PKScript is error")
 	}
-	_, pksAddrs, _, err := txscript.ExtractPkScriptAddrs(itx.Transaction.TxOut[0].PkScript, params.ActiveNetParams.Params)
+	_, pksAddrs, _, err := txscript.ExtractPkScriptAddrs(itx.Src.TxOut[0].PkScript, params.ActiveNetParams.Params)
 	if err != nil {
 		return err
 	}
@@ -104,12 +104,12 @@ func (itx *ImportTx) SetCoinbaseTx(tx *types.Transaction) error {
 func (itx *ImportTx) GetTransactionForEngine() (*types.Transaction, error) {
 	mtx := types.NewTransaction()
 	mtx.AddTxIn(&types.TxInput{
-		PreviousOut: itx.Transaction.TxIn[0].PreviousOut,
-		Sequence:    itx.Transaction.TxIn[0].Sequence,
+		PreviousOut: itx.Src.TxIn[0].PreviousOut,
+		Sequence:    itx.Src.TxIn[0].Sequence,
 	})
-	mtx.AddTxOut(itx.TxOut[0])
+	mtx.AddTxOut(itx.Src.TxOut[0])
 
-	ops, err := txscript.ParseScript(itx.Transaction.TxIn[0].SignScript)
+	ops, err := txscript.ParseScript(itx.Src.TxIn[0].SignScript)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +125,7 @@ func (itx *ImportTx) GetTransactionForEngine() (*types.Transaction, error) {
 }
 
 func NewImportTx(tx *types.Transaction) (*ImportTx, error) {
-
-	itx := &ImportTx{Transaction: tx, Tx: &Tx{}}
+	itx := &ImportTx{Transaction: &Transaction{}, Src: tx}
 	itx.Type = types.TxTypeCrossChainImport
 
 	ops, err := txscript.ParseScript(tx.TxIn[0].SignScript)

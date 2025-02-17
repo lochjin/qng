@@ -65,15 +65,19 @@ const (
 
 	// MixNet represents the Mix Pow network.
 	MixNet Network = 0xc459b247
+
+	// AmanaNet represents the MeerDAG + POA network.
+	AmanaNet Network = 0x616D616E
 )
 
 // bnStrings is a map of networks back to their constant names for
 // pretty printing.
 var bnStrings = map[Network]string{
-	MainNet: "MainNet",
-	TestNet: "TestNet",
-	PrivNet: "PrivNet",
-	MixNet:  "MixNet",
+	MainNet:  "MainNet",
+	TestNet:  "TestNet",
+	PrivNet:  "PrivNet",
+	MixNet:   "MixNet",
+	AmanaNet: "AmanaNet",
 }
 
 // String returns the CurrencyNet in human-readable form.

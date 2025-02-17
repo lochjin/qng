@@ -662,13 +662,8 @@ function checkUTXO(){
   get_result "$data"
 }
 
-function get_amana_nodeinfo(){
-  local data='{"jsonrpc":"2.0","method":"getAmanaNodeInfo","params":[],"id":null}'
-  get_result "$data"
-}
-
-function get_amana_peerinfo(){
-  local data='{"jsonrpc":"2.0","method":"getAmanaPeerInfo","params":[],"id":null}'
+function get_amana_chaininfo(){
+  local data='{"jsonrpc":"2.0","method":"getAmanaChainInfo","params":[],"id":null}'
   get_result "$data"
 }
 
@@ -1554,10 +1549,7 @@ elif [ "$1" == "checkUTXO" ]; then
   checkUTXO $@
 elif [ "$1" == "amanainfo" ]; then
     shift
-    get_amana_nodeinfo $@
-elif [ "$1" == "amanapeerinfo" ]; then
-    shift
-    get_amana_peerinfo $@
+    get_amana_chaininfo $@
 
 elif [ "$1" == "txSign" ]; then
   shift

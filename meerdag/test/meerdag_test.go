@@ -7,9 +7,9 @@ import (
 	"github.com/Qitmeer/qng/common/roughtime"
 	"github.com/Qitmeer/qng/common/system"
 	"github.com/Qitmeer/qng/config"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/database"
 	l "github.com/Qitmeer/qng/log"
 	"github.com/Qitmeer/qng/meerdag"
@@ -246,7 +246,7 @@ func addBlock(tag string, parents []*hash.Hash) (*TestBlock, meerdag.IBlock, err
 
 	b := &types.Block{
 		Header: types.BlockHeader{
-			Pow:        pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
+			Engine:     pow.GetInstance(pow.MEERXKECCAKV1, 0, []byte{}),
 			Timestamp:  time.Unix(int64(len(tbMap)), 0),
 			Difficulty: uint32(len(tbMap)),
 		},

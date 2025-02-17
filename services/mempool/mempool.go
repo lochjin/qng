@@ -21,7 +21,6 @@ import (
 	"github.com/Qitmeer/qng/core/blockchain/utxo"
 	"github.com/Qitmeer/qng/core/message"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/meerevm/meer"
 )
 
 // TxPool is used as a source of transactions that need to be mined into blocks
@@ -87,7 +86,7 @@ func (mp *TxPool) TxDescs(all bool) []*types.TxDesc {
 	if !all {
 		return descs
 	}
-	etxs, _, err := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().GetTxs()
+	etxs, _, err := mp.cfg.BC.MeerChain().TxPool().GetTxs()
 	if err != nil {
 		log.Error(err.Error())
 		return descs
@@ -165,7 +164,7 @@ func (mp *TxPool) RemoveTransaction(tx *types.Tx, removeRedeemers bool) {
 		if mp.cfg.BC.IsShutdown() {
 			return
 		}
-		err := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().RemoveTx(tx)
+		err := mp.cfg.BC.MeerChain().TxPool().RemoveTx(tx)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -514,7 +513,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *types.Tx, isNew, rateLimit, allowHi
 		if mp.cfg.BC.HasTx(txHash) {
 			return nil, nil, fmt.Errorf("Already have transaction %v", txHash)
 		}
-		fee, err := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().AddTx(tx)
+		fee, err := mp.cfg.BC.MeerChain().TxPool().AddTx(tx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1083,7 +1082,7 @@ func (mp *TxPool) FetchTransaction(txHash *hash.Hash) (*types.Tx, error) {
 		return txDesc.Tx, nil
 	}
 	er := fmt.Errorf("transaction is not in the pool")
-	etxs, _, err := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().GetTxs()
+	etxs, _, err := mp.cfg.BC.MeerChain().TxPool().GetTxs()
 	if err != nil {
 		return nil, er
 	}
@@ -1112,7 +1111,7 @@ func (mp *TxPool) FetchTransactions(txHashs []*hash.Hash) ([]*types.Tx, error) {
 	mp.mtx.RUnlock()
 
 	er := fmt.Errorf("transaction is not in the pool")
-	etxs, _, err := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().GetTxs()
+	etxs, _, err := mp.cfg.BC.MeerChain().TxPool().GetTxs()
 	if err != nil {
 		return nil, er
 	}
@@ -1137,7 +1136,7 @@ func (mp *TxPool) FetchTransactions(txHashs []*hash.Hash) ([]*types.Tx, error) {
 //
 // This function is safe for concurrent access.
 func (mp *TxPool) HaveAllTransactions(hashes []hash.Hash) bool {
-	etxs, _, _ := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().GetTxs()
+	etxs, _, _ := mp.cfg.BC.MeerChain().TxPool().GetTxs()
 	mp.mtx.RLock()
 	inPool := true
 	for _, h := range hashes {
@@ -1204,7 +1203,7 @@ func (mp *TxPool) isTransactionInPool(hash *hash.Hash, all bool) bool {
 	if !all {
 		return false
 	}
-	return mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().HasTx(hash)
+	return mp.cfg.BC.MeerChain().TxPool().HasTx(hash)
 }
 
 // IsTransactionInPool returns whether or not the passed transaction already
@@ -1260,7 +1259,7 @@ func (mp *TxPool) MiningDescs() []*types.TxDesc {
 	}
 	mp.mtx.RUnlock()
 
-	etxs, _, err := mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().GetTxs()
+	etxs, _, err := mp.cfg.BC.MeerChain().TxPool().GetTxs()
 	if err != nil {
 		log.Error(err.Error())
 		return descs
@@ -1313,7 +1312,7 @@ func (mp *TxPool) Count() int {
 	count := len(mp.pool)
 	mp.mtx.RUnlock()
 
-	count += int(mp.cfg.BC.MeerChain().(*meer.MeerChain).MeerPool().GetSize())
+	count += int(mp.cfg.BC.MeerChain().TxPool().GetSize())
 
 	return count
 }

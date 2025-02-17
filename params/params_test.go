@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Qitmeer/qng/common/encode/base58"
-	"github.com/Qitmeer/qng/core/types/pow"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,14 +18,14 @@ func TestPowLimitToBits(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("0x%x", compact), "0x1f03ffff")
 }
 
-//test blake2bd percent params
+// test blake2bd percent params
 func TestPercent(t *testing.T) {
 	types := []pow.PowType{pow.BLAKE2BD, pow.CUCKAROO, pow.CUCKATOO, pow.CUCKAROOM}
 	for _, powType := range types {
 		instance := pow.GetInstance(powType, 0, []byte{})
-		instance.SetParams(PrivNetParam.PowConfig)
+		instance.SetParams(PrivNetParam.ToPoWConfig().PowConfig)
 		percent := new(big.Int)
-		for mheight, pi := range PrivNetParam.PowConfig.Percent {
+		for mheight, pi := range PrivNetParam.ToPoWConfig().PowConfig.Percent {
 			instance.SetMainHeight(pow.MainHeight(mheight + 1))
 			percent.SetInt64(int64(pi[powType]))
 
@@ -42,6 +42,7 @@ func TestQitmeerAddressPerfixes(t *testing.T) {
 	checkAddressPrefixesAreConsistent(t, "Pt", &TestNetParams)
 	checkAddressPrefixesAreConsistent(t, "Px", &MixNetParams)
 	checkAddressPrefixesAreConsistent(t, "Pr", &PrivNetParams)
+	checkAddressPrefixesAreConsistent(t, "Pa", &AmanaNetParams)
 }
 
 func checkAddressPrefixesAreConsistent(t *testing.T, privateKeyPrefix string, params *Params) {

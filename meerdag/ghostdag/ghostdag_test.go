@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	cmodel "github.com/Qitmeer/qng/consensus/model"
-	"github.com/Qitmeer/qng/core/types/pow"
 	"github.com/Qitmeer/qng/meerdag/ghostdag/model"
 	"github.com/Qitmeer/qng/params"
 	"math/big"
@@ -45,7 +45,7 @@ func TestGHOSTDAG(t *testing.T) {
 
 	blockGHOSTDAGDataGenesis := model.NewBlockGHOSTDAGData(0, new(big.Int), nil, nil, nil, nil)
 	genesisHeader := params.PrivNetParam.GenesisBlock.Block().Header
-	genesisWork := pow.CalcWork(genesisHeader.Difficulty, genesisHeader.Pow.GetPowType())
+	genesisWork := pow.CalcWork(genesisHeader.Difficulty, genesisHeader.PoW().GetPowType())
 
 	path := "./test_data.json"
 	jsonFile, err := os.Open(path)
@@ -66,14 +66,14 @@ func TestGHOSTDAG(t *testing.T) {
 	dagTopology.parentsMap[genesisHash] = nil
 
 	ghostdagDataStore.dagMap[genesisHash] = blockGHOSTDAGDataGenesis
-	blockHeadersStore.dagMap[genesisHash] = NewBlockHeader(genesisHeader.Difficulty, genesisHeader.Pow)
+	blockHeadersStore.dagMap[genesisHash] = NewBlockHeader(genesisHeader.Difficulty, genesisHeader.PoW())
 
 	g := New(nil, dagTopology, ghostdagDataStore, blockHeadersStore, test.K, &genesisHash)
 
 	for _, testBlockData := range test.Blocks {
 		blockID := StringToHash(testBlockData.ID)
 		dagTopology.parentsMap[*blockID] = StringToHashSlice(testBlockData.Parents)
-		blockHeadersStore.dagMap[*blockID] = NewBlockHeader(genesisHeader.Difficulty, genesisHeader.Pow)
+		blockHeadersStore.dagMap[*blockID] = NewBlockHeader(genesisHeader.Difficulty, genesisHeader.PoW())
 
 		err = g.GHOSTDAG(nil, blockID)
 		if err != nil {

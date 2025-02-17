@@ -5,7 +5,6 @@ import (
 	"github.com/Qitmeer/qng/config"
 	"github.com/Qitmeer/qng/core/event"
 	"github.com/Qitmeer/qng/engine/txscript"
-	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/params"
 )
 
@@ -23,6 +22,5 @@ type Consensus interface {
 	Interrupt() <-chan struct{}
 	Params() *params.Params
 	Rebuild() error
-	AmanaService() service.IService
 	Shutdown()
 }
