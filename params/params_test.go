@@ -42,6 +42,7 @@ func TestQitmeerAddressPerfixes(t *testing.T) {
 	checkAddressPrefixesAreConsistent(t, "Pt", &TestNetParams)
 	checkAddressPrefixesAreConsistent(t, "Px", &MixNetParams)
 	checkAddressPrefixesAreConsistent(t, "Pr", &PrivNetParams)
+	checkAddressPrefixesAreConsistent(t, "Pa", &AmanaNetParams)
 }
 
 func checkAddressPrefixesAreConsistent(t *testing.T, privateKeyPrefix string, params *Params) {

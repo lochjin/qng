@@ -58,12 +58,12 @@ var AmanaNetParams = Params{
 	// Address encoding magics
 	NetworkAddressPrefix: "A",
 	Bech32HRPSegwit:      "a",
-	PubKeyAddrID:         [2]byte{0x41, 0x6B}, // starts with Ak
-	PubKeyHashAddrID:     [2]byte{0x41, 0x6D}, // starts with Am
-	PKHEdwardsAddrID:     [2]byte{0x41, 0x65}, // starts with Ae
-	PKHSchnorrAddrID:     [2]byte{0x41, 0x72}, // starts with Ar
-	ScriptHashAddrID:     [2]byte{0x41, 0x53}, // starts with AS
-	PrivateKeyID:         [2]byte{0x50, 0x61}, // starts with Pa
+	PubKeyAddrID:         [2]byte{0x0e, 0xec}, // starts with Ak
+	PubKeyHashAddrID:     [2]byte{0x05, 0x7f}, // starts with Am
+	PKHEdwardsAddrID:     [2]byte{0x05, 0x6e}, // starts with Ae
+	PKHSchnorrAddrID:     [2]byte{0x05, 0x8c}, // starts with Ar
+	ScriptHashAddrID:     [2]byte{0x05, 0x50}, // starts with AS
+	PrivateKeyID:         [2]byte{0x22, 0x91}, // starts with Pa
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x61, 0x70, 0x72, 0x76}, // starts with aprv
