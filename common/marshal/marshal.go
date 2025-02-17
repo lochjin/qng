@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	ptypes "github.com/Qitmeer/qng/consensus/engine/poa/types"
 	mmeer "github.com/Qitmeer/qng/consensus/model/meer"
 	"github.com/Qitmeer/qng/core/blockchain/opreturn"
 	"github.com/Qitmeer/qng/core/json"
@@ -339,12 +340,12 @@ func MarshalJsonBlock(block meerdag.IBlock, b *types.SerializedBlock, inclTx boo
 	}
 	fields = append(fields, json.OrderedResult{
 		{Key: "stateRoot", Val: head.StateRoot.String()},
-		{Key: "bits", Val: strconv.FormatUint(uint64(head.Difficulty), 16)},
 		{Key: "difficulty", Val: head.Difficulty},
-		{Key: "pow", Val: head.PoW().GetPowResult()},
+		{Key: "engine", Val: getConsensusEngineInfo(&head)},
 		{Key: "timestamp", Val: head.Timestamp.Format(time.RFC3339)},
 		{Key: "parentroot", Val: head.ParentRoot.String()},
 	}...)
+
 	tempArr := []string{}
 	if b.Block().Parents != nil && len(b.Block().Parents) > 0 {
 
@@ -388,4 +389,22 @@ func GetGraphStateResult(gs *meerdag.GraphState) *json.GetGraphStateResult {
 		}
 	}
 	return nil
+}
+
+func getConsensusEngineInfo(head *types.BlockHeader) json.OrderedResult {
+	fields := json.OrderedResult{
+		{Key: "name", Val: head.Engine.Name()},
+		{Key: "type", Val: head.Engine.Type().String()},
+	}
+	if head.Engine.Type().IsPoW() {
+		fields = append(fields, json.OrderedResult{
+			{Key: "bits", Val: strconv.FormatUint(uint64(head.Difficulty), 16)},
+			{Key: "pow", Val: head.PoW().GetPowResult()},
+		}...)
+	} else if head.Engine.Type().IsPoA() {
+		fields = append(fields, json.OrderedResult{
+			{Key: "info", Val: head.Engine.(*ptypes.PoA).Info()},
+		}...)
+	}
+	return fields
 }

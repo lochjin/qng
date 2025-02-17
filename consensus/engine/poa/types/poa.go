@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/consensus/engine"
+	"github.com/Qitmeer/qng/core/json"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"io"
 )
@@ -47,13 +49,17 @@ func (p *PoA) Name() string {
 }
 
 func (p *PoA) Bytes() []byte {
-	dataSize := headSize + VanitySize + SealSize
+	var buff bytes.Buffer
+	err := buff.WriteByte(byte(p.Type()))
+	if err != nil {
+		panic(err)
+	}
+	dataSize := VanitySize + SealSize
 	if len(p.Signers) > 0 {
 		dataSize += len(p.Signers) * common.AddressLength
 	}
-	var buff bytes.Buffer
 	bs := make([]byte, headSize)
-	binary.BigEndian.PutUint32(bs, uint32(dataSize))
+	binary.LittleEndian.PutUint32(bs, uint32(dataSize))
 	size, err := buff.Write(bs)
 	if err != nil {
 		panic(err)
@@ -87,13 +93,17 @@ func (p *PoA) Bytes() []byte {
 }
 
 func (p *PoA) Digest() []byte {
-	dataSize := headSize + VanitySize
+	var buff bytes.Buffer
+	err := buff.WriteByte(byte(p.Type()))
+	if err != nil {
+		panic(err)
+	}
+	dataSize := VanitySize
 	if len(p.Signers) > 0 {
 		dataSize += len(p.Signers) * common.AddressLength
 	}
-	var buff bytes.Buffer
 	bs := make([]byte, headSize)
-	binary.BigEndian.PutUint32(bs, uint32(dataSize))
+	binary.LittleEndian.PutUint32(bs, uint32(dataSize))
 	size, err := buff.Write(bs)
 	if err != nil {
 		panic(err)
@@ -117,6 +127,20 @@ func (p *PoA) Digest() []byte {
 		}
 	}
 	return buff.Bytes()
+}
+
+func (p *PoA) Info() *json.PoAInfo {
+	pi := &json.PoAInfo{
+		Vanity: hexutil.Encode(p.Vanity),
+		Seal:   hexutil.Encode(p.Seal),
+	}
+	if len(p.Signers) > 0 {
+		pi.Signers = []string{}
+		for _, s := range p.Signers {
+			pi.Signers = append(pi.Signers, s.String())
+		}
+	}
+	return pi
 }
 
 func New(r io.Reader) (*PoA, error) {
@@ -147,8 +171,8 @@ func New(r io.Reader) (*PoA, error) {
 	if err != nil {
 		return nil, err
 	}
-	if size != len(lb) {
-		return nil, fmt.Errorf("Read size error:%d != %d", size, len(lb))
+	if size != dataLength {
+		return nil, fmt.Errorf("Read size error:%d != %d", size, dataLength)
 	}
 	poa := &PoA{
 		Vanity:  data[:VanitySize],

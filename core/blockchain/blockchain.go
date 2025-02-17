@@ -282,11 +282,15 @@ func (b *BlockChain) initChainState() error {
 	b.stateSnapshot = newBestState(mainTip.GetHash(), mainTipNode.Difficulty(), blockSize, numTxns,
 		b.CalcPastMedianTime(mainTip), state.totalTxns, b.bd.GetMainChainTip().GetState().GetWeight(),
 		b.bd.GetGraphState(), &state.tokenTipHash, *mainTip.GetState().Root())
-	ts := b.GetTokenState(b.TokenTipID)
-	if ts == nil {
-		return fmt.Errorf("token state error")
+
+	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+		ts := b.GetTokenState(b.TokenTipID)
+		if ts == nil {
+			return fmt.Errorf("token state error")
+		}
+		return ts.Commit()
 	}
-	return ts.Commit()
+	return nil
 }
 
 // createChainState initializes both the database and the chain state to the
