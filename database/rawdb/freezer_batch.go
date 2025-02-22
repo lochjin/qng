@@ -2,8 +2,9 @@ package rawdb
 
 import (
 	"fmt"
+	"math"
+	"time"
 
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/golang/snappy"
 )
@@ -164,25 +165,19 @@ func (batch *freezerTableBatch) maybeCommit() error {
 	return nil
 }
 
-// commit writes the batched items to the backing freezerTable.
+// commit writes the batched items to the backing freezerTable. Note index
+// file isn't fsync'd after the file write, the recent write can be lost
+// after the power failure.
 func (batch *freezerTableBatch) commit() error {
-	// Write data.
 	_, err := batch.t.head.Write(batch.dataBuffer)
 	if err != nil {
-		return err
-	}
-	if err := batch.t.head.Sync(); err != nil {
 		return err
 	}
 	dataSize := int64(len(batch.dataBuffer))
 	batch.dataBuffer = batch.dataBuffer[:0]
 
-	// Write indices.
 	_, err = batch.t.index.Write(batch.indexBuffer)
 	if err != nil {
-		return err
-	}
-	if err := batch.t.head.Sync(); err != nil {
 		return err
 	}
 	indexSize := int64(len(batch.indexBuffer))
@@ -195,6 +190,12 @@ func (batch *freezerTableBatch) commit() error {
 	// Update metrics.
 	batch.t.sizeGauge.Inc(dataSize + indexSize)
 	batch.t.writeMeter.Mark(dataSize + indexSize)
+
+	// Periodically sync the table, todo (rjl493456442) make it configurable?
+	if time.Since(batch.t.lastSync) > 30*time.Second {
+		batch.t.lastSync = time.Now()
+		return batch.t.Sync()
+	}
 	return nil
 }
 

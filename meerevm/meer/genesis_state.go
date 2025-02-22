@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	cmath "github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -104,9 +103,8 @@ func Apply(genesis *core.Genesis, txs []*GenTransaction) (Alloc, error) {
 			return nil, err
 		}
 		statedb.SetTxContext(tx.Hash(), txIndex)
-		txContext := core.NewEVMTxContext(msg)
 		snapshot := statedb.Snapshot()
-		evm := vm.NewEVM(vmContext, txContext, statedb, chainConfig, vmConfig)
+		evm := vm.NewEVM(vmContext, statedb, chainConfig, vmConfig)
 
 		// (ret []byte, usedGas uint64, failed bool, err error)
 		msgResult, err := core.ApplyMessage(evm, msg, gaspool)
@@ -146,7 +144,7 @@ func Apply(genesis *core.Genesis, txs []*GenTransaction) (Alloc, error) {
 
 			// Set the receipt logs and create the bloom filter.
 			receipt.Logs = statedb.GetLogs(tx.Hash(), vmContext.BlockNumber.Uint64(), blockHash)
-			receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+			receipt.Bloom = types.CreateBloom(receipt)
 			// These three are non-consensus fields:
 			//receipt.BlockHash
 			//receipt.BlockNumber
@@ -158,7 +156,7 @@ func Apply(genesis *core.Genesis, txs []*GenTransaction) (Alloc, error) {
 	}
 	statedb.IntermediateRoot(chainConfig.IsEIP158(vmContext.BlockNumber))
 	// Commit block
-	root, err := statedb.Commit(vmContext.BlockNumber.Uint64(), chainConfig.IsEIP158(vmContext.BlockNumber))
+	root, err := statedb.Commit(vmContext.BlockNumber.Uint64(), chainConfig.IsEIP158(vmContext.BlockNumber), false)
 	if err != nil {
 		return nil, fmt.Errorf("could not commit state: %v", err)
 	}
@@ -179,14 +177,14 @@ func MakePreState(db ethdb.Database, accounts types.GenesisAlloc) *state.StateDB
 	statedb, _ := state.New(types.EmptyRootHash, sdb)
 	for addr, a := range accounts {
 		statedb.SetCode(addr, a.Code)
-		statedb.SetNonce(addr, a.Nonce)
+		statedb.SetNonce(addr, a.Nonce, tracing.NonceChangeGenesis)
 		statedb.SetBalance(addr, uint256.MustFromBig(a.Balance), tracing.BalanceIncreaseGenesisBalance)
 		for k, v := range a.Storage {
 			statedb.SetState(addr, k, v)
 		}
 	}
 	// Commit and re-open to start with a clean state.
-	root, _ := statedb.Commit(0, false)
+	root, _ := statedb.Commit(0, false, false)
 	statedb, _ = state.New(root, sdb)
 	return statedb
 }
@@ -282,23 +280,27 @@ func NewTransactorWithChainID(addr common.Address, chainID *big.Int) (*bind.Tran
 // TransactionToMessage converts a transaction into a Message.
 func TransactionToMessage(tx *types.Transaction, from common.Address, baseFee *big.Int) (*core.Message, error) {
 	msg := &core.Message{
-		Nonce:            tx.Nonce(),
-		GasLimit:         tx.Gas(),
-		GasPrice:         new(big.Int).Set(tx.GasPrice()),
-		GasFeeCap:        new(big.Int).Set(tx.GasFeeCap()),
-		GasTipCap:        new(big.Int).Set(tx.GasTipCap()),
-		To:               tx.To(),
-		Value:            tx.Value(),
-		Data:             tx.Data(),
-		AccessList:       tx.AccessList(),
-		SkipNonceChecks:  false,
-		SkipFromEOACheck: false,
-		BlobHashes:       tx.BlobHashes(),
-		BlobGasFeeCap:    tx.BlobGasFeeCap(),
+		Nonce:                 tx.Nonce(),
+		GasLimit:              tx.Gas(),
+		GasPrice:              new(big.Int).Set(tx.GasPrice()),
+		GasFeeCap:             new(big.Int).Set(tx.GasFeeCap()),
+		GasTipCap:             new(big.Int).Set(tx.GasTipCap()),
+		To:                    tx.To(),
+		Value:                 tx.Value(),
+		Data:                  tx.Data(),
+		AccessList:            tx.AccessList(),
+		SetCodeAuthorizations: tx.SetCodeAuthorizations(),
+		SkipNonceChecks:       false,
+		SkipFromEOACheck:      false,
+		BlobHashes:            tx.BlobHashes(),
+		BlobGasFeeCap:         tx.BlobGasFeeCap(),
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
 	if baseFee != nil {
-		msg.GasPrice = cmath.BigMin(msg.GasPrice.Add(msg.GasTipCap, baseFee), msg.GasFeeCap)
+		msg.GasPrice = msg.GasPrice.Add(msg.GasTipCap, baseFee)
+		if msg.GasPrice.Cmp(msg.GasFeeCap) > 0 {
+			msg.GasPrice = msg.GasFeeCap
+		}
 	}
 	msg.From = from
 	return msg, nil

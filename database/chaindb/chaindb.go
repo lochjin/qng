@@ -141,7 +141,7 @@ func (cdb *ChainDB) OpenDatabaseWithFreezer(name string, cache, handles int, anc
 	if cdb.cfg.DataDir == "" {
 		db = rawdb.NewMemoryDatabase()
 	} else {
-		db, err = rawdb.Open(rawdb.OpenOptions{
+		db, err = openDatabase(openOptions{
 			Type:              cdb.DBEngine(),
 			Directory:         cdb.cfg.ResolveDataPath(name),
 			AncientsDirectory: cdb.ResolveAncient(name, ancient),
@@ -170,7 +170,7 @@ func (cdb *ChainDB) OpenDatabase(name string, cache, handles int, namespace stri
 	if cdb.cfg.DataDir == "" {
 		db = rawdb.NewMemoryDatabase()
 	} else {
-		db, err = rawdb.Open(rawdb.OpenOptions{
+		db, err = openDatabase(openOptions{
 			Type:      cdb.DBEngine(),
 			Directory: cdb.cfg.ResolveDataPath(name),
 			Namespace: namespace,

@@ -1,3 +1,4 @@
+
 package rawdb
 
 import (
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/core/rawdb/ancienttest"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
@@ -257,11 +259,62 @@ func TestFreezerReadonlyValidate(t *testing.T) {
 	}
 	require.NoError(t, f.Close())
 
-	// Re-openening as readonly should fail when validating
+	// Re-opening as readonly should fail when validating
 	// table lengths.
 	_, err = NewFreezer(dir, "", true, 2049, tables)
 	if err == nil {
 		t.Fatal("readonly freezer should fail with differing table lengths")
+	}
+}
+
+func TestFreezerConcurrentReadonly(t *testing.T) {
+	t.Parallel()
+
+	tables := map[string]bool{"a": true}
+	dir := t.TempDir()
+
+	f, err := NewFreezer(dir, "", false, 2049, tables)
+	if err != nil {
+		t.Fatal("can't open freezer", err)
+	}
+	var item = make([]byte, 1024)
+	batch := f.tables["a"].newBatch()
+	items := uint64(10)
+	for i := uint64(0); i < items; i++ {
+		require.NoError(t, batch.AppendRaw(i, item))
+	}
+	require.NoError(t, batch.commit())
+	if loaded := f.tables["a"].items.Load(); loaded != items {
+		t.Fatalf("unexpected number of items in table, want: %d, have: %d", items, loaded)
+	}
+	require.NoError(t, f.Close())
+
+	var (
+		wg   sync.WaitGroup
+		fs   = make([]*Freezer, 5)
+		errs = make([]error, 5)
+	)
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			f, err := NewFreezer(dir, "", true, 2049, tables)
+			if err == nil {
+				fs[i] = f
+			} else {
+				errs[i] = err
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	for i := range fs {
+		if err := errs[i]; err != nil {
+			t.Fatal("failed to open freezer", err)
+		}
+		require.NoError(t, fs[i].Close())
 	}
 }
 
@@ -329,4 +382,23 @@ func TestFreezerCloseSync(t *testing.T) {
 	} else if have, want := err.Error(), "[closed closed]"; have != want {
 		t.Fatalf("want %v, have %v", have, want)
 	}
+}
+
+func TestFreezerSuite(t *testing.T) {
+	ancienttest.TestAncientSuite(t, func(kinds []string) ethdb.AncientStore {
+		tables := make(map[string]bool)
+		for _, kind := range kinds {
+			tables[kind] = true
+		}
+		f, _ := newFreezerForTesting(t, tables)
+		return f
+	})
+	ancienttest.TestResettableAncientSuite(t, func(kinds []string) ethdb.ResettableAncientStore {
+		tables := make(map[string]bool)
+		for _, kind := range kinds {
+			tables[kind] = true
+		}
+		f, _ := newResettableFreezer(t.TempDir(), "", false, 2048, tables)
+		return f
+	})
 }

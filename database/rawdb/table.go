@@ -113,6 +113,12 @@ func (t *table) Delete(key []byte) error {
 	return t.db.Delete(append([]byte(t.prefix), key...))
 }
 
+// DeleteRange deletes all of the keys (and values) in the range [start,end)
+// (inclusive on start, exclusive on end).
+func (t *table) DeleteRange(start, end []byte) error {
+	return t.db.DeleteRange(append([]byte(t.prefix), start...), append([]byte(t.prefix), end...))
+}
+
 // NewIterator creates a binary-alphabetical iterator over a subset
 // of database content with a particular key prefix, starting at a particular
 // initial key (or after, if it does not exist).
@@ -190,7 +196,7 @@ func (b *tableBatch) Put(key, value []byte) error {
 	return b.batch.Put(append([]byte(b.prefix), key...), value)
 }
 
-// Delete inserts the a key removal into the batch for later committing.
+// Delete inserts a key removal into the batch for later committing.
 func (b *tableBatch) Delete(key []byte) error {
 	return b.batch.Delete(append([]byte(b.prefix), key...))
 }

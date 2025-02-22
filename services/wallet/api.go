@@ -7,8 +7,6 @@ import (
 	"github.com/Qitmeer/qng/core/json"
 	"github.com/ethereum/go-ethereum/common"
 	"time"
-
-	"github.com/ethereum/go-ethereum/cmd/utils"
 )
 
 // PublicWalletManagerAPI provides an API to access Qng wallet function
@@ -110,7 +108,7 @@ func (api *PrivateWalletManagerAPI) ImportRawKey(privkey string, password string
 }
 
 func (api *PrivateWalletManagerAPI) Unlock(account, passphrase string, timeout time.Duration) error {
-	a, err := utils.MakeAddress(api.a.qks.KeyStore, account)
+	a, err := MakeAddress(api.a.qks.KeyStore, account)
 	if err != nil {
 		return err
 	}

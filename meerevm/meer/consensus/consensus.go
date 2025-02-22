@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
@@ -151,7 +152,7 @@ func (me *MeerEngine) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 		if header.ParentBeaconRoot == nil {
 			return errors.New("header is missing beaconRoot")
 		}
-		if err := eip4844.VerifyEIP4844Header(parent, header); err != nil {
+		if err := eip4844.VerifyEIP4844Header(chain.Config(), parent, header); err != nil {
 			return err
 		}
 	}
@@ -171,7 +172,7 @@ func (me *MeerEngine) Prepare(chain consensus.ChainHeaderReader, header *types.H
 	return nil
 }
 
-func (me *MeerEngine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, body *types.Body) {
+func (me *MeerEngine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state vm.StateDB, body *types.Body) {
 	me.OnExtraStateChange(chain, header, state)
 	if me.StateChange != nil {
 		me.StateChange(header, state, body)
@@ -237,7 +238,7 @@ func (me *MeerEngine) Seal(chain consensus.ChainHeaderReader, block *types.Block
 	return nil
 }
 
-func (me *MeerEngine) OnExtraStateChange(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB) {
+func (me *MeerEngine) OnExtraStateChange(chain consensus.ChainHeaderReader, header *types.Header, state vm.StateDB) {
 	extdata := header.Extra
 	if len(extdata) <= 1 {
 		return
@@ -270,7 +271,7 @@ func (me *MeerEngine) OnExtraStateChange(chain consensus.ChainHeaderReader, head
 				feeStr = fmt.Sprintf("fee:%s(MEER)+%s(ETH)", mfee.String(), efee.String())
 				state.AddBalance(header.Coinbase, uint256.MustFromBig(efee), tracing.BalanceIncreaseRewardMineBlock)
 				nonce := state.GetNonce(header.Coinbase)
-				state.SetNonce(header.Coinbase, nonce)
+				state.SetNonce(header.Coinbase, nonce, tracing.NonceChangeUnspecified)
 			} else {
 				feeStr = fmt.Sprintf("fee:%s(MEER)", fee.String())
 			}
@@ -289,5 +290,5 @@ func (me *MeerEngine) OnExtraStateChange(chain consensus.ChainHeaderReader, head
 	me.log.Debug(fmt.Sprintf("Balance(%s): %s => %s = %s", tx.To().String(), oldBalance.String(), newBalance.String(), changeB.String()))
 
 	nonce := state.GetNonce(*tx.To())
-	state.SetNonce(*tx.To(), nonce)
+	state.SetNonce(*tx.To(), nonce, tracing.NonceChangeUnspecified)
 }
