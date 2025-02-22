@@ -27,7 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/urfave/cli/v2"
 	"math/big"
 	"runtime"
@@ -110,7 +109,7 @@ func NewETHChain(config *Config, args []string) (*ETHChain, error) {
 	app.Authors = []*cli.Author{
 		{Name: config.Node.Name, Email: config.Node.Name},
 	}
-	app.Version = params.VersionWithMeta
+	app.Version = config.Node.Version
 	app.Usage = config.Node.Name
 
 	//
@@ -161,7 +160,7 @@ func prepare(ctx *cli.Context, cfg *Config) {
 	}
 
 	// Start metrics export if enabled
-	utils.SetupMetrics(ctx)
+	utils.SetupMetrics(&cfg.Metrics)
 
 	// Start system runtime metrics collection
 	go metrics.CollectProcessMetrics(3 * time.Second)
@@ -212,7 +211,6 @@ func makeFullNode(ctx *cli.Context, cfg *Config) (*node.Node, *eth.EthAPIBackend
 }
 
 func makeConfigNode(ctx *cli.Context, cfg *Config) *node.Node {
-	filterConfig(ctx, cfg)
 	// Load config file.
 	if file := ctx.String(ConfigFileFlag.Name); file != "" {
 		if err := LoadConfig(file, cfg); err != nil {
@@ -225,7 +223,7 @@ func makeConfigNode(ctx *cli.Context, cfg *Config) *node.Node {
 	if err != nil {
 		utils.Fatalf("Failed to create the protocol stack: %v", err)
 	}
-	if err := setAccountManagerBackends(stack); err != nil {
+	if err := SetAccountManagerBackends(stack.Config(), stack.AccountManager(), stack.KeyStoreDir()); err != nil {
 		utils.Fatalf("Failed to set account manager backends: %v", err)
 	}
 
@@ -238,10 +236,7 @@ func makeConfigNode(ctx *cli.Context, cfg *Config) *node.Node {
 	return stack
 }
 
-func setAccountManagerBackends(stack *node.Node) error {
-	conf := stack.Config()
-	am := stack.AccountManager()
-	keydir := stack.KeyStoreDir()
+func SetAccountManagerBackends(conf *node.Config, am *accounts.Manager, keydir string) error {
 	scryptN := keystore.StandardScryptN
 	scryptP := keystore.StandardScryptP
 	if conf.UseLightweightKDF {
@@ -259,19 +254,25 @@ func setAccountManagerBackends(stack *node.Node) error {
 			return fmt.Errorf("error connecting to external signer: %v", err)
 		}
 	}
-
+	// For now, we're using EITHER external signer OR local signers.
+	// If/when we implement some form of lockfile for USB and keystore wallets,
+	// we can have both, but it's very confusing for the user to see the same
+	// accounts in both externally and locally, plus very racey.
 	am.AddBackend(keystore.NewKeyStore(keydir, scryptN, scryptP))
 	if conf.USB {
+		// Start a USB hub for Ledger hardware wallets
 		if ledgerhub, err := usbwallet.NewLedgerHub(); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start Ledger hub, disabling: %v", err))
 		} else {
 			am.AddBackend(ledgerhub)
 		}
+		// Start a USB hub for Trezor hardware wallets (HID version)
 		if trezorhub, err := usbwallet.NewTrezorHubWithHID(); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start HID Trezor hub, disabling: %v", err))
 		} else {
 			am.AddBackend(trezorhub)
 		}
+		// Start a USB hub for Trezor hardware wallets (WebUSB version)
 		if trezorhub, err := usbwallet.NewTrezorHubWithWebUSB(); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start WebUSB Trezor hub, disabling: %v", err))
 		} else {
@@ -279,6 +280,7 @@ func setAccountManagerBackends(stack *node.Node) error {
 		}
 	}
 	if len(conf.SmartCardDaemonPath) > 0 {
+		// Start a smart card hub
 		if schub, err := scwallet.NewHub(conf.SmartCardDaemonPath, scwallet.Scheme, keydir); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start smart card hub, disabling: %v", err))
 		} else {
@@ -332,6 +334,27 @@ func applyMetricConfig(ctx *cli.Context, cfg *Config) {
 	if ctx.IsSet(utils.MetricsInfluxDBOrganizationFlag.Name) {
 		cfg.Metrics.InfluxDBOrganization = ctx.String(utils.MetricsInfluxDBOrganizationFlag.Name)
 	}
+	// Sanity-check the commandline flags. It is fine if some unused fields is part
+	// of the toml-config, but we expect the commandline to only contain relevant
+	// arguments, otherwise it indicates an error.
+	var (
+		enableExport   = ctx.Bool(utils.MetricsEnableInfluxDBFlag.Name)
+		enableExportV2 = ctx.Bool(utils.MetricsEnableInfluxDBV2Flag.Name)
+	)
+	if enableExport || enableExportV2 {
+		v1FlagIsSet := ctx.IsSet(utils.MetricsInfluxDBUsernameFlag.Name) ||
+			ctx.IsSet(utils.MetricsInfluxDBPasswordFlag.Name)
+
+		v2FlagIsSet := ctx.IsSet(utils.MetricsInfluxDBTokenFlag.Name) ||
+			ctx.IsSet(utils.MetricsInfluxDBOrganizationFlag.Name) ||
+			ctx.IsSet(utils.MetricsInfluxDBBucketFlag.Name)
+
+		if enableExport && v2FlagIsSet {
+			utils.Fatalf("Flags --influxdb.metrics.organization, --influxdb.metrics.token, --influxdb.metrics.bucket are only available for influxdb-v2")
+		} else if enableExportV2 && v1FlagIsSet {
+			utils.Fatalf("Flags --influxdb.metrics.username, --influxdb.metrics.password are only available for influxdb-v1")
+		}
+	}
 }
 
 func startNode(ctx *cli.Context, stack *node.Node, backend *eth.EthAPIBackend) error {
@@ -339,8 +362,9 @@ func startNode(ctx *cli.Context, stack *node.Node, backend *eth.EthAPIBackend) e
 	if err != nil {
 		return err
 	}
-
-	unlockAccounts(ctx, stack)
+	if ctx.IsSet(utils.UnlockedAccountFlag.Name) {
+		log.Warn(`The "unlock" flag has been deprecated and has no effect`)
+	}
 
 	events := make(chan accounts.WalletEvent, 16)
 	stack.AccountManager().Subscribe(events)
@@ -403,133 +427,13 @@ func startNode(ctx *cli.Context, stack *node.Node, backend *eth.EthAPIBackend) e
 	return nil
 }
 
-func unlockAccounts(ctx *cli.Context, stack *node.Node) {
-	var unlocks []string
-	inputs := strings.Split(ctx.String(utils.UnlockedAccountFlag.Name), ",")
-	for _, input := range inputs {
-		if trimmed := strings.TrimSpace(input); trimmed != "" {
-			unlocks = append(unlocks, trimmed)
-		}
-	}
-	// Short circuit if there is no account to unlock.
-	if len(unlocks) == 0 {
-		return
-	}
-	// If insecure account unlocking is not allowed if node's APIs are exposed to external.
-	// Print warning log to user and skip unlocking.
-	if !stack.Config().InsecureUnlockAllowed && stack.Config().ExtRPCEnabled() {
-		utils.Fatalf("Account unlock with HTTP access is forbidden!")
-	}
-	backends := stack.AccountManager().Backends(keystore.KeyStoreType)
-	if len(backends) == 0 {
-		log.Warn("Failed to unlock accounts, keystore is not available")
-		return
-	}
-	ks := backends[0].(*keystore.KeyStore)
-	passwords := utils.MakePasswordList(ctx)
-	for i, account := range unlocks {
-		UnlockAccount(ks, account, i, passwords)
-	}
-}
-
-func UnlockAccount(ks *keystore.KeyStore, address string, i int, passwords []string) (accounts.Account, string) {
-	account, err := utils.MakeAddress(ks, address)
-	if err != nil {
-		utils.Fatalf("Could not list accounts: %v", err)
-	}
-	for trials := 0; trials < 3; trials++ {
-		prompt := fmt.Sprintf("Unlocking account %s | Attempt %d/%d", address, trials+1, 3)
-		password := utils.GetPassPhraseWithList(prompt, false, i, passwords)
-		err = ks.Unlock(account, password)
-		if err == nil {
-			log.Info("Unlocked account", "address", account.Address.Hex())
-			return account, password
-		}
-		if err, ok := err.(*keystore.AmbiguousAddrError); ok {
-			log.Info("Unlocked account", "address", account.Address.Hex())
-			return ambiguousAddrRecovery(ks, err, password), password
-		}
-		if err != keystore.ErrDecrypt {
-			// No need to prompt again if the error is not decryption-related.
-			break
-		}
-	}
-	// All trials expended to unlock account, bail out
-	utils.Fatalf("Failed to unlock account %s (%v)", address, err)
-
-	return accounts.Account{}, ""
-}
-
-func ambiguousAddrRecovery(ks *keystore.KeyStore, err *keystore.AmbiguousAddrError, auth string) accounts.Account {
-	fmt.Printf("Multiple key files exist for address %x:\n", err.Addr)
-	for _, a := range err.Matches {
-		fmt.Println("  ", a.URL)
-	}
-	fmt.Println("Testing your password against all of them...")
-	var match *accounts.Account
-	for i, a := range err.Matches {
-		if e := ks.Unlock(a, auth); e == nil {
-			match = &err.Matches[i]
-			break
-		}
-	}
-	if match == nil {
-		utils.Fatalf("None of the listed files could be unlocked.")
-		return accounts.Account{}
-	}
-	fmt.Printf("Your password unlocked %s\n", match.URL)
-	fmt.Println("In order to avoid this warning, you need to remove the following duplicate key files:")
-	for _, a := range err.Matches {
-		if a != *match {
-			fmt.Println("  ", a.URL)
-		}
-	}
-	return *match
-}
-
-func filterConfig(ctx *cli.Context, cfg *Config) {
-	hms := ctx.String(utils.HTTPApiFlag.Name)
-	if len(hms) > 0 {
-		modules := utils.SplitAndTrim(hms)
-		nmodules := ""
-		for _, mod := range modules {
-			if mod == "miner" {
-				continue
-			}
-			if len(nmodules) > 0 {
-				nmodules = nmodules + "," + mod
-			} else {
-				nmodules = mod
-			}
-		}
-		ctx.Set(utils.HTTPApiFlag.Name, nmodules)
-	}
-
-	wms := ctx.String(utils.WSApiFlag.Name)
-	if len(wms) > 0 {
-		modules := utils.SplitAndTrim(wms)
-		nmodules := ""
-		for _, mod := range modules {
-			if mod == "miner" {
-				continue
-			}
-			if len(nmodules) > 0 {
-				nmodules = nmodules + "," + mod
-			} else {
-				nmodules = mod
-			}
-		}
-		ctx.Set(utils.WSApiFlag.Name, nmodules)
-	}
-}
-
 func MakeNakedNode(config *Config, args []string) (*node.Node, *cli.Context, error) {
 	app := cli.NewApp()
 	app.Name = config.Node.Name
 	app.Authors = []*cli.Author{
 		{Name: config.Node.Name, Email: config.Node.Name},
 	}
-	app.Version = params.VersionWithMeta
+	app.Version = config.Node.Version
 	app.Usage = config.Node.Name
 
 	//

@@ -1,8 +1,9 @@
 package rawdb
 
 import (
-	"github.com/ethereum/go-ethereum/ethdb"
 	"path/filepath"
+
+	"github.com/ethereum/go-ethereum/ethdb"
 )
 
 // The list of table names of chain freezer.
@@ -33,6 +34,7 @@ const (
 	stateHistoryStorageData  = "storage.data"
 )
 
+// stateFreezerNoSnappy configures whether compression is disabled for the state freezer.
 var stateFreezerNoSnappy = map[string]bool{
 	stateHistoryMeta:         true,
 	stateHistoryAccountIndex: false,
@@ -43,12 +45,13 @@ var stateFreezerNoSnappy = map[string]bool{
 
 // The list of identifiers of ancient stores.
 var (
-	chainFreezerName = "chain" // the folder name of chain segment ancient store.
-	stateFreezerName = "state" // the folder name of reverse diff ancient store.
+	ChainFreezerName       = "chain"        // the folder name of chain segment ancient store.
+	MerkleStateFreezerName = "state"        // the folder name of state history ancient store.
+	VerkleStateFreezerName = "state_verkle" // the folder name of state history ancient store.
 )
 
 // freezers the collections of all builtin freezers.
-var freezers = []string{chainFreezerName}
+var freezers = []string{ChainFreezerName, MerkleStateFreezerName, VerkleStateFreezerName}
 
 // NewStateFreezer initializes the ancient store for state history.
 //
@@ -56,9 +59,15 @@ var freezers = []string{chainFreezerName}
 //     state freezer (e.g. dev mode).
 //   - if non-empty directory is given, initializes the regular file-based
 //     state freezer.
-func NewStateFreezer(ancientDir string, readOnly bool) (ethdb.ResettableAncientStore, error) {
+func NewStateFreezer(ancientDir string, verkle bool, readOnly bool) (ethdb.ResettableAncientStore, error) {
 	if ancientDir == "" {
 		return NewMemoryFreezer(readOnly, stateFreezerNoSnappy), nil
 	}
-	return newResettableFreezer(filepath.Join(ancientDir, stateFreezerName), "state", readOnly, stateHistoryTableSize, stateFreezerNoSnappy)
+	var name string
+	if verkle {
+		name = filepath.Join(ancientDir, VerkleStateFreezerName)
+	} else {
+		name = filepath.Join(ancientDir, MerkleStateFreezerName)
+	}
+	return newResettableFreezer(name, "state", readOnly, stateHistoryTableSize, stateFreezerNoSnappy)
 }

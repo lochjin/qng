@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	eeth "github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/downloader"
@@ -311,9 +312,13 @@ func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *stat
 	bc := b.chain.Ether().BlockChain()
 	snap := statedb.Snapshot()
 
-	receipt, err := core.ApplyTransaction(config, bc, &header.Coinbase, gasPool, statedb, header, tx, &header.GasUsed, *bc.GetVMConfig())
+	gp := gasPool.Gas()
+
+	evm := vm.NewEVM(core.NewEVMBlockContext(header, bc, &header.Coinbase), statedb, config, *bc.GetVMConfig())
+	receipt, err := core.ApplyTransaction(evm, gasPool, statedb, header, tx, &header.GasUsed)
 	if err != nil {
 		statedb.RevertToSnapshot(snap)
+		gasPool.SetGas(gp)
 		return err
 	}
 	*txs = append(*txs, tx)
@@ -322,7 +327,7 @@ func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *stat
 	return nil
 }
 
-func (b *BlockChain) OnStateChange(header *types.Header, state *state.StateDB, body *types.Body) {
+func (b *BlockChain) OnStateChange(header *types.Header, state vm.StateDB, body *types.Body) {
 	if len(header.Extra) == 1 && header.Extra[0] == blockTag {
 		return
 	}
@@ -573,10 +578,13 @@ func (b *BlockChain) validateTx(tx *types.Transaction, checkState bool) error {
 			return core.ErrInsufficientFunds
 		}
 	}
-	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, true, false)
+	head := b.GetCurHeader()
+	rules := b.Ether().BlockChain().Config().Rules(head.Number, head.Difficulty.Sign() == 0, head.Time)
+	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.SetCodeAuthorizations(), tx.To() == nil, true, rules.IsIstanbul, rules.IsShanghai)
 	if err != nil {
 		return err
 	}
+
 	if tx.Gas() < intrGas {
 		return core.ErrIntrinsicGas
 	}

@@ -16,13 +16,14 @@ type freezerOpenFunc = func() (*Freezer, error)
 // resettableFreezer is a wrapper of the freezer which makes the
 // freezer resettable.
 type resettableFreezer struct {
-	freezer *Freezer
-	opener  freezerOpenFunc
-	datadir string
-	lock    sync.RWMutex
+	readOnly bool
+	freezer  *Freezer
+	opener   freezerOpenFunc
+	datadir  string
+	lock     sync.RWMutex
 }
 
-// NewResettableFreezer creates a resettable freezer, note freezer is
+// newResettableFreezer creates a resettable freezer, note freezer is
 // only resettable if the passed file directory is exclusively occupied
 // by the freezer. And also the user-configurable ancient root directory
 // is **not** supported for reset since it might be a mount and rename
@@ -43,9 +44,10 @@ func newResettableFreezer(datadir string, namespace string, readonly bool, maxTa
 		return nil, err
 	}
 	return &resettableFreezer{
-		freezer: freezer,
-		opener:  opener,
-		datadir: datadir,
+		readOnly: readonly,
+		freezer:  freezer,
+		opener:   opener,
+		datadir:  datadir,
 	}, nil
 }
 
@@ -57,6 +59,9 @@ func (f *resettableFreezer) Reset() error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
+	if f.readOnly {
+		return errReadOnly
+	}
 	if err := f.freezer.Close(); err != nil {
 		return err
 	}
@@ -102,9 +107,10 @@ func (f *resettableFreezer) Ancient(kind string, number uint64) ([]byte, error) 
 
 // AncientRange retrieves multiple items in sequence, starting from the index 'start'.
 // It will return
-//   - at most 'max' items,
-//   - at least 1 item (even if exceeding the maxByteSize), but will otherwise
-//     return as many items as fit into maxByteSize
+//   - at most 'count' items,
+//   - if maxBytes is specified: at least 1 item (even if exceeding the maxByteSize),
+//     but will otherwise return as many items as fit into maxByteSize.
+//   - if maxBytes is not specified, 'count' items will be returned if they are present.
 func (f *resettableFreezer) AncientRange(kind string, start, count, maxBytes uint64) ([][]byte, error) {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
@@ -177,6 +183,14 @@ func (f *resettableFreezer) Sync() error {
 	defer f.lock.RUnlock()
 
 	return f.freezer.Sync()
+}
+
+// AncientDatadir returns the path of the ancient store.
+func (f *resettableFreezer) AncientDatadir() (string, error) {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+
+	return f.freezer.AncientDatadir()
 }
 
 // cleanup removes the directory located in the specified path

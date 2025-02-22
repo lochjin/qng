@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/version"
 	"math/big"
 )
 
@@ -42,18 +43,14 @@ func makeHeader(cfg *ethconfig.Config, parent *types.Block, state *state.StateDB
 			header.GasLimit = core.CalcGasLimit(parentGasLimit, parentGasLimit)
 		}
 	}
+	// Apply EIP-4844, EIP-4788.
 	if cfg.Genesis.Config.IsCancun(header.Number, header.Time) {
-		var (
-			parentExcessBlobGas uint64
-			parentBlobGasUsed   uint64
-		)
-		if parent.ExcessBlobGas() != nil {
-			parentExcessBlobGas = *parent.ExcessBlobGas()
-			parentBlobGasUsed = *parent.BlobGasUsed()
+		var excessBlobGas uint64
+		if cfg.Genesis.Config.IsCancun(parent.Number(), parent.Time()) {
+			excessBlobGas = eip4844.CalcExcessBlobGas(cfg.Genesis.Config, parent.Header(), uint64(timestamp))
 		}
-		excessBlobGas := eip4844.CalcExcessBlobGas(parentExcessBlobGas, parentBlobGasUsed)
-		header.ExcessBlobGas = &excessBlobGas
 		header.BlobGasUsed = new(uint64)
+		header.ExcessBlobGas = &excessBlobGas
 		header.ParentBeaconRoot = new(common.Hash)
 	}
 	return header
@@ -159,3 +156,15 @@ func CheckUTXOPubkey(pubKey ecc.PublicKey, entry *utxo.UtxoEntry) ([]byte, error
 	}
 	return nil, fmt.Errorf("UTXO error")
 }
+
+// Semantic holds the textual version string for major.minor.patch.
+var Semantic = fmt.Sprintf("%d.%d.%d", version.Major, version.Minor, version.Patch)
+
+// WithMeta holds the textual version string including the metadata.
+var WithMeta = func() string {
+	v := Semantic
+	if version.Meta != "" {
+		v += "-" + version.Meta
+	}
+	return v
+}()

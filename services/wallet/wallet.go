@@ -16,7 +16,6 @@ import (
 	"github.com/Qitmeer/qng/services/tx"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -76,7 +75,7 @@ func (wm *WalletManager) Load() error {
 	if len(wm.qks.Accounts()) < 1 {
 		return fmt.Errorf("not have any wallet,please create one\n ./qng --testnet -A=./ account import")
 	}
-	a, err := utils.MakeAddress(wm.qks.KeyStore, "0")
+	a, err := MakeAddress(wm.qks.KeyStore, "0")
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,6 @@ package rawdb
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/cockroachdb/pebble"
 	"github.com/olekukonko/tablewriter"
@@ -13,18 +12,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	ldb "github.com/syndtr/goleveldb/leveldb"
 )
 
-// freezerdb is a database wrapper that enabled freezer data retrievals.
+// freezerdb is a database wrapper that enables ancient chain segment freezing.
 type freezerdb struct {
-	ancientRoot string
 	ethdb.KeyValueStore
 	*chainFreezer
 
-	readOnly bool
+	readOnly    bool
+	ancientRoot string
 }
 
 // AncientDatadir returns the path of root ancient directory.
@@ -121,7 +119,7 @@ func (db *nofreezedb) ReadAncients(fn func(reader ethdb.AncientReaderOp) error) 
 	// Unlike other ancient-related methods, this method does not return
 	// errNotSupported when invoked.
 	// The reason for this is that the caller might want to do several things:
-	// 1. Check if something is in freezer,
+	// 1. Check if something is in the freezer,
 	// 2. If not, check leveldb.
 	//
 	// This will work, since the ancient-checks inside 'fn' will return errors,
@@ -151,7 +149,7 @@ func resolveChainFreezerDir(ancient string) string {
 	// sub folder, if not then two possibilities:
 	// - chain freezer is not initialized
 	// - chain freezer exists in legacy location (root ancient folder)
-	freezer := filepath.Join(ancient, chainFreezerName)
+	freezer := filepath.Join(ancient, ChainFreezerName)
 	if !common.FileExist(freezer) {
 		if !common.FileExist(ancient) {
 			// The entire ancient store is not initialized, still use the sub
@@ -206,27 +204,9 @@ func NewMemoryDatabase() ethdb.Database {
 	return NewDatabase(memorydb.New())
 }
 
-// NewMemoryDatabaseWithCap creates an ephemeral in-memory key-value database
-// with an initial starting capacity, but without a freezer moving immutable
-// chain segments into cold storage.
-func NewMemoryDatabaseWithCap(size int) ethdb.Database {
-	return NewDatabase(memorydb.NewWithCap(size))
-}
-
-// NewLevelDBDatabase creates a persistent key-value database without a freezer
-// moving immutable chain segments into cold storage.
-func NewLevelDBDatabase(file string, cache int, handles int, namespace string, readonly bool) (ethdb.Database, error) {
-	db, err := leveldb.New(file, cache, handles, namespace, readonly)
-	if err != nil {
-		return nil, err
-	}
-	log.Info("Using LevelDB as the backing database")
-	return NewDatabase(db), nil
-}
-
 const (
-	dbPebble  = "pebble"
-	dbLeveldb = "leveldb"
+	DBPebble  = "pebble"
+	DBLeveldb = "leveldb"
 )
 
 // PreexistingDatabase checks the given data directory whether a database is already
@@ -240,85 +220,9 @@ func PreexistingDatabase(path string) string {
 		if err != nil {
 			panic(err) // only possible if the pattern is malformed
 		}
-		return dbPebble
+		return DBPebble
 	}
-	return dbLeveldb
-}
-
-// OpenOptions contains the options to apply when opening a database.
-// OBS: If AncientsDirectory is empty, it indicates that no freezer is to be used.
-type OpenOptions struct {
-	Type              string // "leveldb" | "pebble"
-	Directory         string // the datadir
-	AncientsDirectory string // the ancients-dir
-	Namespace         string // the namespace for database relevant metrics
-	Cache             int    // the capacity(in megabytes) of the data caching
-	Handles           int    // number of files to be open simultaneously
-	ReadOnly          bool
-	// Ephemeral means that filesystem sync operations should be avoided: data integrity in the face of
-	// a crash is not important. This option should typically be used in tests.
-	Ephemeral bool
-}
-
-// openKeyValueDatabase opens a disk-based key-value database, e.g. leveldb or pebble.
-//
-//	                      type == null          type != null
-//	                   +----------------------------------------
-//	db is non-existent |  pebble default  |  specified type
-//	db is existent     |  from db         |  specified type (if compatible)
-func openKeyValueDatabase(o OpenOptions) (ethdb.Database, error) {
-	// Reject any unsupported database type
-	if len(o.Type) != 0 && o.Type != dbLeveldb && o.Type != dbPebble {
-		return nil, fmt.Errorf("unknown db.engine %v", o.Type)
-	}
-	// Retrieve any pre-existing database's type and use that or the requested one
-	// as long as there's no conflict between the two types
-	existingDb := PreexistingDatabase(o.Directory)
-	if len(existingDb) != 0 && len(o.Type) != 0 && o.Type != existingDb {
-		return nil, fmt.Errorf("db.engine choice was %v but found pre-existing %v database in specified data directory", o.Type, existingDb)
-	}
-	if o.Type == dbPebble || existingDb == dbPebble {
-		if PebbleEnabled {
-			log.Info("Using pebble as the backing database")
-			return NewPebbleDBDatabase(o.Directory, o.Cache, o.Handles, o.Namespace, o.ReadOnly, o.Ephemeral)
-		} else {
-			return nil, errors.New("db.engine 'pebble' not supported on this platform")
-		}
-	}
-	if o.Type == dbLeveldb || existingDb == dbLeveldb {
-		log.Info("Using leveldb as the backing database")
-		return NewLevelDBDatabase(o.Directory, o.Cache, o.Handles, o.Namespace, o.ReadOnly)
-	}
-	// No pre-existing database, no user-requested one either. Default to Pebble
-	// on supported platforms and LevelDB on anything else.
-	if PebbleEnabled {
-		log.Info("Defaulting to pebble as the backing database")
-		return NewPebbleDBDatabase(o.Directory, o.Cache, o.Handles, o.Namespace, o.ReadOnly, o.Ephemeral)
-	} else {
-		log.Info("Defaulting to leveldb as the backing database")
-		return NewLevelDBDatabase(o.Directory, o.Cache, o.Handles, o.Namespace, o.ReadOnly)
-	}
-}
-
-// Open opens both a disk-based key-value database such as leveldb or pebble, but also
-// integrates it with a freezer database -- if the AncientDir option has been
-// set on the provided OpenOptions.
-// The passed o.AncientDir indicates the path of root ancient directory where
-// the chain freezer can be opened.
-func Open(o OpenOptions) (ethdb.Database, error) {
-	kvdb, err := openKeyValueDatabase(o)
-	if err != nil {
-		return nil, err
-	}
-	if len(o.AncientsDirectory) == 0 {
-		return kvdb, nil
-	}
-	frdb, err := NewDatabaseWithFreezer(kvdb, o.AncientsDirectory, o.Namespace, o.ReadOnly)
-	if err != nil {
-		kvdb.Close()
-		return nil, err
-	}
-	return frdb, nil
+	return DBLeveldb
 }
 
 type counter uint64

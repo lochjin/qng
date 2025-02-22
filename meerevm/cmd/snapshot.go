@@ -413,7 +413,7 @@ func traverseRawState(ctx *cli.Context) error {
 		log.Error("Failed to open iterator", "root", root, "err", err)
 		return err
 	}
-	reader, err := triedb.Reader(root)
+	reader, err := triedb.NodeReader(root)
 	if err != nil {
 		log.Error("State is non-existent", "root", root)
 		return nil
@@ -482,6 +482,10 @@ func traverseRawState(ctx *cli.Context) error {
 					// Bump the counter if it's leaf node.
 					if storageIter.Leaf() {
 						slots += 1
+					}
+					if time.Since(lastReport) > time.Second*8 {
+						log.Info("Traversing state", "nodes", nodes, "accounts", accounts, "slots", slots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)))
+						lastReport = time.Now()
 					}
 				}
 				if storageIter.Error() != nil {

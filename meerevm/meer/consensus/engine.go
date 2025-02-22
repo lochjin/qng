@@ -7,13 +7,13 @@ package consensus
 import (
 	"github.com/Qitmeer/qng/log"
 	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/rpc"
 	"sync"
 )
 
-type OnStateChange func(header *types.Header, state *state.StateDB, body *types.Body)
+type OnStateChange func(header *types.Header, state vm.StateDB, body *types.Body)
 
 type MeerEngine struct {
 	log log.Logger

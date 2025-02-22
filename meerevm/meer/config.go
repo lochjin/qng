@@ -55,7 +55,7 @@ func MakeConfig(cfg *config.Config) (*eth.Config, error) {
 
 	nodeConf.DataDir = datadir
 	nodeConf.Name = ClientIdentifier
-	nodeConf.Version = params.VersionWithMeta
+	nodeConf.Version = WithMeta
 	nodeConf.HTTPModules = append(nodeConf.HTTPModules, "eth")
 	nodeConf.WSModules = append(nodeConf.WSModules, "eth")
 	if !cfg.DisableRPC {

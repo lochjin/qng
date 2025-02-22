@@ -5,7 +5,6 @@ import (
 	"github.com/Qitmeer/qng/meerdag"
 	"github.com/ethereum/go-ethereum/params"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,19 +22,22 @@ const (
 	freezerBatchLimit = 30000
 )
 
-// chainFreezer is a wrapper of freezer with additional chain freezing feature.
-// The background thread will keep moving ancient chain segments from key-value
-// database to flat files for saving space on live database.
+// chainFreezer is a wrapper of chain ancient store with additional chain freezing
+// feature. The background thread will keep moving ancient chain segments from
+// key-value database to flat files for saving space on live database.
 type chainFreezer struct {
-	threshold atomic.Uint64 // Number of recent blocks not to freeze (params.FullImmutabilityThreshold apart from tests)
-
 	ethdb.AncientStore // Ancient store for storing cold chain segment
 	quit               chan struct{}
 	wg                 sync.WaitGroup
 	trigger            chan chan struct{} // Manual blocking freeze trigger, test determinism
 }
 
-// newChainFreezer initializes the freezer for ancient chain data.
+// newChainFreezer initializes the freezer for ancient chain segment.
+//
+//   - if the empty directory is given, initializes the pure in-memory
+//     state freezer (e.g. dev mode).
+//   - if non-empty directory is given, initializes the regular file-based
+//     state freezer.
 func newChainFreezer(datadir string, namespace string, readonly bool) (*chainFreezer, error) {
 	var (
 		err     error
@@ -49,13 +51,11 @@ func newChainFreezer(datadir string, namespace string, readonly bool) (*chainFre
 	if err != nil {
 		return nil, err
 	}
-	cf := chainFreezer{
+	return &chainFreezer{
 		AncientStore: freezer,
 		quit:         make(chan struct{}),
 		trigger:      make(chan chan struct{}),
-	}
-	cf.threshold.Store(params.FullImmutabilityThreshold)
-	return &cf, nil
+	}, nil
 }
 
 // Close closes the chain freezer instance and terminates the background thread.
@@ -119,7 +119,7 @@ func (f *chainFreezer) freeze(db ethdb.KeyValueStore) {
 			backoff = true
 			continue
 		}
-		threshold := f.threshold.Load()
+		threshold := uint64(params.FullImmutabilityThreshold)
 		frozen, _ := f.Ancients() // no error will occur, safe to ignore
 		switch {
 		case *mt < threshold:
