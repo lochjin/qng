@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/urfave/cli/v2"
 	"math/big"
+	"os"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -228,6 +229,7 @@ func makeConfigNode(ctx *cli.Context, cfg *Config) *node.Node {
 	}
 
 	utils.SetEthConfig(ctx, stack, &cfg.Eth)
+	SetAccountConfig(ctx, stack, &cfg.Eth)
 	if ctx.IsSet(utils.EthStatsURLFlag.Name) {
 		cfg.Ethstats.URL = ctx.String(utils.EthStatsURLFlag.Name)
 	}
@@ -557,4 +559,45 @@ func MakeChain(ctx *cli.Context, stack *node.Node, readonly bool, cfg *Config) (
 	}
 
 	return chain, chainDb, nil
+}
+
+func SetAccountConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
+	var (
+		acct       accounts.Account
+		passphrase string
+	)
+	if path := ctx.Path(utils.PasswordFileFlag.Name); path != "" {
+		if text, err := os.ReadFile(path); err != nil {
+			utils.Fatalf("Failed to read password file: %v", err)
+		} else {
+			if lines := strings.Split(string(text), "\n"); len(lines) > 0 {
+				passphrase = strings.TrimRight(lines[0], "\r") // Sanitise DOS line endings.
+			}
+		}
+	}
+	// Unlock the account by local keystore.
+	var ks *keystore.KeyStore
+	if keystores := stack.AccountManager().Backends(keystore.KeyStoreType); len(keystores) > 0 {
+		ks = keystores[0].(*keystore.KeyStore)
+	}
+	if ks == nil {
+		return
+	}
+
+	// Figure out the account address.
+	if cfg.Miner.PendingFeeRecipient != (common.Address{}) {
+		acct = accounts.Account{Address: cfg.Miner.PendingFeeRecipient}
+	} else if accs := ks.Accounts(); len(accs) > 0 {
+		acct = ks.Accounts()[0]
+	} else {
+		return
+	}
+	// Make sure the address is configured as fee recipient, otherwise
+	// the miner will fail to start.
+	cfg.Miner.PendingFeeRecipient = acct.Address
+
+	if err := ks.Unlock(acct, passphrase); err != nil {
+		utils.Fatalf("Failed to unlock account: %v", err)
+	}
+	log.Info("Using eth miner account", "address", acct.Address)
 }
