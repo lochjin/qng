@@ -56,9 +56,3 @@ If you don't want to use the default configuration, you can:
 * If your environment is having trouble getting public IP, please try using `./relaynode --externalip=[Your Public IP]`
 
 * If you want to use DNS service: `./relaynode --externalip=[Your domain name]`
-
-
-* Show network meerevm bootnodes from DNS server 
-```bash
-~ ./relaynode --network=testnet meerdnsnodes
-```
