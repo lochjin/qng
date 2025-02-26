@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/Qitmeer/qng/cmd/relaynode/boot"
 	rconfig "github.com/Qitmeer/qng/cmd/relaynode/config"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/common/roughtime"
@@ -76,9 +75,6 @@ func (node *Node) init(cfg *rconfig.Config) error {
 	node.peerStatus = peers.NewStatus(node)
 
 	if err := node.RegisterRpcService(); err != nil {
-		return err
-	}
-	if err := node.RegisterBootService(); err != nil {
 		return err
 	}
 
@@ -313,21 +309,6 @@ func (node *Node) RegisterRpcService() error {
 
 }
 
-func (node *Node) RegisterBootService() error {
-	if !node.cfg.Boot.Enable {
-		return nil
-	}
-	nk, err := common.ToECDSAPrivKey(node.privateKey)
-	if err != nil {
-		return err
-	}
-	aSer, err := boot.NewBootService(node.cfg, nk)
-	if err != nil {
-		return err
-	}
-	return node.Services().RegisterService(aSer)
-}
-
 func (node *Node) Encoding() encoder.NetworkEncoding {
 	return &encoder.SszNetworkEncoder{UseSnappyCompression: true}
 }
@@ -476,15 +457,6 @@ func (node *Node) InterceptUpgraded(n network.Conn) (allow bool, reason control.
 
 func (node *Node) GetRpcServer() *rpc.RpcServer {
 	var service *rpc.RpcServer
-	if err := node.Services().FetchService(&service); err != nil {
-		log.Error(err.Error())
-		return nil
-	}
-	return service
-}
-
-func (node *Node) GetBootService() *boot.BootService {
-	var service *boot.BootService
 	if err := node.Services().FetchService(&service); err != nil {
 		log.Error(err.Error())
 		return nil

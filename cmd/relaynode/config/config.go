@@ -16,17 +16,16 @@ import (
 )
 
 const (
-	defaultDataDirname    = "relay"
-	defaultPort           = "2001"
-	DefaultIP             = "0.0.0.0"
-	defaultLogDirname     = "logs"
-	defaultLogFilename    = "relaynode.log"
-	defaultRPCKeyFile     = "rpc.key"
-	defaultRPCCertFile    = "rpc.cert"
-	defaultMaxRPCClients  = 10
-	defaultRPCListener    = "127.0.0.1:2002"
-	defaultMaxPeers       = 1000
-	defaultBootListenAddr = ":2003"
+	defaultDataDirname   = "relay"
+	defaultPort          = "2001"
+	DefaultIP            = "0.0.0.0"
+	defaultLogDirname    = "logs"
+	defaultLogFilename   = "relaynode.log"
+	defaultRPCKeyFile    = "rpc.key"
+	defaultRPCCertFile   = "rpc.cert"
+	defaultMaxRPCClients = 10
+	defaultRPCListener   = "127.0.0.1:2002"
+	defaultMaxPeers      = 1000
 )
 
 var (
@@ -85,7 +84,7 @@ var (
 	Network = &cli.StringFlag{
 		Name:        "network",
 		Aliases:     []string{"e"},
-		Usage:       "Network {mainnet,mixnet,privnet,testnet}",
+		Usage:       "Network {mainnet,mixnet,privnet,testnet,amananet}",
 		Value:       params.MixNetParam.Name,
 		Destination: &Conf.Network,
 	}
@@ -216,45 +215,6 @@ var (
 		Destination: &Conf.MaxPeers,
 	}
 
-	EnableBoot = &cli.BoolFlag{
-		Name:        "boot",
-		Aliases:     []string{"am"},
-		Usage:       "Enable Boot support",
-		Value:       false,
-		Destination: &Conf.Boot.Enable,
-	}
-
-	BootListenAddr = &cli.StringFlag{
-		Name:        "addr",
-		Aliases:     []string{"qa"},
-		Usage:       "Boot listen address",
-		Value:       defaultBootListenAddr,
-		Destination: &Conf.Boot.ListenAddr,
-	}
-
-	BootNAT = &cli.StringFlag{
-		Name:        "nat",
-		Aliases:     []string{"na"},
-		Usage:       "Boot port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
-		Value:       "none",
-		Destination: &Conf.Boot.Natdesc,
-	}
-
-	BootNetrestrict = &cli.StringFlag{
-		Name:        "netrestrict",
-		Aliases:     []string{"ne"},
-		Usage:       "Boot restrict network communication to the given IP networks (CIDR masks)",
-		Value:       "",
-		Destination: &Conf.Boot.Netrestrict,
-	}
-
-	BootRunv5 = &cli.BoolFlag{
-		Name:        "v5",
-		Usage:       "run a v5 topic discovery Boot",
-		Value:       false,
-		Destination: &Conf.Boot.Runv5,
-	}
-
 	AppFlags = []cli.Flag{
 		HomeDir,
 		DataDir,
@@ -279,11 +239,6 @@ var (
 		DisableTLS,
 		EnableRelay,
 		MaxPeers,
-		EnableBoot,
-		BootListenAddr,
-		BootNAT,
-		BootNetrestrict,
-		BootRunv5,
 	}
 )
 
@@ -312,8 +267,6 @@ type Config struct {
 	DisableTLS    bool
 	EnableRelay   bool
 	MaxPeers      int
-
-	Boot BootConfig
 }
 
 func (c *Config) Load() error {
@@ -349,6 +302,10 @@ func (c *Config) Load() error {
 	if c.Network == params.MixNetParam.Name {
 		numNets++
 		params.ActiveNetParams = &params.MixNetParam
+	}
+	if c.Network == params.AmanaNetParam.Name {
+		numNets++
+		params.ActiveNetParams = &params.AmanaNetParam
 	}
 
 	if numNets == 0 {

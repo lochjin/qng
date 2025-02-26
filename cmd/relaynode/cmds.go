@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/Qitmeer/qng/cmd/relaynode/config"
-	"github.com/Qitmeer/qng/cmd/relaynode/crawl"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/urfave/cli/v2"
@@ -12,7 +11,6 @@ import (
 func commands() []*cli.Command {
 	cmds := []*cli.Command{}
 	cmds = append(cmds, bootWriteAddressCmd())
-	cmds = append(cmds, crawl.Cmds()...)
 	return cmds
 }
 
