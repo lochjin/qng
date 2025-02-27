@@ -191,7 +191,7 @@ func (ps *PeerSync) startSnapSync() bool {
 		if curEVMTarget != (ecommon.Hash{}) && ebc.GetBlockByHash(curEVMTarget) != nil {
 			ps.snapStatus.CompleteEVM()
 		}
-		if mc.GetCurHeader().Number.Uint64()+MinSnapSyncNumber >= bestPeer.GetMeerState().Number {
+		if mc.CurrentHeader().Number.Uint64()+MinSnapSyncNumber >= bestPeer.GetMeerState().Number {
 			ps.snapStatus.CompleteEVM()
 		}
 	}

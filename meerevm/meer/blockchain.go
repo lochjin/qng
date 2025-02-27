@@ -195,8 +195,6 @@ func (b *BlockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp
 
 	uncles := []*types.Header{}
 
-	chainreader := &fakeChainReader{config: config}
-
 	statedb, err := b.chain.Ether().BlockChain().StateAt(parentBlock.Root())
 	if err != nil {
 		return nil, nil, nil, err
@@ -217,7 +215,7 @@ func (b *BlockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp
 		return nil, nil, nil, err
 	}
 
-	block, err := engine.FinalizeAndAssemble(chainreader, header, statedb, &types.Body{Transactions: txs, Uncles: uncles}, receipts)
+	block, err := engine.FinalizeAndAssemble(b, header, statedb, &types.Body{Transactions: txs, Uncles: uncles}, receipts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -578,7 +576,7 @@ func (b *BlockChain) validateTx(tx *types.Transaction, checkState bool) error {
 			return core.ErrInsufficientFunds
 		}
 	}
-	head := b.GetCurHeader()
+	head := b.CurrentHeader()
 	rules := b.Ether().BlockChain().Config().Rules(head.Number, head.Difficulty.Sign() == 0, head.Time)
 	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.SetCodeAuthorizations(), tx.To() == nil, true, rules.IsIstanbul, rules.IsShanghai)
 	if err != nil {
@@ -614,10 +612,6 @@ func (b *BlockChain) VerifyTx(tx *mmeer.VMTx, view interface{}) (int64, error) {
 		return cost.Int64(), nil
 	}
 	return 0, fmt.Errorf("Not support")
-}
-
-func (b *BlockChain) GetCurHeader() *types.Header {
-	return b.chain.Ether().BlockChain().CurrentBlock()
 }
 
 func (b *BlockChain) Genesis() *hash.Hash {

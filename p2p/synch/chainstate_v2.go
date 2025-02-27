@@ -142,7 +142,7 @@ func (s *Sync) getMeerState() *v2.MeerState {
 
 	ms := &v2.MeerState{
 		Id:     &pb.Hash{Hash: mc.Server().LocalNode().ID().Bytes()},
-		Number: mc.GetCurHeader().Number.Uint64(),
+		Number: mc.CurrentHeader().Number.Uint64(),
 		Enode:  []byte(mc.Server().LocalNode().Node().URLv4()),
 		Enr:    []byte(mc.Server().LocalNode().Node().String()),
 	}

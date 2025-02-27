@@ -173,7 +173,7 @@ func (me *MeerEngine) Prepare(chain consensus.ChainHeaderReader, header *types.H
 }
 
 func (me *MeerEngine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state vm.StateDB, body *types.Body) {
-	me.OnExtraStateChange(chain, header, state)
+	me.OnExtraStateChange(header, state)
 	if me.StateChange != nil {
 		me.StateChange(header, state, body)
 	}
@@ -238,7 +238,7 @@ func (me *MeerEngine) Seal(chain consensus.ChainHeaderReader, block *types.Block
 	return nil
 }
 
-func (me *MeerEngine) OnExtraStateChange(chain consensus.ChainHeaderReader, header *types.Header, state vm.StateDB) {
+func (me *MeerEngine) OnExtraStateChange(header *types.Header, state vm.StateDB) {
 	extdata := header.Extra
 	if len(extdata) <= 1 {
 		return

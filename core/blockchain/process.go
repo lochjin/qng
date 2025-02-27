@@ -755,7 +755,7 @@ func (b *BlockChain) updateBlockState(ib meerdag.IBlock, block *types.Serialized
 	if prev == nil {
 		return fmt.Errorf("No prev block:%d %s", ib.GetID(), ib.GetHash().String())
 	}
-	bs.Update(block, prev.GetState().(*state.BlockState), b.meerChain.GetCurHeader())
+	bs.Update(block, prev.GetState().(*state.BlockState), b.meerChain.CurrentHeader())
 	duplicateTxsGauge.Update(int64(bs.GetDuplicateTxsSize()))
 	b.BlockDAG().AddToCommit(ib)
 	return nil

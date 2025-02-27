@@ -67,7 +67,7 @@ func (api *PublicBlockChainAPI) GetMeerChainInfo() (interface{}, error) {
 	}
 	mi.SysContract = []interface{}{api.mc.DeterministicDeploymentProxy().Info(), mci}
 
-	header := api.mc.GetCurHeader()
+	header := api.mc.CurrentHeader()
 	if header != nil {
 		forkNumber := int64(math.MaxInt64)
 		if params.ActiveNetParams.MeerChangeForkBlock != nil {
