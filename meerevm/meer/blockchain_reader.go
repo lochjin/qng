@@ -13,23 +13,23 @@ func (b *BlockChain) Config() *params.ChainConfig {
 }
 
 func (b *BlockChain) CurrentHeader() *types.Header {
-	return b.chain.Ether().BlockChain().CurrentBlock()
+	return b.Ether().BlockChain().CurrentBlock()
 }
 
 func (b *BlockChain) GetHeaderByNumber(number uint64) *types.Header {
-	return nil
+	return b.Ether().BlockChain().GetHeaderByNumber(number)
 }
 
 func (b *BlockChain) GetHeaderByHash(hash common.Hash) *types.Header {
-	return nil
+	return b.Ether().BlockChain().GetHeaderByHash(hash)
 }
 
 func (b *BlockChain) GetHeader(hash common.Hash, number uint64) *types.Header {
-	return nil
+	return b.Ether().BlockChain().GetHeader(hash, number)
 }
 
 func (b *BlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {
-	return nil
+	return b.Ether().BlockChain().GetBlock(hash, number)
 }
 
 func (b *BlockChain) GetTd(hash common.Hash, number uint64) *big.Int {
