@@ -39,6 +39,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
+	eparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/holiman/uint256"
 	"math/big"
@@ -190,13 +191,11 @@ func (b *BlockChain) finalized(block *types.Block) error {
 }
 
 func (b *BlockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp int64) (*types.Block, types.Receipts, *state.StateDB, error) {
-	config := b.chain.Config().Eth.Genesis.Config
 	engine := b.chain.Ether().Engine()
 	parentBlock := types.NewBlockWithHeader(parent)
 	witness := false
 
 	uncles := []*types.Header{}
-
 	statedb, err := b.chain.Ether().BlockChain().StateAt(parentBlock.Root())
 	if err != nil {
 		return nil, nil, nil, err
@@ -216,31 +215,46 @@ func (b *BlockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp
 		}
 		statedb.StartPrefetcher("meer", bundle)
 	}
-	evm := vm.NewEVM(core.NewEVMBlockContext(header, b.Ether().BlockChain(), &header.Coinbase), statedb, config, *b.Ether().BlockChain().GetVMConfig())
-	if header.ParentBeaconRoot != nil {
-		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, evm)
-	}
-	if config.IsPrague(header.Number, header.Time) {
-		core.ProcessParentBlockHash(header.ParentHash, evm)
-	}
-
-	if config.DAOForkSupport && config.DAOForkBlock != nil && config.DAOForkBlock.Cmp(header.Number) == 0 {
-		misc.ApplyDAOHardFork(statedb)
-	}
-
-	txs, receipts, err := b.fillBlock(qtxs, header, statedb, evm)
+	txs, receipts, evm, err := b.fillBlock(qtxs, header, statedb)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	var withdrawals types.Withdrawals
+	if b.Config().IsShanghai(header.Number, header.Time) {
+		withdrawals = []*types.Withdrawal{}
+	}
+	body := &types.Body{Transactions: txs, Uncles: uncles, Withdrawals: withdrawals}
+	allLogs := make([]*types.Log, 0)
+	for _, r := range receipts {
+		allLogs = append(allLogs, r.Logs...)
+	}
 
-	block, err := engine.FinalizeAndAssemble(b, header, statedb, &types.Body{Transactions: txs, Uncles: uncles}, receipts)
+	// Collect consensus-layer requests if Prague is enabled.
+	var requests [][]byte
+	if b.Config().IsPrague(header.Number, header.Time) {
+		requests = [][]byte{}
+		// EIP-6110 deposits
+		if err := core.ParseDepositLogs(&requests, allLogs, b.Config()); err != nil {
+			return nil, nil, nil, err
+		}
+		// EIP-7002
+		core.ProcessWithdrawalQueue(&requests, evm)
+		// EIP-7251 consolidations
+		core.ProcessConsolidationQueue(&requests, evm)
+	}
+	if requests != nil {
+		reqHash := types.CalcRequestsHash(requests)
+		header.RequestsHash = &reqHash
+	}
+	block, err := engine.FinalizeAndAssemble(b, header, statedb, body, receipts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	return block, receipts, statedb, nil
 }
 
-func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *state.StateDB, evm *vm.EVM) ([]*types.Transaction, []*types.Receipt, error) {
+func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *state.StateDB) ([]*types.Transaction, []*types.Receipt, *vm.EVM, error) {
+	config := b.Config()
 	txs := []*types.Transaction{}
 	receipts := []*types.Receipt{}
 
@@ -250,7 +264,7 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 			tx.GetTxType() == qtypes.TxTypeCrossChainImport {
 			publicKey, err := crypto.UnmarshalPubkey(tx.GetTo())
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			toAddr := crypto.PubkeyToAddress(*publicKey)
 			header.Coinbase = toAddr
@@ -264,7 +278,7 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 		if tx.GetTxType() == qtypes.TxTypeCrossChainExport {
 			publicKey, err := crypto.UnmarshalPubkey(tx.GetTo())
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			value := big.NewInt(int64(tx.GetValue()))
@@ -278,16 +292,16 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 			etx := types.NewTx(txData)
 			txmb, err := etx.MarshalBinary()
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			if len(header.Extra) > 0 {
-				return nil, nil, fmt.Errorf("import and export tx conflict")
+				return nil, nil, nil, fmt.Errorf("import and export tx conflict")
 			}
 			header.Extra = txmb
 		} else if tx.GetTxType() == qtypes.TxTypeCrossChainImport {
 			publicKey, err := crypto.UnmarshalPubkey(tx.GetFrom())
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			toAddr := crypto.PubkeyToAddress(*publicKey)
@@ -302,22 +316,40 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 			etx := types.NewTx(txData)
 			txmb, err := etx.MarshalBinary()
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			if len(header.Extra) > 0 {
-				return nil, nil, fmt.Errorf("import and export tx conflict")
+				return nil, nil, nil, fmt.Errorf("import and export tx conflict")
 			}
 			header.Extra = txmb
-		} else if tx.GetTxType() == qtypes.TxTypeCrossChainVM {
-			err := b.addTx(tx.(*mmeer.VMTx), header, statedb, &txs, &receipts, gasPool, evm)
-			if err != nil {
-				return nil, nil, err
-			}
 		}
-
+	}
+	evm := vm.NewEVM(core.NewEVMBlockContext(header, b.Ether().BlockChain(), &header.Coinbase), statedb, config, *b.Ether().BlockChain().GetVMConfig())
+	if header.ParentBeaconRoot != nil {
+		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, evm)
+	}
+	if config.IsPrague(header.Number, header.Time) {
+		core.ProcessParentBlockHash(header.ParentHash, evm)
 	}
 
-	return txs, receipts, nil
+	if config.DAOForkSupport && config.DAOForkBlock != nil && config.DAOForkBlock.Cmp(header.Number) == 0 {
+		misc.ApplyDAOHardFork(statedb)
+	}
+
+	for _, tx := range qtxs {
+		if tx.GetTxType() == qtypes.TxTypeCrossChainVM {
+			// If we don't have enough gas for any further transactions then we're done.
+			if gasPool.Gas() < eparams.TxGas {
+				log.Trace("Not enough gas for further transactions", "have", gasPool, "want", eparams.TxGas)
+				return nil, nil, nil, fmt.Errorf("Not enough gas for further transactions:%s", tx.(*mmeer.VMTx).ETx.Hash())
+			}
+			err := b.addTx(tx.(*mmeer.VMTx), header, statedb, &txs, &receipts, gasPool, evm)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		}
+	}
+	return txs, receipts, evm, nil
 }
 
 func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *state.StateDB, txs *[]*types.Transaction, receipts *[]*types.Receipt, gasPool *core.GasPool, evm *vm.EVM) error {
