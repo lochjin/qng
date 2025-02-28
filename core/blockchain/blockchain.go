@@ -308,7 +308,7 @@ func (b *BlockChain) createChainState() error {
 	header := &genesisBlock.Block().Header
 	node := NewBlockNode(genesisBlock)
 	_, _, ib, _ := b.bd.AddBlock(node)
-	ib.GetState().SetEVM(b.meerChain.GetCurHeader())
+	ib.GetState().SetEVM(b.meerChain.CurrentHeader())
 	//node.FlushToDB(b)
 	// Initialize the state related to the best block.  Since it is the
 	// genesis block, use its timestamp for the median time.

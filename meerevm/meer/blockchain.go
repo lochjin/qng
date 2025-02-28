@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/stateless"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -192,15 +193,15 @@ func (b *BlockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp
 	config := b.chain.Config().Eth.Genesis.Config
 	engine := b.chain.Ether().Engine()
 	parentBlock := types.NewBlockWithHeader(parent)
+	witness := false
 
 	uncles := []*types.Header{}
-
-	chainreader := &fakeChainReader{config: config}
 
 	statedb, err := b.chain.Ether().BlockChain().StateAt(parentBlock.Root())
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	gaslimit := core.CalcGasLimit(parentBlock.GasLimit(), b.chain.Config().Eth.Miner.GasCeil)
 
 	if !params.ActiveNetParams.IsGasLimitFork(parent.Number) {
@@ -208,23 +209,38 @@ func (b *BlockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp
 	}
 
 	header := makeHeader(&b.chain.Config().Eth, parentBlock, statedb, timestamp, gaslimit, forks.GetCancunForkDifficulty(parent.Number))
+	if witness {
+		bundle, err := stateless.NewWitness(header, b.Ether().BlockChain())
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		statedb.StartPrefetcher("meer", bundle)
+	}
+	evm := vm.NewEVM(core.NewEVMBlockContext(header, b.Ether().BlockChain(), &header.Coinbase), statedb, config, *b.Ether().BlockChain().GetVMConfig())
+	if header.ParentBeaconRoot != nil {
+		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, evm)
+	}
+	if config.IsPrague(header.Number, header.Time) {
+		core.ProcessParentBlockHash(header.ParentHash, evm)
+	}
 
 	if config.DAOForkSupport && config.DAOForkBlock != nil && config.DAOForkBlock.Cmp(header.Number) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
-	txs, receipts, err := b.fillBlock(qtxs, header, statedb)
+
+	txs, receipts, err := b.fillBlock(qtxs, header, statedb, evm)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	block, err := engine.FinalizeAndAssemble(chainreader, header, statedb, &types.Body{Transactions: txs, Uncles: uncles}, receipts)
+	block, err := engine.FinalizeAndAssemble(b, header, statedb, &types.Body{Transactions: txs, Uncles: uncles}, receipts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	return block, receipts, statedb, nil
 }
 
-func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *state.StateDB) ([]*types.Transaction, []*types.Receipt, error) {
+func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *state.StateDB, evm *vm.EVM) ([]*types.Transaction, []*types.Receipt, error) {
 	txs := []*types.Transaction{}
 	receipts := []*types.Receipt{}
 
@@ -293,7 +309,7 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 			}
 			header.Extra = txmb
 		} else if tx.GetTxType() == qtypes.TxTypeCrossChainVM {
-			err := b.addTx(tx.(*mmeer.VMTx), header, statedb, &txs, &receipts, gasPool)
+			err := b.addTx(tx.(*mmeer.VMTx), header, statedb, &txs, &receipts, gasPool, evm)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -304,17 +320,12 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 	return txs, receipts, nil
 }
 
-func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *state.StateDB, txs *[]*types.Transaction, receipts *[]*types.Receipt, gasPool *core.GasPool) error {
+func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *state.StateDB, txs *[]*types.Transaction, receipts *[]*types.Receipt, gasPool *core.GasPool, evm *vm.EVM) error {
 	tx := vmtx.ETx
-	config := b.chain.Config().Eth.Genesis.Config
 	statedb.SetTxContext(tx.Hash(), len(*txs))
-
-	bc := b.chain.Ether().BlockChain()
 	snap := statedb.Snapshot()
-
 	gp := gasPool.Gas()
 
-	evm := vm.NewEVM(core.NewEVMBlockContext(header, bc, &header.Coinbase), statedb, config, *bc.GetVMConfig())
 	receipt, err := core.ApplyTransaction(evm, gasPool, statedb, header, tx, &header.GasUsed)
 	if err != nil {
 		statedb.RevertToSnapshot(snap)
@@ -578,7 +589,7 @@ func (b *BlockChain) validateTx(tx *types.Transaction, checkState bool) error {
 			return core.ErrInsufficientFunds
 		}
 	}
-	head := b.GetCurHeader()
+	head := b.CurrentHeader()
 	rules := b.Ether().BlockChain().Config().Rules(head.Number, head.Difficulty.Sign() == 0, head.Time)
 	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.SetCodeAuthorizations(), tx.To() == nil, true, rules.IsIstanbul, rules.IsShanghai)
 	if err != nil {
@@ -614,10 +625,6 @@ func (b *BlockChain) VerifyTx(tx *mmeer.VMTx, view interface{}) (int64, error) {
 		return cost.Int64(), nil
 	}
 	return 0, fmt.Errorf("Not support")
-}
-
-func (b *BlockChain) GetCurHeader() *types.Header {
-	return b.chain.Ether().BlockChain().CurrentBlock()
 }
 
 func (b *BlockChain) Genesis() *hash.Hash {

@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/version"
 	"math/big"
 )
@@ -55,22 +54,6 @@ func makeHeader(cfg *ethconfig.Config, parent *types.Block, state *state.StateDB
 	}
 	return header
 }
-
-type fakeChainReader struct {
-	config *params.ChainConfig
-}
-
-// Config returns the chain configuration.
-func (cr *fakeChainReader) Config() *params.ChainConfig {
-	return cr.config
-}
-
-func (cr *fakeChainReader) CurrentHeader() *types.Header                            { return nil }
-func (cr *fakeChainReader) GetHeaderByNumber(number uint64) *types.Header           { return nil }
-func (cr *fakeChainReader) GetHeaderByHash(hash common.Hash) *types.Header          { return nil }
-func (cr *fakeChainReader) GetHeader(hash common.Hash, number uint64) *types.Header { return nil }
-func (cr *fakeChainReader) GetBlock(hash common.Hash, number uint64) *types.Block   { return nil }
-func (cr *fakeChainReader) GetTd(hash common.Hash, number uint64) *big.Int          { return nil }
 
 func BuildEVMBlock(block *qtypes.SerializedBlock) (*mmeer.Block, error) {
 	result := &mmeer.Block{Id: block.Hash(), Txs: []mmeer.Tx{}, Time: block.Block().Header.Timestamp}

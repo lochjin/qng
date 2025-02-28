@@ -22,7 +22,7 @@ type MeerChain interface {
 	Ether() *eth.Ethereum
 	Node() *node.Node
 	Server() *p2p.Server
-	GetCurHeader() *types.Header
+	CurrentHeader() *types.Header
 	Synced() bool
 	SetSynced()
 	HasState(root common.Hash) bool
