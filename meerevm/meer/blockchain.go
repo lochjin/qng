@@ -5,6 +5,8 @@
 package meer
 
 import (
+	"container/list"
+	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/common/system"
@@ -25,6 +27,7 @@ import (
 	"github.com/Qitmeer/qng/rpc/client/cmds"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -257,6 +260,8 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 	config := b.Config()
 	txs := []*types.Transaction{}
 	receipts := []*types.Receipt{}
+	var sidecars []*types.BlobTxSidecar
+	blobs := 0
 
 	header.Coinbase = common.Address{}
 	for _, tx := range qtxs {
@@ -335,7 +340,7 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 	if config.DAOForkSupport && config.DAOForkBlock != nil && config.DAOForkBlock.Cmp(header.Number) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
-
+	var blobTxs *list.List
 	for _, tx := range qtxs {
 		if tx.GetTxType() == qtypes.TxTypeCrossChainVM {
 			// If we don't have enough gas for any further transactions then we're done.
@@ -343,7 +348,14 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 				log.Trace("Not enough gas for further transactions", "have", gasPool, "want", eparams.TxGas)
 				return nil, nil, nil, fmt.Errorf("Not enough gas for further transactions:%s", tx.(*mmeer.VMTx).ETx.Hash())
 			}
-			err := b.addTx(tx.(*mmeer.VMTx), header, statedb, &txs, &receipts, gasPool, evm)
+			// If we don't have enough blob space for any further blob transactions,
+			// skip that list altogether
+			if blobTxs != nil && blobs >= eip4844.MaxBlobsPerBlock(config, header.Time) {
+				log.Trace("Not enough blob space for further blob transactions")
+				blobTxs = nil
+				// Fall though to pick up any plain txs
+			}
+			err := b.addTx(tx.(*mmeer.VMTx), header, statedb, &txs, &receipts, gasPool, evm, &blobs, &sidecars)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -352,8 +364,23 @@ func (b *BlockChain) fillBlock(qtxs []mmeer.Tx, header *types.Header, statedb *s
 	return txs, receipts, evm, nil
 }
 
-func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *state.StateDB, txs *[]*types.Transaction, receipts *[]*types.Receipt, gasPool *core.GasPool, evm *vm.EVM) error {
+func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *state.StateDB, txs *[]*types.Transaction, receipts *[]*types.Receipt, gasPool *core.GasPool, evm *vm.EVM, blobs *int, sidecars *[]*types.BlobTxSidecar) error {
 	tx := vmtx.ETx
+	var sc *types.BlobTxSidecar
+	if tx.Type() == types.BlobTxType {
+		sc = tx.BlobTxSidecar()
+		if sc == nil {
+			panic("blob transaction without blobs in miner")
+		}
+		// Checking against blob gas limit: It's kind of ugly to perform this check here, but there
+		// isn't really a better place right now. The blob gas limit is checked at block validation time
+		// and not during execution. This means core.ApplyTransaction will not return an error if the
+		// tx has too many blobs. So we have to explicitly check it here.
+		maxBlobs := eip4844.MaxBlobsPerBlock(b.Config(), header.Time)
+		if *blobs+len(sc.Blobs) > maxBlobs {
+			return errors.New("max data blobs reached")
+		}
+	}
 	statedb.SetTxContext(tx.Hash(), len(*txs))
 	snap := statedb.Snapshot()
 	gp := gasPool.Gas()
@@ -366,7 +393,10 @@ func (b *BlockChain) addTx(vmtx *mmeer.VMTx, header *types.Header, statedb *stat
 	}
 	*txs = append(*txs, tx)
 	*receipts = append(*receipts, receipt)
-
+	if sc != nil && *sidecars != nil {
+		*sidecars = append(*sidecars, sc)
+		*blobs += len(sc.Blobs)
+	}
 	return nil
 }
 
