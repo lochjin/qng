@@ -32,9 +32,6 @@ func (ps *PeerSync) checkMeerConnection(pe *peers.Peer) bool {
 	if !pe.IsSupportMeerP2PBridging() {
 		return false
 	}
-	if !pe.IsSnap() {
-		return false
-	}
 	if pe.Direction() != network.DirOutbound {
 		return false
 	}
