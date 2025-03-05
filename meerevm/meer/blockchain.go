@@ -619,23 +619,24 @@ func (b *BlockChain) CheckSanity(vt *mmeer.VMTx) error {
 }
 
 func (b *BlockChain) validateTx(tx *types.Transaction, checkState bool) error {
-	// Reject transactions over defined size to prevent DOS attacks
-	if tx.Size() > txMaxSize {
-		return txpool.ErrOversizedData
+	signer := types.LatestSigner(b.Config())
+	head := b.CurrentHeader()
+	opts := &txpool.ValidationOptions{
+		Config: b.Config(),
+		Accept: 0 |
+			1<<types.LegacyTxType |
+			1<<types.AccessListTxType |
+			1<<types.DynamicFeeTxType |
+			1<<types.SetCodeTxType,
+		MaxSize: txMaxSize,
+		MinTip:  big.NewInt(int64(b.ETHChain().Config().Eth.TxPool.PriceLimit)),
 	}
-	if tx.Value().Sign() < 0 {
-		return txpool.ErrNegativeValue
+
+	if err := txpool.ValidateTransaction(tx, head, signer, opts); err != nil {
+		return err
 	}
-	if tx.GasFeeCap().BitLen() > 256 {
-		return core.ErrFeeCapVeryHigh
-	}
-	if tx.GasTipCap().BitLen() > 256 {
-		return core.ErrTipVeryHigh
-	}
-	if tx.GasFeeCapIntCmp(tx.GasTipCap()) < 0 {
-		return core.ErrTipAboveFeeCap
-	}
-	from, err := types.Sender(types.LatestSigner(b.chain.Ether().BlockChain().Config()), tx)
+
+	from, err := types.Sender(signer, tx)
 	if err != nil {
 		return txpool.ErrInvalidSender
 	}
@@ -650,16 +651,6 @@ func (b *BlockChain) validateTx(tx *types.Transaction, checkState bool) error {
 		if currentState.GetBalance(from).ToBig().Cmp(tx.Cost()) < 0 {
 			return core.ErrInsufficientFunds
 		}
-	}
-	head := b.CurrentHeader()
-	rules := b.Ether().BlockChain().Config().Rules(head.Number, head.Difficulty.Sign() == 0, head.Time)
-	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.SetCodeAuthorizations(), tx.To() == nil, true, rules.IsIstanbul, rules.IsShanghai)
-	if err != nil {
-		return err
-	}
-
-	if tx.Gas() < intrGas {
-		return core.ErrIntrinsicGas
 	}
 	return nil
 }
