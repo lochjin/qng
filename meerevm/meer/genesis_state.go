@@ -96,6 +96,7 @@ func Apply(genesis *core.Genesis, txs []*GenTransaction) (Alloc, error) {
 	vmConfig := vm.Config{
 		Tracer: nil,
 	}
+	var evm *vm.EVM
 	for i, tx := range txs {
 		msg, err := TransactionToMessage(tx.Transaction, SysContractDeployerAddress, genesis.BaseFee)
 		if err != nil {
@@ -104,7 +105,7 @@ func Apply(genesis *core.Genesis, txs []*GenTransaction) (Alloc, error) {
 		}
 		statedb.SetTxContext(tx.Hash(), txIndex)
 		snapshot := statedb.Snapshot()
-		evm := vm.NewEVM(vmContext, statedb, chainConfig, vmConfig)
+		evm = vm.NewEVM(vmContext, statedb, chainConfig, vmConfig)
 
 		// (ret []byte, usedGas uint64, failed bool, err error)
 		msgResult, err := core.ApplyMessage(evm, msg, gaspool)
@@ -155,6 +156,23 @@ func Apply(genesis *core.Genesis, txs []*GenTransaction) (Alloc, error) {
 		txIndex++
 	}
 	statedb.IntermediateRoot(chainConfig.IsEIP158(vmContext.BlockNumber))
+	// Gather the execution-layer triggered requests.
+	var requests [][]byte
+	if chainConfig.IsPrague(vmContext.BlockNumber, vmContext.Time) {
+		requests = [][]byte{}
+		// EIP-6110
+		var allLogs []*types.Log
+		for _, receipt := range receipts {
+			allLogs = append(allLogs, receipt.Logs...)
+		}
+		if err := core.ParseDepositLogs(&requests, allLogs, chainConfig); err != nil {
+			return nil, fmt.Errorf("could not parse requests logs: %v", err)
+		}
+		// EIP-7002
+		core.ProcessWithdrawalQueue(&requests, evm)
+		// EIP-7251
+		core.ProcessConsolidationQueue(&requests, evm)
+	}
 	// Commit block
 	root, err := statedb.Commit(vmContext.BlockNumber.Uint64(), chainConfig.IsEIP158(vmContext.BlockNumber), false)
 	if err != nil {
