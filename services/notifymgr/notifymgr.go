@@ -229,6 +229,14 @@ func (ntmgr *NotifyMgr) handleNotifyMsg(notification *blockchain.Notification) {
 		}
 		block := band.Block
 		ntmgr.zmqNotify.BlockAccepted(block)
+
+		if len(ntmgr.Server.Consensus().Config().SyncTarget) > 0 {
+			if ntmgr.Server.Consensus().Config().SyncTarget == block.Hash().String() {
+				log.Info("Immediately exit because reached sync target, ", "hash", block.Hash().String())
+				ntmgr.Server.Consensus().Shutdown()
+			}
+		}
+
 		// Don't relay if we are not current. Other peers that are current
 		// should already know about it
 		if !ntmgr.Server.IsCurrent() {
