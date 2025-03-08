@@ -88,6 +88,8 @@ type Config struct {
 	Zmqpubhashtx string `long:"zmqpubhashtx" description:"Enable publish hash transaction in <address>"`
 	Zmqpubrawtx  string `long:"zmqpubrawtx" description:"Enable publish raw transaction in <address>"`
 
+	SyncTarget string `long:"synctarget" description:"Hash of the block to full sync to (dev testing feature)"`
+
 	// index
 	AddrIndex      bool `long:"addrindex" description:"Maintain a full address-based transaction index which makes the getrawtransactions RPC available"`
 	InvalidTxIndex bool `long:"invalidtxindex" description:"Cache invalid transactions."`

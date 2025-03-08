@@ -665,6 +665,11 @@ var (
 			Value:       true,
 			Destination: &cfg.TranferTxLegacyMode,
 		},
+		&cli.StringFlag{
+			Name:        "synctarget",
+			Usage:       "Hash of the block to full sync to (dev testing feature)",
+			Destination: &cfg.SyncTarget,
+		},
 	}
 )
 
