@@ -629,9 +629,8 @@ func (b *BlockChain) validateTx(tx *types.Transaction, checkState bool) error {
 			1<<types.DynamicFeeTxType |
 			1<<types.SetCodeTxType,
 		MaxSize: txMaxSize,
-		MinTip:  big.NewInt(int64(b.ETHChain().Config().Eth.TxPool.PriceLimit)),
+		MinTip:  big.NewInt(0),
 	}
-
 	if err := txpool.ValidateTransaction(tx, head, signer, opts); err != nil {
 		return err
 	}
