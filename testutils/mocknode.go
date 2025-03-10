@@ -55,7 +55,7 @@ func DefaultConfig(pb *testprivatekey.Builder) (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.SetMiningAddrs(addrs[0])
+	cfg.SetMiningAddr(addrs[0])
 	return cfg, nil
 }
 

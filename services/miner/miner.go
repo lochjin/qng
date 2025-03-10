@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/common/system"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -753,17 +752,11 @@ func (m *Miner) initCoinbase() error {
 	if m.coinbaseAddress != nil {
 		return nil
 	}
-	mAddrs := m.cfg.GetMinningAddrs()
-	if len(mAddrs) <= 0 {
+	m.coinbaseAddress = m.cfg.GetMinningAddr()
+	if m.coinbaseAddress == nil {
 		// Respond with an error if there are no addresses to pay the
 		// created blocks to.
 		return fmt.Errorf("No payment addresses specified via --miningaddr.")
-	}
-	// Choose a payment address at random.
-	if len(mAddrs) == 1 {
-		m.coinbaseAddress = mAddrs[0]
-	} else {
-		m.coinbaseAddress = mAddrs[rand.Intn(len(mAddrs))]
 	}
 	if m.GetCoinbasePKAddress() != nil {
 		log.Info(fmt.Sprintf("Init Coinbase PK Address:%s    PKH Address:%s", m.GetCoinbasePKAddress().String(), m.GetCoinbasePKAddress().PKHAddress().String()))

@@ -53,20 +53,20 @@ type Config struct {
 	Persistmempool   bool    `long:"persistmempool" description:"Whether to save the mempool on shutdown and load on restart"`
 	NoMempoolBar     bool    `long:"nomempoolbar" description:"Whether to show progress bar when load mempool from file"`
 	// Miner
-	Miner             bool     `long:"miner" description:"Enable miner module"`
-	Generate          bool     `long:"generate" description:"Generate (mine) coins using the CPU"`
-	GenerateOnTx      bool     `long:"generateontx" description:"Generate (mine) coins using the CPU when there is a new transaction"`
-	GenerateNoDevGap  bool     `long:"generatenodevgap" description:"Generate (mine) coins using the CPU on develop mode whithout gap"`
-	MiningAddrs       []string `long:"miningaddr" description:"Add the specified payment address to the list of addresses to use for generated blocks -- At least one address is required if the generate option is set"`
-	MiningTimeOffset  int      `long:"miningtimeoffset" description:"Offset the mining timestamp of a block by this many seconds (positive values are in the past)"`
-	BlockMinSize      uint32   `long:"blockminsize" description:"Mininum block size in bytes to be used when creating a block"`
-	BlockMaxSize      uint32   `long:"blockmaxsize" description:"Maximum block size in bytes to be used when creating a block"`
-	BlockPrioritySize uint32   `long:"blockprioritysize" description:"Size in bytes for high-priority/low-fee transactions when creating a block"`
-	miningAddrs       []types.Address
-	GBTNotify         []string `long:"gbtnotify" description:"HTTP URL list to be notified of new block template"`
-	ObsoleteHeight    int      `long:"obsoleteheight" description:"What is the maximum allowable height of block obsolescence for submission"`
-	SubmitNoSynced    bool     `long:"allowsubmitwhennotsynced" description:"Allow the node to accept blocks from RPC while not synced (this flag is mainly used for testing)"`
-	GBTTimeOut        int      `long:"gbttimeout" description:"Build block template timeout by Millisecond.(Can limit the number of transactions included in the block)"`
+	Miner             bool   `long:"miner" description:"Enable miner module"`
+	Generate          bool   `long:"generate" description:"Generate (mine) coins using the CPU"`
+	GenerateOnTx      bool   `long:"generateontx" description:"Generate (mine) coins using the CPU when there is a new transaction"`
+	GenerateNoDevGap  bool   `long:"generatenodevgap" description:"Generate (mine) coins using the CPU on develop mode whithout gap"`
+	MiningAddr        string `long:"miningaddr" description:"Add the specified payment address to the list of addresses to use for generated blocks -- At least one address is required if the generate option is set"`
+	MiningTimeOffset  int    `long:"miningtimeoffset" description:"Offset the mining timestamp of a block by this many seconds (positive values are in the past)"`
+	BlockMinSize      uint32 `long:"blockminsize" description:"Mininum block size in bytes to be used when creating a block"`
+	BlockMaxSize      uint32 `long:"blockmaxsize" description:"Maximum block size in bytes to be used when creating a block"`
+	BlockPrioritySize uint32 `long:"blockprioritysize" description:"Size in bytes for high-priority/low-fee transactions when creating a block"`
+
+	GBTNotify      []string `long:"gbtnotify" description:"HTTP URL list to be notified of new block template"`
+	ObsoleteHeight int      `long:"obsoleteheight" description:"What is the maximum allowable height of block obsolescence for submission"`
+	SubmitNoSynced bool     `long:"allowsubmitwhennotsynced" description:"Allow the node to accept blocks from RPC while not synced (this flag is mainly used for testing)"`
+	GBTTimeOut     int      `long:"gbttimeout" description:"Build block template timeout by Millisecond.(Can limit the number of transactions included in the block)"`
 
 	//WebSocket support
 	RPCMaxWebsockets     int `long:"rpcmaxwebsockets" description:"Max number of RPC websocket connections"`
@@ -151,14 +151,16 @@ type Config struct {
 	PowDiffMode int `long:"powdiffmode" description:"Pow difficult mode:(0:meer,1:ghostdag,2:develop)"`
 
 	TranferTxLegacyMode bool `long:"tranfertxlegacymode" description:"Support transaction transmission mode compatible with older versions before the snapsync P2P"`
+
+	miningAddr types.Address
 }
 
-func (c *Config) GetMinningAddrs() []types.Address {
-	return c.miningAddrs
+func (c *Config) GetMinningAddr() types.Address {
+	return c.miningAddr
 }
 
-func (c *Config) SetMiningAddrs(addr types.Address) {
-	c.miningAddrs = append(c.miningAddrs, addr)
+func (c *Config) SetMiningAddr(addr types.Address) {
+	c.miningAddr = addr
 }
 
 func (c *Config) ResolveDataPath(path string) string {

@@ -589,12 +589,12 @@ func SetAccountConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config)
 		acct = accounts.Account{Address: cfg.Miner.PendingFeeRecipient}
 	} else if accs := ks.Accounts(); len(accs) > 0 {
 		acct = ks.Accounts()[0]
+		// Make sure the address is configured as fee recipient, otherwise
+		// the miner will fail to start.
+		cfg.Miner.PendingFeeRecipient = acct.Address
 	} else {
 		return
 	}
-	// Make sure the address is configured as fee recipient, otherwise
-	// the miner will fail to start.
-	cfg.Miner.PendingFeeRecipient = acct.Address
 
 	if err := ks.Unlock(acct, passphrase); err != nil {
 		utils.Fatalf("Failed to unlock account: %v", err)

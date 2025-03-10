@@ -6,6 +6,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/Qitmeer/qng/core/address"
 	"net"
 	"os"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 	"github.com/Qitmeer/qng/common/roughtime"
 	"github.com/Qitmeer/qng/common/util"
 	"github.com/Qitmeer/qng/config"
-	"github.com/Qitmeer/qng/core/address"
 	"github.com/Qitmeer/qng/log"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/version"
@@ -30,7 +30,6 @@ import (
 func LoadConfig(ctx *cli.Context, parsefile bool) (*config.Config, error) {
 	cfg.RPCListeners = RPCListeners.Value()
 	cfg.Modules = Modules.Value()
-	cfg.MiningAddrs = MiningAddrs.Value()
 	cfg.BlockMinSize = uint32(BlockMinSize)
 	cfg.BlockMaxSize = uint32(BlockMaxSize)
 	cfg.BlockPrioritySize = uint32(BlockPrioritySize)
@@ -334,19 +333,18 @@ func SetupConfig(cfg *config.Config) error {
 	}
 
 	// Check mining addresses are valid and saved parsed versions.
-	for _, strAddr := range cfg.MiningAddrs {
-		addr, err := address.DecodeAddress(strAddr)
+	if len(cfg.MiningAddr) > 0 {
+		addr, err := address.DecodeAddress(cfg.MiningAddr)
 		if err != nil {
 			str := "SetupConfig: mining address '%s' failed to decode: %v"
-			return fmt.Errorf(str, strAddr, err)
+			return fmt.Errorf(str, cfg.MiningAddr, err)
 		}
 		// TODO, check network by using IsForNetwork()
-
 		if !address.IsForNetwork(addr, params.ActiveNetParams.Params) {
 			str := "SetupConfig: mining address '%s' is on the wrong network"
-			return fmt.Errorf(str, strAddr)
+			return fmt.Errorf(str, cfg.MiningAddr)
 		}
-		cfg.SetMiningAddrs(addr)
+		cfg.SetMiningAddr(addr)
 	}
 
 	if cfg.Generate && cfg.GenerateOnTx {
@@ -357,7 +355,7 @@ func SetupConfig(cfg *config.Config) error {
 	}
 	// Ensure there is at least one mining address when the generate or miner flag is
 	// set.
-	if len(cfg.GetMinningAddrs()) == 0 {
+	if cfg.GetMinningAddr() == nil {
 		if (cfg.Generate || cfg.GenerateOnTx) && !cfg.Cleanup {
 			return fmt.Errorf("SetupConfig: the generate flag is set, but there are no mining addresses specified")
 		}
