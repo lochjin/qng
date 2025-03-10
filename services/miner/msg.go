@@ -37,3 +37,6 @@ type RemoteMiningMsg struct {
 	coinbaseFlags mining.CoinbaseFlags
 	reply         chan *gbtResponse
 }
+
+type StartPoAMiningMsg struct {
+}

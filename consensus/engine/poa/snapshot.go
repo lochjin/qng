@@ -2,24 +2,24 @@
  * Copyright (c) 2017-2025 The qitmeer developers
  */
 
-package consensus
+package poa
 
 import (
 	"bytes"
 	"encoding/json"
 	"github.com/Qitmeer/qng/consensus/engine/config"
+	"github.com/Qitmeer/qng/consensus/model"
 	"sort"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/lru"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
-	Identifier = "amana"
+	Identifier = "dagpoa"
 )
 
 // Vote represents a single vote that an authorized signer made to modify the
@@ -80,7 +80,7 @@ func newSnapshot(config *config.PoAConfig, sigcache *sigLRU, number uint64, hash
 }
 
 // loadSnapshot loads an existing snapshot from the database.
-func loadSnapshot(config *config.PoAConfig, sigcache *sigLRU, db ethdb.Database, hash common.Hash) (*Snapshot, error) {
+func loadSnapshot(config *config.PoAConfig, sigcache *sigLRU, db model.DataBase, hash common.Hash) (*Snapshot, error) {
 	var err error
 	var blob []byte
 	blob, err = db.Get(append([]byte(Identifier+"-"), hash[:]...))
@@ -97,7 +97,7 @@ func loadSnapshot(config *config.PoAConfig, sigcache *sigLRU, db ethdb.Database,
 }
 
 // store inserts the snapshot into the database.
-func (s *Snapshot) store(db ethdb.Database) error {
+func (s *Snapshot) store(db model.DataBase) error {
 	blob, err := json.Marshal(s)
 	if err != nil {
 		return err

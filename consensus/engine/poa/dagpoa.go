@@ -2,13 +2,14 @@
  * Copyright (c) 2017-2025 The qitmeer developers
  */
 
-package consensus
+package poa
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/consensus/engine/config"
+	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"io"
@@ -26,7 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -161,7 +161,7 @@ func ecrecover(header *types.Header, sigcache *sigLRU) (common.Address, error) {
 // Ethereum testnet following the Ropsten attacks.
 type DagPoA struct {
 	config *config.PoAConfig // Consensus engine configuration parameters
-	db     ethdb.Database    // Database to store and retrieve snapshot checkpoints
+	db     model.DataBase    // Database to store and retrieve snapshot checkpoints
 
 	recents    *lru.Cache[common.Hash, *Snapshot] // Snapshots for recent block to speed up reorgs
 	signatures *sigLRU                            // Signatures of recent blocks to speed up mining
@@ -176,9 +176,7 @@ type DagPoA struct {
 	fakeDiff bool // Skip difficulty verifications
 }
 
-// New creates a Amana proof-of-authority consensus engine with the initial
-// signers set to the ones provided by the user.
-func New(conf *config.PoAConfig, db ethdb.Database) *DagPoA {
+func New(conf *config.PoAConfig, db model.DataBase) *DagPoA {
 	// Set any missing consensus parameters to their defaults
 	if conf.Epoch == 0 {
 		conf.Epoch = epochLength
@@ -723,7 +721,7 @@ func (c *DagPoA) Close() error {
 // controlling the signer voting.
 func (c *DagPoA) APIs(chain econsensus.ChainHeaderReader) []rpc.API {
 	return []rpc.API{{
-		Namespace: "amana",
+		Namespace: Identifier,
 		Service:   &API{chain: chain, amana: c},
 	}}
 }

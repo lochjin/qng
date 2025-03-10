@@ -5,6 +5,7 @@ package blockchain
 import (
 	"container/list"
 	"fmt"
+	"github.com/Qitmeer/qng/consensus/engine/poa"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -145,9 +146,14 @@ type BlockChain struct {
 	selfAdd atomic.Int64
 
 	snapSyncing atomic.Bool
+
+	dagPoA *poa.DagPoA
 }
 
 func (b *BlockChain) Init() error {
+	if b.params.ConsensusConfig.Type().IsPoA() {
+		b.dagPoA = poa.New(b.params.ToPoAConfig(), b.DB())
+	}
 	// Initialize the chain state from the passed database.  When the db
 	// does not yet contain any chain state, both it and the chain state
 	// will be initialized to contain only the genesis block.

@@ -2,7 +2,7 @@
  * Copyright (c) 2017-2025 The qitmeer developers
  */
 
-package consensus
+package poa
 
 import (
 	"encoding/json"

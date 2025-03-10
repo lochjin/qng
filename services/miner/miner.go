@@ -455,6 +455,20 @@ out:
 				worker.Update()
 				worker.GetRequest(msg.powType, msg.coinbaseFlags, msg.reply)
 
+			case *StartPoAMiningMsg:
+				if m.worker != nil {
+					if m.worker.GetType() == PoAWorkerType {
+						continue
+					}
+					m.worker.Stop()
+					m.worker = nil
+				}
+				m.worker = NewPoAWorker(m)
+				if m.worker.Start() != nil {
+					m.worker = nil
+					continue
+				}
+
 			default:
 				log.Warn("Invalid message type in task handler: %T", msg)
 			}
@@ -895,6 +909,15 @@ func (m *Miner) RemoteMining(powType pow.PowType, coinbaseFlags mining.CoinbaseF
 
 	m.msgChan <- &RemoteMiningMsg{powType: powType, coinbaseFlags: coinbaseFlags, reply: reply}
 	return nil
+}
+
+func (m *Miner) StartPoAMining() {
+	// Ignore if we are shutting down.
+	if m.IsShutdown() {
+		return
+	}
+
+	m.msgChan <- &StartPoAMiningMsg{}
 }
 
 func (m *Miner) notifyBlockTemplate() {
