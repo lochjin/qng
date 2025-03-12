@@ -188,7 +188,7 @@ func (c *DagPoA) verifyCascadingFields(block *Block) error {
 		return err
 	}
 	// Ensure that the block's timestamp isn't too close to its parent
-	if parent == nil || parent.height != block.height-1 || parent.block.Hash().IsEqual(block.parent()) {
+	if parent == nil || parent.height != block.height-1 || !parent.block.Hash().IsEqual(block.parent()) {
 		return econsensus.ErrUnknownAncestor
 	}
 	if parent.Header().Timestamp.Unix()+int64(c.config.Period) > block.Header().Timestamp.Unix() {

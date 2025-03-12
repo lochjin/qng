@@ -7,6 +7,7 @@ import (
 	"crypto"
 	_ "crypto/sha256"
 	"encoding/hex"
+	ejson "encoding/json"
 	"fmt"
 	"github.com/Qitmeer/qng/core/json"
 	_ "golang.org/x/crypto/blake2b"
@@ -251,4 +252,8 @@ func (h *Hash) UnmarshalText(input []byte) error {
 // Less returns true if hash is less than other
 func (h *Hash) Less(other *Hash) bool {
 	return bytes.Compare(h[:], other[:]) < 0
+}
+
+func (h *Hash) MarshalJSON() ([]byte, error) {
+	return ejson.Marshal(fmt.Sprintf("%s", h.String()))
 }

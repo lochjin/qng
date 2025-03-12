@@ -7,6 +7,7 @@ package cmds
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Qitmeer/qng/consensus/engine/poa"
 )
 
 // These are all service namespace in node
@@ -18,6 +19,7 @@ const (
 	NotifyNameSpace         = ""
 	P2PNameSpace            = "p2p"
 	WalletNameSpace         = "wallet"
+	DAGPoANameSpace         = poa.Identifier
 )
 
 type RPCErrorCode int

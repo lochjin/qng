@@ -762,7 +762,7 @@ func (b *BlockChain) checkBlockHeaderContext(block *types.SerializedBlock, prevN
 
 	header := &block.Block().Header
 	if !flags.Has(BFFastAdd) {
-		if !b.params.IsDevelopDiff() {
+		if b.params.ConsensusConfig.Type().IsPoW() && !b.params.IsDevelopDiff() {
 			instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
 			instance.SetMainHeight(pow.MainHeight(prevNode.GetHeight() + 1))
 			instance.SetParams(b.params.ToPoWConfig().PowConfig)

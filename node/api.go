@@ -71,7 +71,7 @@ func (api *PublicBlockChainAPI) GetNodeInfo() (interface{}, error) {
 		Network:          params.ActiveNetParams.Name,
 		Confirmations:    meerdag.StableConfirmations,
 		CoinbaseMaturity: int32(api.node.node.Params.CoinbaseMaturity),
-		Modules:          []string{cmds.DefaultServiceNameSpace, cmds.MinerNameSpace, cmds.TestNameSpace, cmds.LogNameSpace, cmds.P2PNameSpace, cmds.WalletNameSpace},
+		Modules:          []string{cmds.DefaultServiceNameSpace, cmds.MinerNameSpace, cmds.TestNameSpace, cmds.LogNameSpace, cmds.P2PNameSpace, cmds.WalletNameSpace, cmds.DAGPoANameSpace},
 		ConsensusEngine:  params.ActiveNetParams.GenesisBlock.Block().Header.Engine.Name(),
 	}
 	ret.GraphState = marshal.GetGraphStateResult(best.GraphState)
@@ -228,6 +228,7 @@ func (api *PublicBlockChainAPI) GetRpcModules() (interface{}, error) {
 		json.KV{Key: cmds.LogNameSpace, Val: false},
 		json.KV{Key: cmds.P2PNameSpace, Val: false},
 		json.KV{Key: cmds.WalletNameSpace, Val: false},
+		json.KV{Key: cmds.DAGPoANameSpace, Val: false},
 	}
 
 	for _, m := range api.node.node.Config.Modules {

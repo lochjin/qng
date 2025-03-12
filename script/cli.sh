@@ -1708,7 +1708,7 @@ elif [ "$1" == "generate" ]; then
 
 
 ## INFO & STATUS
-elif [ "$1" == "status" ] || [ "$1" == "info" ] || [ "$1" == "get_status" ] || [ "$1" == "get_info" ]; then
+elif [ "$1" == "info" ] || [ "$1" == "get_status" ] || [ "$1" == "get_info" ]; then
   shift
   get_status $@
 

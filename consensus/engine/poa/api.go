@@ -112,7 +112,7 @@ func (api *API) Discard(address common.Address) {
 	delete(api.dagpoa.proposals, address)
 }
 
-type status struct {
+type Status struct {
 	InturnPercent float64                `json:"inturnPercent"`
 	SigningStatus map[common.Address]int `json:"sealerActivity"`
 	NumBlocks     uint64                 `json:"numBlocks"`
@@ -122,7 +122,7 @@ type status struct {
 // - the number of active signers,
 // - the number of signers,
 // - the percentage of in-turn blocks
-func (api *API) Status() (*status, error) {
+func (api *API) Status() (interface{}, error) {
 	var (
 		numBlocks = uint64(64)
 		block     = api.chain.GetMainChainTip()
@@ -165,7 +165,7 @@ func (api *API) Status() (*status, error) {
 		block = api.chain.GetBlockById(block.GetMainParent())
 	}
 
-	return &status{
+	return Status{
 		InturnPercent: float64(100*optimals) / float64(numBlocks),
 		SigningStatus: signStatus,
 		NumBlocks:     numBlocks,
