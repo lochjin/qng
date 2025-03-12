@@ -7,6 +7,7 @@ import (
 	"github.com/Qitmeer/qng/core/coinbase"
 	s "github.com/Qitmeer/qng/core/serialization"
 	qtypes "github.com/Qitmeer/qng/core/types"
+	"github.com/Qitmeer/qng/params"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/sha3"
@@ -76,10 +77,15 @@ type Block struct {
 }
 
 func NewBlock(block *qtypes.SerializedBlock) (*Block, error) {
-	height, err := coinbase.ExtractCoinbaseHeight(block.Transactions()[0].Tx)
-	if err != nil {
-		return nil, err
+	height := uint64(0)
+	if !block.Hash().IsEqual(params.ActiveNetParams.GenesisHash) {
+		h, err := coinbase.ExtractCoinbaseHeight(block.Transactions()[0].Tx)
+		if err != nil {
+			return nil, err
+		}
+		height = h
 	}
+
 	return &Block{
 		block:  block,
 		height: height,

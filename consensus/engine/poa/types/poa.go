@@ -242,7 +242,7 @@ func New(r io.Reader) (*PoA, error) {
 	}
 	if signersSize > 0 {
 		size = signersSize / common.AddressLength
-		signersBytes := data[VanitySize+SealSize:]
+		signersBytes := data[VanitySize+SealSize+common.AddressLength:]
 		for i := 0; i < size; i++ {
 			index := i * common.AddressLength
 			addr := signersBytes[index : index+common.AddressLength]
