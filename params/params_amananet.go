@@ -17,7 +17,7 @@ import (
 	eparams "github.com/ethereum/go-ethereum/params"
 )
 
-const amanaTargetTimePerBlock = 3
+const amanaTargetTimePerBlock = 10
 
 var AmanaNetParams = Params{
 	Name:           "amananet",

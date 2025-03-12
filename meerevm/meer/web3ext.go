@@ -364,6 +364,42 @@ web3._extend({
 			call: 'qng_deployMeerChange',
 			params: 1,
 		}),
+	
+		new web3._extend.Method({
+			name: 'getSnapshot',
+			call: 'qng_getSnapshot',
+			params: 1,
+		}),
+		new web3._extend.Method({
+			name: 'getSnapshotAtHash',
+			call: 'qng_getSnapshotAtHash',
+			params: 1,
+		}),
+		new web3._extend.Method({
+			name: 'getSigners',
+			call: 'qng_getSigners',
+			params: 1,
+		}),
+		new web3._extend.Method({
+			name: 'getSignersAtHash',
+			call: 'qng_getSignersAtHash',
+			params: 1,
+		}),
+		new web3._extend.Method({
+			name: 'propose',
+			call: 'qng_propose',
+			params: 2,
+		}),
+		new web3._extend.Method({
+			name: 'discard',
+			call: 'qng_discard',
+			params: 1,
+		}),
+		new web3._extend.Method({
+			name: 'getSigner',
+			call: 'qng_getSigner',
+			params: 1,
+		}),
 	],
 	properties: [
 		new web3._extend.Property({
@@ -520,6 +556,15 @@ web3._extend({
 		new web3._extend.Property({
 			name: 'proxyInfo',
 			getter: 'qng_proxyInfo'
+		}),
+
+		new web3._extend.Property({
+			name: 'proposals',
+			getter: 'qng_proposals'
+		}),
+		new web3._extend.Property({
+			name: 'status',
+			getter: 'qng_status'
 		}),
 	]
 });

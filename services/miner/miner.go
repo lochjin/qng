@@ -591,9 +591,16 @@ func (m *Miner) subscribe() {
 						m.handleNotifyMsg(value)
 					case int:
 						if value == event.Initialized {
-							if m.cfg.Generate || m.cfg.GenerateOnTx {
-								m.StartCPUMining()
+							if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
+								if m.cfg.Generate || m.cfg.GenerateOnTx {
+									m.StartCPUMining()
+								}
+							} else if params.ActiveNetParams.ConsensusConfig.Type().IsPoA() {
+								if m.cfg.Generate {
+									m.StartPoAMining()
+								}
 							}
+
 						}
 					}
 				}

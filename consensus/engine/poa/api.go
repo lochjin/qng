@@ -5,13 +5,11 @@
 package poa
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -27,14 +25,13 @@ func NewPublicAPI(dagpoa *DagPoA, chain model.BlockChain) *API {
 }
 
 // GetSnapshot retrieves the state snapshot at a given block.
-func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
+func (api *API) GetSnapshot(order *int64) (*Snapshot, error) {
 	// Retrieve the requested block number (or current if none requested)
 	var block model.Block
-	if number == nil || *number == rpc.LatestBlockNumber {
+	if order == nil || *order == rpc.LatestBlockNumber.Int64() {
 		block = api.chain.GetMainChainTip()
 	} else {
-		block = api.chain.GetBlockByOrder(uint64(number.Int64()))
-
+		block = api.chain.GetBlockByOrder(uint64(*order))
 	}
 	// Ensure we have an actually valid block and return its snapshot
 	if block == nil {
@@ -53,13 +50,12 @@ func (api *API) GetSnapshotAtHash(hash hash.Hash) (*Snapshot, error) {
 }
 
 // GetSigners retrieves the list of authorized signers at the specified block.
-func (api *API) GetSigners(number *rpc.BlockNumber) ([]common.Address, error) {
+func (api *API) GetSigners(order *int64) ([]common.Address, error) {
 	var block model.Block
-	if number == nil || *number == rpc.LatestBlockNumber {
+	if order == nil || *order == rpc.LatestBlockNumber.Int64() {
 		block = api.chain.GetMainChainTip()
 	} else {
-		block = api.chain.GetBlockByOrder(uint64(number.Int64()))
-
+		block = api.chain.GetBlockByOrder(uint64(*order))
 	}
 	// Ensure we have an actually valid block and return its snapshot
 	if block == nil {
@@ -174,31 +170,6 @@ func (api *API) Status() (*status, error) {
 		SigningStatus: signStatus,
 		NumBlocks:     numBlocks,
 	}, nil
-}
-
-type blockNumberOrHashOrRLP struct {
-	*rpc.BlockNumberOrHash
-	RLP hexutil.Bytes `json:"rlp,omitempty"`
-}
-
-func (sb *blockNumberOrHashOrRLP) UnmarshalJSON(data []byte) error {
-	bnOrHash := new(rpc.BlockNumberOrHash)
-	// Try to unmarshal bNrOrHash
-	if err := bnOrHash.UnmarshalJSON(data); err == nil {
-		sb.BlockNumberOrHash = bnOrHash
-		return nil
-	}
-	// Try to unmarshal RLP
-	var input string
-	if err := json.Unmarshal(data, &input); err != nil {
-		return err
-	}
-	blob, err := hexutil.Decode(input)
-	if err != nil {
-		return err
-	}
-	sb.RLP = blob
-	return nil
 }
 
 // GetSigner returns the signer for a specific qit block.

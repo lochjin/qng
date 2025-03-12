@@ -12,7 +12,6 @@ import (
 	"github.com/Qitmeer/qng/consensus/model"
 	qtypes "github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/rpc/api"
-	"github.com/Qitmeer/qng/rpc/client/cmds"
 	"math/rand"
 	"sync"
 	"time"
@@ -498,7 +497,7 @@ func (c *DagPoA) Signer() common.Address {
 func (c *DagPoA) APIs(chain model.BlockChain) []api.API {
 	return []api.API{
 		{
-			NameSpace: cmds.DefaultServiceNameSpace,
+			NameSpace: Identifier,
 			Service:   NewPublicAPI(c, chain),
 			Public:    true,
 		},
