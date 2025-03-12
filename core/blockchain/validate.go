@@ -239,28 +239,31 @@ func (b *BlockChain) checkBlockSanity(block *types.SerializedBlock, timeSource m
 // are needed to pass along to checkProofOfWork.
 func (b *BlockChain) checkBlockHeaderSanity(block *types.SerializedBlock, timeSource model.MedianTimeSource, flags BehaviorFlags, chainParams *params.Params, mHeight uint) error {
 	header := &block.Block().Header
-	if chainParams.ConsensusConfig.Type().IsPoW() {
-		instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
-		instance.SetMainHeight(pow.MainHeight(mHeight))
-		instance.SetParams(chainParams.ToPoWConfig().PowConfig)
-		if !instance.CheckAvailable() {
-			str := fmt.Sprintf("pow type : %d is not available!", header.PoW().GetPowType())
-			return ruleError(ErrInValidPowType, str)
+
+	if !flags.Has(BFNoProofCheck) {
+		if chainParams.ConsensusConfig.Type().IsPoW() {
+			instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
+			instance.SetMainHeight(pow.MainHeight(mHeight))
+			instance.SetParams(chainParams.ToPoWConfig().PowConfig)
+			if !instance.CheckAvailable() {
+				str := fmt.Sprintf("pow type : %d is not available!", header.PoW().GetPowType())
+				return ruleError(ErrInValidPowType, str)
+			}
+			// Ensure the proof of work bits in the block header is in min/max
+			// range and the block hash is less than the target value described by
+			// the bits.
+			err := checkProofOfWork(header, chainParams.ToPoWConfig().PowConfig, mHeight)
+			if err != nil {
+				return ruleError(ErrInvalidPow, err.Error())
+			}
+		} else if chainParams.ConsensusConfig.Type().IsPoA() {
+			err := b.dagPoA.VerifyHeader(block)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("Not support cur consensus config:%s", chainParams.ConsensusConfig.Type().String())
 		}
-		// Ensure the proof of work bits in the block header is in min/max
-		// range and the block hash is less than the target value described by
-		// the bits.
-		err := checkProofOfWork(header, chainParams.ToPoWConfig().PowConfig, flags, mHeight)
-		if err != nil {
-			return ruleError(ErrInvalidPow, err.Error())
-		}
-	} else if chainParams.ConsensusConfig.Type().IsPoA() {
-		err := b.dagPoA.VerifyHeader(block)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("Not support cur consensus config:%s", chainParams.ConsensusConfig.Type().String())
 	}
 
 	// A block timestamp must not have a greater precision than one second.
@@ -291,13 +294,13 @@ func (b *BlockChain) checkBlockHeaderSanity(block *types.SerializedBlock, timeSo
 // target difficulty as claimed.
 //
 // The flags modify the behavior of this function as follows:
-//   - BFNoPoWCheck: The check to ensure the block hash is less than the target
+//   - BFNoProofCheck: The check to ensure the block hash is less than the target
 //     difficulty is not performed.
-func checkProofOfWork(header *types.BlockHeader, powConfig *pow.PowConfig, flags BehaviorFlags, mHeight uint) error {
+func checkProofOfWork(header *types.BlockHeader, powConfig *pow.PowConfig, mHeight uint) error {
 
 	// The block hash must be less than the claimed target unless the flag
 	// to avoid proof of work checks is set.
-	if !flags.Has(BFNoPoWCheck) && !params.ActiveNetParams.Params.IsDevelopDiff() {
+	if !params.ActiveNetParams.Params.IsDevelopDiff() {
 		header.PoW().SetParams(powConfig)
 		header.PoW().SetMainHeight(pow.MainHeight(mHeight))
 		// The block hash must be less than the claimed target.
@@ -1360,7 +1363,7 @@ func (b *BlockChain) CheckTransactionInputs(tx *types.Tx, utxoView *utxo.UtxoVie
 // This function is safe for concurrent access.
 func (b *BlockChain) CheckConnectBlockTemplate(block *types.SerializedBlock, height uint64) error {
 	// Skip the proof of work check as this is just a block template.
-	flags := BFNoPoWCheck
+	flags := BFNoProofCheck
 
 	// The block template must build off the current tip of the main chain
 	// or its parent.

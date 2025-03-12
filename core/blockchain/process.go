@@ -164,7 +164,7 @@ func (b *BlockChain) preProcessBlock(block *types.SerializedBlock, flags Behavio
 			return false, ruleError(ErrCheckpointTimeTooOld, str)
 		}
 
-		if !flags.Has(BFFastAdd) {
+		if !flags.Has(BFFastAdd) && b.params.ConsensusConfig.Type().IsPoW() {
 			// Even though the checks prior to now have already ensured the
 			// proof of work exceeds the claimed amount, the claimed amount
 			// is a field in the block header which could be forged.  This
@@ -718,7 +718,8 @@ func (b *BlockChain) updateBestState(block *types.SerializedBlock, prune bool) e
 
 	// Atomically insert info into the database.
 	// Update best block state.
-	err = dbPutBestState(b.DB(), state, pow.CalcWork(mainTipNode.Difficulty(), mainTipNode.Pow().GetPowType()))
+
+	err = dbPutBestState(b.DB(), state, mainTipNode.block.Block().Header.WorkSum())
 	if err != nil {
 		return err
 	}
