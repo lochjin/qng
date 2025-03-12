@@ -29,6 +29,9 @@ func (b *BlockChain) APIs() []rapi.API {
 			Public:    true,
 		},
 	}...)
+	if b.dagPoA != nil {
+		apis = append(apis, b.dagPoA.APIs(b)...)
+	}
 	return apis
 }
 

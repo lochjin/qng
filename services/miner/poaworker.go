@@ -2,15 +2,13 @@ package miner
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/Qitmeer/qng/common/roughtime"
-	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/params"
 )
 
 type PoAWorker struct {
@@ -33,14 +31,15 @@ func (w *PoAWorker) Start() error {
 		log.Error(err.Error())
 		return err
 	}
+	if w.miner.BlockChain().DagPoA().Signer() == (common.Address{}) {
+		return fmt.Errorf("DagPoA signer address is empty")
+	}
 	// Already started?
 	if atomic.AddInt32(&w.started, 1) != 1 {
 		return nil
 	}
 
-	log.Info("Start PoA Worker...")
-
-	w.miner.updateBlockTemplate(false)
+	log.Info("Start PoA Worker", "address", w.miner.BlockChain().DagPoA().Signer().String())
 
 	w.wg.Add(1)
 	go w.generateBlocks()
@@ -78,7 +77,15 @@ out:
 			// Non-blocking select to fall through
 		}
 		start := time.Now()
-		if err := w.miner.CanMining(); err != nil {
+		err := w.miner.CanMining()
+		if err != nil {
+			log.Warn(err.Error())
+			time.Sleep(time.Second)
+			continue
+		}
+
+		err = w.miner.updateBlockTemplate(false)
+		if err != nil {
 			log.Warn(err.Error())
 			time.Sleep(time.Second)
 			continue
@@ -112,53 +119,18 @@ func (w *PoAWorker) solveBlock() *types.Block {
 	if w.miner.template == nil {
 		return nil
 	}
-	// Start a ticker which is used to signal checks for stale work and
-	// updates to the speed monitor.
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
 	// Create a couple of convenience variables.
 	block, err := w.miner.template.Block.Clone()
 	if err != nil {
 		log.Error(err.Error())
 		return nil
 	}
-	header := &block.Header
-
-	// Initial state.
-	lastGenerated := roughtime.Now()
-
-	for i := uint64(0); i <= maxNonce; i++ {
-		select {
-		case <-w.quit:
-			return nil
-
-		case <-ticker.C:
-
-			// The current block is stale if the memory pool
-			// has been updated since the block template was
-			// generated and it has been at least 3 seconds,
-			// or if it's been one minute.
-			if roughtime.Now().After(lastGenerated.Add(gbtRegenerateSeconds * time.Second)) {
-				return nil
-			}
-		default:
-			// Non-blocking select to fall through
-		}
-		instance := pow.GetInstance(w.miner.powType, 0, []byte{})
-		instance.SetNonce(uint64(i))
-		instance.SetMainHeight(pow.MainHeight(w.miner.template.Height))
-		instance.SetParams(params.ActiveNetParams.Params.ToPoWConfig().PowConfig)
-		header.Engine = instance
-		if params.ActiveNetParams.Params.IsDevelopDiff() {
-			return block
-		}
-		if header.PoW().FindSolver(header.Digest(), header.BlockHash(), header.Difficulty) {
-			return block
-		}
-		// Each hash is actually a double hash (tow hashes), so
+	err = w.miner.BlockChain().Seal(block)
+	if err != nil {
+		log.Error(err.Error())
+		return nil
 	}
-	return nil
+	return block
 }
 
 func NewPoAWorker(miner *Miner) *PoAWorker {

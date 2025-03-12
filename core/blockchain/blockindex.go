@@ -14,7 +14,7 @@ import (
 // LookupNode returns the block node identified by the provided hash.  It will
 // return nil if there is no entry for the hash.
 func (b *BlockChain) LookupNode(hash *hash.Hash) *BlockNode {
-	ib := b.GetBlock(hash)
+	ib := b.GetDAGBlock(hash)
 	if ib == nil {
 		return nil
 	}
@@ -48,7 +48,11 @@ func (b *BlockChain) getBlockData(hash *hash.Hash) meerdag.IBlockData {
 	return NewBlockNode(block)
 }
 
-func (b *BlockChain) GetBlock(h *hash.Hash) meerdag.IBlock {
+func (b *BlockChain) GetBlock(h *hash.Hash) model.Block {
+	return b.bd.GetBlock(h)
+}
+
+func (b *BlockChain) GetDAGBlock(h *hash.Hash) meerdag.IBlock {
 	return b.bd.GetBlock(h)
 }
 

@@ -7,61 +7,65 @@ package poa
 import (
 	"encoding/json"
 	"fmt"
-
+	"github.com/Qitmeer/qng/common/hash"
+	"github.com/Qitmeer/qng/consensus/model"
+	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	econsensus "github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // API is a user facing RPC API to allow controlling the signer and voting
 // mechanisms of the proof-of-authority scheme.
 type API struct {
-	chain econsensus.ChainHeaderReader
-	amana *DagPoA
+	chain  model.BlockChain
+	dagpoa *DagPoA
+}
+
+func NewPublicAPI(dagpoa *DagPoA, chain model.BlockChain) *API {
+	return &API{chain: chain, dagpoa: dagpoa}
 }
 
 // GetSnapshot retrieves the state snapshot at a given block.
 func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
 	// Retrieve the requested block number (or current if none requested)
-	var header *types.Header
+	var block model.Block
 	if number == nil || *number == rpc.LatestBlockNumber {
-		header = api.chain.CurrentHeader()
+		block = api.chain.GetMainChainTip()
 	} else {
-		header = api.chain.GetHeaderByNumber(uint64(number.Int64()))
+		block = api.chain.GetBlockByOrder(uint64(number.Int64()))
+
 	}
 	// Ensure we have an actually valid block and return its snapshot
-	if header == nil {
+	if block == nil {
 		return nil, errUnknownBlock
 	}
-	return api.amana.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	return api.dagpoa.snapshot(uint64(block.GetHeight()), block.GetHash())
 }
 
 // GetSnapshotAtHash retrieves the state snapshot at a given block.
-func (api *API) GetSnapshotAtHash(hash common.Hash) (*Snapshot, error) {
-	header := api.chain.GetHeaderByHash(hash)
-	if header == nil {
+func (api *API) GetSnapshotAtHash(hash hash.Hash) (*Snapshot, error) {
+	block := api.chain.GetBlock(&hash)
+	if block == nil {
 		return nil, errUnknownBlock
 	}
-	return api.amana.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	return api.dagpoa.snapshot(uint64(block.GetHeight()), block.GetHash())
 }
 
 // GetSigners retrieves the list of authorized signers at the specified block.
 func (api *API) GetSigners(number *rpc.BlockNumber) ([]common.Address, error) {
-	// Retrieve the requested block number (or current if none requested)
-	var header *types.Header
+	var block model.Block
 	if number == nil || *number == rpc.LatestBlockNumber {
-		header = api.chain.CurrentHeader()
+		block = api.chain.GetMainChainTip()
 	} else {
-		header = api.chain.GetHeaderByNumber(uint64(number.Int64()))
+		block = api.chain.GetBlockByOrder(uint64(number.Int64()))
+
 	}
-	// Ensure we have an actually valid block and return the signers from its snapshot
-	if header == nil {
+	// Ensure we have an actually valid block and return its snapshot
+	if block == nil {
 		return nil, errUnknownBlock
 	}
-	snap, err := api.amana.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	snap, err := api.dagpoa.snapshot(uint64(block.GetHeight()), block.GetHash())
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +73,13 @@ func (api *API) GetSigners(number *rpc.BlockNumber) ([]common.Address, error) {
 }
 
 // GetSignersAtHash retrieves the list of authorized signers at the specified block.
-func (api *API) GetSignersAtHash(hash common.Hash) ([]common.Address, error) {
-	header := api.chain.GetHeaderByHash(hash)
-	if header == nil {
+func (api *API) GetSignersAtHash(hash hash.Hash) ([]common.Address, error) {
+	block := api.chain.GetBlock(&hash)
+	if block == nil {
 		return nil, errUnknownBlock
 	}
-	snap, err := api.amana.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+
+	snap, err := api.dagpoa.snapshot(uint64(block.GetHeight()), block.GetHash())
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +88,11 @@ func (api *API) GetSignersAtHash(hash common.Hash) ([]common.Address, error) {
 
 // Proposals returns the current proposals the node tries to uphold and vote on.
 func (api *API) Proposals() map[common.Address]bool {
-	api.amana.lock.RLock()
-	defer api.amana.lock.RUnlock()
+	api.dagpoa.lock.RLock()
+	defer api.dagpoa.lock.RUnlock()
 
 	proposals := make(map[common.Address]bool)
-	for address, auth := range api.amana.proposals {
+	for address, auth := range api.dagpoa.proposals {
 		proposals[address] = auth
 	}
 	return proposals
@@ -96,19 +101,19 @@ func (api *API) Proposals() map[common.Address]bool {
 // Propose injects a new authorization proposal that the signer will attempt to
 // push through.
 func (api *API) Propose(address common.Address, auth bool) {
-	api.amana.lock.Lock()
-	defer api.amana.lock.Unlock()
+	api.dagpoa.lock.Lock()
+	defer api.dagpoa.lock.Unlock()
 
-	api.amana.proposals[address] = auth
+	api.dagpoa.proposals[address] = auth
 }
 
 // Discard drops a currently running proposal, stopping the signer from casting
 // further votes (either for or against).
 func (api *API) Discard(address common.Address) {
-	api.amana.lock.Lock()
-	defer api.amana.lock.Unlock()
+	api.dagpoa.lock.Lock()
+	defer api.dagpoa.lock.Unlock()
 
-	delete(api.amana.proposals, address)
+	delete(api.dagpoa.proposals, address)
 }
 
 type status struct {
@@ -124,42 +129,46 @@ type status struct {
 func (api *API) Status() (*status, error) {
 	var (
 		numBlocks = uint64(64)
-		header    = api.chain.CurrentHeader()
+		block     = api.chain.GetMainChainTip()
 		diff      = uint64(0)
 		optimals  = 0
 	)
-	snap, err := api.amana.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	snap, err := api.dagpoa.snapshot(uint64(block.GetHeight()), block.GetHash())
 	if err != nil {
 		return nil, err
 	}
 	var (
 		signers = snap.signers()
-		end     = header.Number.Uint64()
-		start   = end - numBlocks
 	)
-	if numBlocks > end {
-		start = 1
-		numBlocks = end - start
-	}
 	signStatus := make(map[common.Address]int)
 	for _, s := range signers {
 		signStatus[s] = 0
 	}
-	for n := start; n < end; n++ {
-		h := api.chain.GetHeaderByNumber(n)
-		if h == nil {
-			return nil, fmt.Errorf("missing block %d", n)
+
+	for idx := uint64(0); idx < numBlocks; idx++ {
+		if block == nil {
+			break
 		}
-		if h.Difficulty.Cmp(diffInTurn) == 0 {
+		h := api.chain.GetBlockHeader(block)
+		if h == nil {
+			return nil, fmt.Errorf("missing block %s", block.GetHash())
+		}
+		if h.Difficulty == diffInTurn {
 			optimals++
 		}
-		diff += h.Difficulty.Uint64()
-		sealer, err := api.amana.Author(h)
+		diff += uint64(h.Difficulty)
+		sealer, err := api.dagpoa.Author(h)
 		if err != nil {
 			return nil, err
 		}
 		signStatus[sealer]++
+
+		if block.GetID() == 0 {
+			break
+		}
+		block = api.chain.GetBlockById(block.GetMainParent())
 	}
+
 	return &status{
 		InturnPercent: float64(100*optimals) / float64(numBlocks),
 		SigningStatus: signStatus,
@@ -193,38 +202,31 @@ func (sb *blockNumberOrHashOrRLP) UnmarshalJSON(data []byte) error {
 }
 
 // GetSigner returns the signer for a specific qit block.
-// Can be called with either a blocknumber, blockhash or an rlp encoded blob.
-// The RLP encoded blob can either be a block or a header.
-func (api *API) GetSigner(rlpOrBlockNr *blockNumberOrHashOrRLP) (common.Address, error) {
-	if rlpOrBlockNr == nil {
-		header := api.chain.CurrentHeader()
+func (a *API) GetSigner(hashOrNumber string) (common.Address, error) {
+	hn, err := api.NewHashOrNumber(hashOrNumber)
+	if err != nil {
+		mt := a.chain.GetMainChainTip()
+		if mt == nil {
+			return common.Address{}, fmt.Errorf("missing block")
+		}
+		header := a.chain.GetBlockHeader(mt)
 		if header == nil {
 			return common.Address{}, fmt.Errorf("missing block")
 		}
-		return api.amana.Author(header)
+		return a.dagpoa.Author(header)
 	}
-	if len(rlpOrBlockNr.RLP) == 0 {
-		blockNrOrHash := rlpOrBlockNr.BlockNumberOrHash
-		var header *types.Header
-		if blockNrOrHash == nil {
-			header = api.chain.CurrentHeader()
-		} else if hash, ok := blockNrOrHash.Hash(); ok {
-			header = api.chain.GetHeaderByHash(hash)
-		} else if number, ok := blockNrOrHash.Number(); ok {
-			header = api.chain.GetHeaderByNumber(uint64(number.Int64()))
-		}
-		if header == nil {
-			return common.Address{}, fmt.Errorf("missing block %v", blockNrOrHash.String())
-		}
-		return api.amana.Author(header)
+	var block model.Block
+	if hn.IsHash() {
+		block = a.chain.GetBlock(hn.Hash)
+	} else {
+		block = a.chain.GetBlockByOrder(hn.Number)
 	}
-	block := new(types.Block)
-	if err := rlp.DecodeBytes(rlpOrBlockNr.RLP, block); err == nil {
-		return api.amana.Author(block.Header())
+	if block == nil {
+		return common.Address{}, fmt.Errorf("missing block:%v", hn.String())
 	}
-	header := new(types.Header)
-	if err := rlp.DecodeBytes(rlpOrBlockNr.RLP, header); err != nil {
-		return common.Address{}, err
+	header := a.chain.GetBlockHeader(block)
+	if header == nil {
+		return common.Address{}, fmt.Errorf("missing block:%v", hn.String())
 	}
-	return api.amana.Author(header)
+	return a.dagpoa.Author(header)
 }

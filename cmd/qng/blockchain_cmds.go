@@ -261,7 +261,7 @@ func exportBlockChain(consensus model.Consensus, outputPath string, end string, 
 		if err != nil {
 			return err
 		}
-		endPoint = bc.GetBlock(ephash)
+		endPoint = bc.GetDAGBlock(ephash)
 		if endPoint != nil {
 			if byID {
 				if endNum > endPoint.GetID() {
@@ -590,7 +590,7 @@ func upgradeBlockChain(cfg *config.Config, cdb model.DataBase, interrupt <-chan 
 			if err != nil {
 				return err
 			}
-			endPoint = bc.GetBlock(ephash)
+			endPoint = bc.GetDAGBlock(ephash)
 			if endPoint != nil {
 				if byID {
 					if endNum > endPoint.GetID() {

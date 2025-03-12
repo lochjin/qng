@@ -476,6 +476,10 @@ func (sb *SerializedBlock) Hash() *hash.Hash {
 	return &sb.hash
 }
 
+func (sb *SerializedBlock) RefreshHash() {
+	sb.hash = sb.block.BlockHash()
+}
+
 func (sb *SerializedBlock) AssertImmutability() error {
 	h := sb.block.BlockHash()
 	if (&h).IsEqual(&sb.hash) {

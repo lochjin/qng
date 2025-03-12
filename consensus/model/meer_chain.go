@@ -5,6 +5,7 @@ import (
 	"github.com/Qitmeer/qng/consensus/model/meer"
 	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/rpc/api"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth"
@@ -39,4 +40,5 @@ type MeerChain interface {
 	TxPool() meer.TxPool
 	SetMainTxPool(tp TxPool)
 	SetP2P(ser P2PService)
+	GetMinerAccount() (common.Address, accounts.Wallet)
 }

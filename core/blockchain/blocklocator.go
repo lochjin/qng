@@ -14,8 +14,9 @@ import (
 // from the block being located.
 //
 // For example, assume a block chain with a side chain as depicted below:
-// 	genesis -> 1 -> 2 -> ... -> 15 -> 16  -> 17  -> 18
-// 	                              \-> 16a -> 17a
+//
+//	genesis -> 1 -> 2 -> ... -> 15 -> 16  -> 17  -> 18
+//	                              \-> 16a -> 17a
 //
 // The block locator for block 17a would be the hashes of blocks:
 // [17a 16a 15 14 13 12 11 10 9 8 7 6 4 genesis]
@@ -81,7 +82,7 @@ func (b *BlockChain) locateBlocks(locator BlockLocator, hashStop *hash.Hash, max
 	if !b.bd.HasBlock(endHash) {
 		return nil
 	}
-	endBlock := b.GetBlock(endHash)
+	endBlock := b.GetDAGBlock(endHash)
 	hashesSet := meerdag.NewHashSet()
 
 	// First of all, we need to make sure we have the parents of block.
