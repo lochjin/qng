@@ -7,6 +7,7 @@ package poa
 import (
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
+	ptypes "github.com/Qitmeer/qng/consensus/engine/poa/types"
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/ethereum/go-ethereum/common"
@@ -153,14 +154,16 @@ func (api *API) Status() (interface{}, error) {
 			optimals++
 		}
 		diff += uint64(h.Difficulty)
-		sealer, err := api.dagpoa.Author(h)
-		if err != nil {
-			return nil, err
-		}
-		signStatus[sealer]++
 
 		if block.GetID() == 0 {
+			signStatus[h.Engine.(*ptypes.PoA).Signers[0]]++
 			break
+		} else {
+			sealer, err := api.dagpoa.Author(h)
+			if err != nil {
+				return nil, err
+			}
+			signStatus[sealer]++
 		}
 		block = api.chain.GetBlockById(block.GetMainParent())
 	}
