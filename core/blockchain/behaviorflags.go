@@ -16,10 +16,10 @@ const (
 	// checkpoint.  This is primarily used for headers-first mode.
 	BFFastAdd BehaviorFlags = 1 << iota
 
-	// BFNoPoWCheck may be set to indicate the proof of work check which
+	// BFNoProofCheck may be set to indicate the proof of work check which
 	// ensures a block hashes to a value less than the required target will
 	// not be performed.
-	BFNoPoWCheck
+	BFNoProofCheck
 
 	BFP2PAdd
 
@@ -31,12 +31,12 @@ const (
 )
 
 var bfStrings = map[BehaviorFlags]string{
-	BFNone:       "BFNone",
-	BFFastAdd:    "BFFastAdd",
-	BFNoPoWCheck: "BFNoPoWCheck",
-	BFP2PAdd:     "BFP2PAdd",
-	BFRPCAdd:     "BFRPCAdd",
-	BFBroadcast:  "BFBroadcast",
+	BFNone:         "BFNone",
+	BFFastAdd:      "BFFastAdd",
+	BFNoProofCheck: "BFNoProofCheck",
+	BFP2PAdd:       "BFP2PAdd",
+	BFRPCAdd:       "BFRPCAdd",
+	BFBroadcast:    "BFBroadcast",
 }
 
 func (bf BehaviorFlags) String() string {

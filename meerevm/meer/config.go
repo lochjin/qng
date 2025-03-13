@@ -3,6 +3,7 @@ package meer
 import (
 	"encoding/json"
 	"github.com/Qitmeer/qng/config"
+	"github.com/Qitmeer/qng/core/address"
 	"github.com/Qitmeer/qng/core/protocol"
 	mcommon "github.com/Qitmeer/qng/meerevm/common"
 	"github.com/Qitmeer/qng/meerevm/eth"
@@ -49,6 +50,16 @@ func MakeConfig(cfg *config.Config) (*eth.Config, error) {
 	}
 	if len(cfg.StateScheme) > 0 {
 		econfig.StateScheme = cfg.StateScheme
+	}
+	if cfg.GetMinningAddr() != nil {
+		pka, ok := cfg.GetMinningAddr().(*address.SecpPubKeyAddress)
+		if ok {
+			mea, err := mcommon.NewMeerEVMAddress(pka.PubKey().SerializeUncompressed())
+			if err != nil {
+				return nil, err
+			}
+			econfig.Miner.PendingFeeRecipient = mea
+		}
 	}
 
 	nodeConf := node.DefaultConfig

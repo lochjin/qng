@@ -7,9 +7,9 @@
 package blockchain
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/Qitmeer/qng/core/coinbase"
 	"math"
 	"time"
 
@@ -86,7 +86,7 @@ func (b *BlockChain) checkBlockSanity(block *types.SerializedBlock, timeSource m
 		return fmt.Errorf("Bad block:%s", block.Hash().String())
 	}
 
-	err = checkBlockHeaderSanity(header, timeSource, flags, chainParams, uint(height))
+	err = b.checkBlockHeaderSanity(block, timeSource, flags, chainParams, uint(height))
 	if err != nil {
 		return err
 	}
@@ -237,20 +237,33 @@ func (b *BlockChain) checkBlockSanity(block *types.SerializedBlock, timeSource m
 //
 // The flags do not modify the behavior of this function directly, however they
 // are needed to pass along to checkProofOfWork.
-func checkBlockHeaderSanity(header *types.BlockHeader, timeSource model.MedianTimeSource, flags BehaviorFlags, chainParams *params.Params, mHeight uint) error {
-	instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
-	instance.SetMainHeight(pow.MainHeight(mHeight))
-	instance.SetParams(chainParams.ToPoWConfig().PowConfig)
-	if !instance.CheckAvailable() {
-		str := fmt.Sprintf("pow type : %d is not available!", header.PoW().GetPowType())
-		return ruleError(ErrInValidPowType, str)
-	}
-	// Ensure the proof of work bits in the block header is in min/max
-	// range and the block hash is less than the target value described by
-	// the bits.
-	err := checkProofOfWork(header, chainParams.ToPoWConfig().PowConfig, flags, mHeight)
-	if err != nil {
-		return ruleError(ErrInvalidPow, err.Error())
+func (b *BlockChain) checkBlockHeaderSanity(block *types.SerializedBlock, timeSource model.MedianTimeSource, flags BehaviorFlags, chainParams *params.Params, mHeight uint) error {
+	header := &block.Block().Header
+
+	if !flags.Has(BFNoProofCheck) {
+		if chainParams.ConsensusConfig.Type().IsPoW() {
+			instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
+			instance.SetMainHeight(pow.MainHeight(mHeight))
+			instance.SetParams(chainParams.ToPoWConfig().PowConfig)
+			if !instance.CheckAvailable() {
+				str := fmt.Sprintf("pow type : %d is not available!", header.PoW().GetPowType())
+				return ruleError(ErrInValidPowType, str)
+			}
+			// Ensure the proof of work bits in the block header is in min/max
+			// range and the block hash is less than the target value described by
+			// the bits.
+			err := checkProofOfWork(header, chainParams.ToPoWConfig().PowConfig, mHeight)
+			if err != nil {
+				return ruleError(ErrInvalidPow, err.Error())
+			}
+		} else if chainParams.ConsensusConfig.Type().IsPoA() {
+			err := b.dagPoA.VerifyHeader(block)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("Not support cur consensus config:%s", chainParams.ConsensusConfig.Type().String())
+		}
 	}
 
 	// A block timestamp must not have a greater precision than one second.
@@ -281,13 +294,13 @@ func checkBlockHeaderSanity(header *types.BlockHeader, timeSource model.MedianTi
 // target difficulty as claimed.
 //
 // The flags modify the behavior of this function as follows:
-//   - BFNoPoWCheck: The check to ensure the block hash is less than the target
+//   - BFNoProofCheck: The check to ensure the block hash is less than the target
 //     difficulty is not performed.
-func checkProofOfWork(header *types.BlockHeader, powConfig *pow.PowConfig, flags BehaviorFlags, mHeight uint) error {
+func checkProofOfWork(header *types.BlockHeader, powConfig *pow.PowConfig, mHeight uint) error {
 
 	// The block hash must be less than the claimed target unless the flag
 	// to avoid proof of work checks is set.
-	if !flags.Has(BFNoPoWCheck) && !params.ActiveNetParams.Params.IsDevelopDiff() {
+	if !params.ActiveNetParams.Params.IsDevelopDiff() {
 		header.PoW().SetParams(powConfig)
 		header.PoW().SetMainHeight(pow.MainHeight(mHeight))
 		// The block hash must be less than the claimed target.
@@ -749,7 +762,7 @@ func (b *BlockChain) checkBlockHeaderContext(block *types.SerializedBlock, prevN
 
 	header := &block.Block().Header
 	if !flags.Has(BFFastAdd) {
-		if !b.params.IsDevelopDiff() {
+		if b.params.ConsensusConfig.Type().IsPoW() && !b.params.IsDevelopDiff() {
 			instance := pow.GetInstance(header.PoW().GetPowType(), 0, []byte{})
 			instance.SetMainHeight(pow.MainHeight(prevNode.GetHeight() + 1))
 			instance.SetParams(b.params.ToPoWConfig().PowConfig)
@@ -1350,7 +1363,7 @@ func (b *BlockChain) CheckTransactionInputs(tx *types.Tx, utxoView *utxo.UtxoVie
 // This function is safe for concurrent access.
 func (b *BlockChain) CheckConnectBlockTemplate(block *types.SerializedBlock, height uint64) error {
 	// Skip the proof of work check as this is just a block template.
-	flags := BFNoPoWCheck
+	flags := BFNoProofCheck
 
 	// The block template must build off the current tip of the main chain
 	// or its parent.
@@ -1463,35 +1476,11 @@ func (b *BlockChain) IsValidTxType(tt types.TxType) bool {
 }
 
 func ExtractCoinbaseHeight(coinbaseTx *types.Transaction) (uint64, error) {
-	sigScript := coinbaseTx.TxIn[0].SignScript
-	if len(sigScript) < 1 {
-		str := "It has not the coinbase signature script for blocks"
-		return 0, ruleError(ErrMissingCoinbaseHeight, str)
+	height, err := coinbase.ExtractCoinbaseHeight(coinbaseTx)
+	if err != nil {
+		return 0, ruleError(ErrMissingCoinbaseHeight, err.Error())
 	}
-
-	// Detect the case when the block height is a small integer encoded with
-	// as single byte.
-	opcode := int(sigScript[0])
-	if opcode == txscript.OP_0 {
-		return 0, nil
-	}
-	if opcode >= txscript.OP_1 && opcode <= txscript.OP_16 {
-		return uint64(opcode - (txscript.OP_1 - 1)), nil
-	}
-
-	// Otherwise, the opcode is the length of the following bytes which
-	// encode in the block height.
-	serializedLen := int(sigScript[0])
-	if len(sigScript[1:]) < serializedLen {
-		str := "It has not the coinbase signature script for blocks"
-		return 0, ruleError(ErrMissingCoinbaseHeight, str)
-	}
-
-	serializedHeightBytes := make([]byte, 8)
-	copy(serializedHeightBytes, sigScript[1:serializedLen+1])
-	serializedHeight := binary.LittleEndian.Uint64(serializedHeightBytes)
-
-	return serializedHeight, nil
+	return height, nil
 }
 
 // checkCoinbaseUniqueHeight checks to ensure that for all blocks height > 1 the

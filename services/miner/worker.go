@@ -9,6 +9,7 @@ const (
 	GBTWorkerType    = "GBT_Worker"
 	RemoteWorkerType = "Remote_Worker"
 	PoolWorkerType   = "Pool_Worker"
+	PoAWorkerType    = "PoA_Worker"
 )
 
 type IWorker interface {

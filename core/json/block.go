@@ -17,9 +17,11 @@ type PowResult struct {
 
 // poa json result
 type PoAInfo struct {
-	Vanity  string   `json:"vanity"`
-	Seal    string   `json:"seal"`
-	Signers []string `json:"signers,omitempty"`
+	Vanity      string   `json:"vanity"`
+	Seal        string   `json:"seal"`
+	Auth        bool     `json:"auth"`
+	Beneficiary string   `json:"beneficiary"`
+	Signers     []string `json:"signers,omitempty"`
 }
 
 // BlockVerboseResult models the data from the getblock command when the

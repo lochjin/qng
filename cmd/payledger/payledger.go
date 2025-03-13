@@ -86,7 +86,7 @@ func main() {
 				return
 			}
 			blockHash = blockH
-			ib = srcnode.bc.GetBlock(blockHash)
+			ib = srcnode.bc.GetDAGBlock(blockHash)
 			if ib == nil {
 				log.Error(fmt.Sprintf("Can't find block:%s", blockHash.String()))
 				return
@@ -158,7 +158,7 @@ func checkEndBlocks(node *SrcNode) {
 		log.Error(err.Error())
 		return
 	}
-	ib := node.bc.GetBlock(blockHash)
+	ib := node.bc.GetDAGBlock(blockHash)
 	if ib == nil {
 		log.Error(fmt.Sprintf("Can't find block:%s", blockHash.String()))
 		return
@@ -209,7 +209,7 @@ func buildLedger(node INode, config *Config) error {
 		if entry.IsSpent() {
 			continue
 		}
-		ib := node.BlockChain().GetBlock(entry.BlockHash())
+		ib := node.BlockChain().GetDAGBlock(entry.BlockHash())
 		if ib.GetOrder() == meerdag.MaxBlockOrder {
 			continue
 		}

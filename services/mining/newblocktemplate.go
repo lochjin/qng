@@ -515,12 +515,6 @@ mempool:
 
 	ts := MedianAdjustedTime(bc, timeSource)
 
-	//
-	reqCompactDifficulty, err := bc.CalcNextRequiredDifficulty(ts, powType)
-	if err != nil {
-		return nil, miningRuleError(ErrGettingDifficulty, err.Error())
-	}
-
 	// Choose the block version to generate based on the network.
 	blockVersion, err := bc.CalcNextBlockVersion()
 	if err != nil {
@@ -543,9 +537,6 @@ mempool:
 		TxRoot:     *merkles[len(merkles)-1],
 		StateRoot:  *bc.CalculateStateRoot(blockTxns),
 		Timestamp:  ts,
-		Difficulty: reqCompactDifficulty,
-		Engine:     pow.GetInstance(powType, 0, []byte{}),
-		// Size declared below
 	}
 	for _, pb := range parents {
 		if err := block.AddParent(pb); err != nil {
@@ -556,6 +547,10 @@ mempool:
 		if err := block.AddTransaction(tx.Transaction()); err != nil {
 			return nil, miningRuleError(ErrTransactionAppend, err.Error())
 		}
+	}
+	err = bc.PrepareBlock(&block, powType)
+	if err != nil {
+		return nil, err
 	}
 	sblock := types.NewBlock(&block)
 	err = bc.CheckConnectBlockTemplate(sblock, nextBlockHeight)
@@ -583,7 +578,7 @@ mempool:
 		Height:          nextBlockHeight,
 		Blues:           blues,
 		ValidPayAddress: payToAddress != nil,
-		Difficulty:      reqCompactDifficulty,
+		Difficulty:      block.Header.Difficulty,
 		BlockFeesMap:    blockFeesMap,
 		TxMerklePath:    merkle.GetCoinbaseMerkleTreePath(merkles, len(block.Transactions)),
 		TxWitnessRoot:   txWitnessRoot,
@@ -599,7 +594,9 @@ mempool:
 // change based upon time.
 func UpdateBlockTime(msgBlock *types.Block, chain *blockchain.BlockChain, timeSource model.MedianTimeSource,
 	activeNetParams *params.Params) error {
-
+	if activeNetParams.ConsensusConfig.Type().IsPoA() {
+		return nil
+	}
 	// The new timestamp is potentially adjusted to ensure it comes after
 	// the median time of the last several blocks per the chain consensus
 	// rules.

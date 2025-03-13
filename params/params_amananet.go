@@ -17,7 +17,7 @@ import (
 	eparams "github.com/ethereum/go-ethereum/params"
 )
 
-const amanaTargetTimePerBlock = 3
+const amanaTargetTimePerBlock = 10
 
 var AmanaNetParams = Params{
 	Name:           "amananet",
@@ -101,6 +101,7 @@ var AmanaNetParams = Params{
 		TerminalTotalDifficulty: big.NewInt(0),
 		ShanghaiTime:            newUint64(0),
 		CancunTime:              newUint64(0),
+		BlobScheduleConfig:      eparams.DefaultBlobSchedule,
 	},
 	EmptyBlockForkBlock: big.NewInt(0),
 	GasLimitForkBlock:   big.NewInt(0),

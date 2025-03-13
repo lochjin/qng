@@ -5,6 +5,8 @@ package blockchain
 import (
 	"container/list"
 	"fmt"
+	"github.com/Qitmeer/qng/consensus/engine/poa"
+	"github.com/Qitmeer/qng/consensus/engine/pow"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -145,6 +147,8 @@ type BlockChain struct {
 	selfAdd atomic.Int64
 
 	snapSyncing atomic.Bool
+
+	dagPoA *poa.DagPoA
 }
 
 func (b *BlockChain) Init() error {
@@ -180,6 +184,12 @@ func (b *BlockChain) Init() error {
 	}
 	if params.ActiveNetParams.ConsensusConfig.Type().IsPoW() {
 		b.difficultyManager = difficultymanager.NewDiffManager(b.Consensus(), b.params)
+	} else if params.ActiveNetParams.ConsensusConfig.Type().IsPoA() {
+		b.dagPoA = poa.New(b.params.ToPoAConfig(), b.DB())
+		addr, wal := b.meerChain.GetMinerAccount()
+		if wal != nil {
+			b.dagPoA.Authorize(addr, wal.SignData)
+		}
 	}
 	return nil
 }
@@ -772,7 +782,7 @@ func (b *BlockChain) CalculateFees(block *types.SerializedBlock) types.AmountMap
 
 // GetFees
 func (b *BlockChain) GetFees(h *hash.Hash) types.AmountMap {
-	ib := b.GetBlock(h)
+	ib := b.GetDAGBlock(h)
 	if ib == nil {
 		return nil
 	}
@@ -1036,6 +1046,44 @@ func (b *BlockChain) ProcessQueueSize() int {
 		return true
 	})
 	return size
+}
+
+func (b *BlockChain) DagPoA() *poa.DagPoA {
+	return b.dagPoA
+}
+
+func (b *BlockChain) PrepareBlock(block *types.Block, powType pow.PowType) error {
+	if b.params.ConsensusConfig.Type().IsPoW() {
+		block.Header.Engine = pow.GetInstance(powType, 0, []byte{})
+		reqCompactDifficulty, err := b.CalcNextRequiredDifficulty(block.Header.Timestamp, powType)
+		if err != nil {
+			return err
+		}
+		block.Header.Difficulty = reqCompactDifficulty
+	} else if b.params.ConsensusConfig.Type().IsPoA() {
+		err := b.dagPoA.Prepare(block)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *BlockChain) Seal(block *types.Block) error {
+	if b.params.ConsensusConfig.Type().IsPoA() {
+		retCh := make(chan struct{})
+		err := b.dagPoA.Seal(block, retCh, b.quit)
+		if err != nil {
+			return err
+		}
+		select {
+		case <-retCh:
+			return nil
+		case <-b.quit:
+			return fmt.Errorf("block chain quit:%s", block.BlockHash().String())
+		}
+	}
+	return fmt.Errorf("Not support seal:%s", block.BlockHash().String())
 }
 
 // New returns a BlockChain instance using the provided configuration details.

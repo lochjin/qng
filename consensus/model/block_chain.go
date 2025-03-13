@@ -29,4 +29,5 @@ type BlockChain interface {
 	GetUtxo(outpoint types.TxOutPoint) (interface{}, error)
 	VerifyMeerTx(tx Tx) error
 	IsSnapSyncing() bool
+	GetBlock(h *hash.Hash) Block
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/Qitmeer/qng/rpc/client/cmds"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
@@ -820,6 +821,19 @@ func (b *BlockChain) SetMainTxPool(tp model.TxPool) {
 
 func (b *BlockChain) SetP2P(ser model.P2PService) {
 	b.txpool.SetP2P(ser)
+}
+
+func (b *BlockChain) GetMinerAccount() (common.Address, accounts.Wallet) {
+	addr := b.chain.Config().Eth.Miner.PendingFeeRecipient
+	if addr == (common.Address{}) {
+		return addr, nil
+	}
+	wallet, err := b.Ether().AccountManager().Find(accounts.Account{Address: addr})
+	if err != nil {
+		log.Error(err.Error())
+		return addr, nil
+	}
+	return addr, wallet
 }
 
 func (b *BlockChain) APIs() []api.API {

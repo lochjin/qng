@@ -875,6 +875,62 @@ function get_config(){
   get_result "$data"
 }
 
+# DAG PoA:
+function dagpoa_getSnapshot(){
+  local order=$1
+  local data='{"jsonrpc":"2.0","method":"dagpoa_getSnapshot","params":['$order'],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_getSnapshotAtHash(){
+  local hash=$1
+  local data='{"jsonrpc":"2.0","method":"dagpoa_getSnapshotAtHash","params":['$hash'],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_getSigners(){
+  local order=$1
+  local data='{"jsonrpc":"2.0","method":"dagpoa_getSigners","params":['$order'],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_getSignersAtHash(){
+  local hash=$1
+  local data='{"jsonrpc":"2.0","method":"dagpoa_getSignersAtHash","params":['$hash'],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_proposals(){
+  local data='{"jsonrpc":"2.0","method":"dagpoa_proposals","params":[],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_propose(){
+  local address=$1
+  local auth=$2
+
+  local data='{"jsonrpc":"2.0","method":"dagpoa_propose","params":['$address','$auth'],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_discard(){
+  local address=$1
+
+  local data='{"jsonrpc":"2.0","method":"dagpoa_discard","params":['$address'],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_status(){
+  local data='{"jsonrpc":"2.0","method":"dagpoa_status","params":[],"id":1}'
+  get_result "$data"
+}
+
+function dagpoa_getSigner(){
+  local hashOrOrder=$1
+  local data='{"jsonrpc":"2.0","method":"dagpoa_getSigner","params":['$hashOrOrder'],"id":1}'
+  get_result "$data"
+}
+
 function get_result(){
   local proto="https"
   if [ $notls -eq 1 ]; then
@@ -1036,6 +1092,16 @@ function usage(){
   echo "  sendtoaddress fromAddress addressAmounts({\"RmN6q2ZdNaCtgpq2BE5ZaUbfQxXwRU1yTYf\":{\"amount\":100000000,\"coinid\":0}}) locktime"
   echo "  importrawkey(privkey password)"
   echo "  listaccount"
+  echo "DAG PoA:"
+  echo "  getSnapshot <order>"
+  echo "  getSnapshotAtHash <hash>"
+  echo "  getSigners <order>"
+  echo "  getSignersAtHash <hash>"
+  echo "  proposals"
+  echo "  propose <address> <auth>"
+  echo "  discard <address>"
+  echo "  status"
+  echo "  getSigner <hashOrOrder>"
 }
 
 # -------------------
@@ -1642,7 +1708,7 @@ elif [ "$1" == "generate" ]; then
 
 
 ## INFO & STATUS
-elif [ "$1" == "status" ] || [ "$1" == "info" ] || [ "$1" == "get_status" ] || [ "$1" == "get_info" ]; then
+elif [ "$1" == "info" ] || [ "$1" == "get_status" ] || [ "$1" == "get_info" ]; then
   shift
   get_status $@
 
@@ -1753,6 +1819,35 @@ elif [ "$1" == "listaccount" ]; then
 elif [ "$1" == "estimateBlocksMined" ]; then
   shift
   estimate_blocks_mined "$@"
+
+# DAG PoA
+elif [ "$1" == "getSnapshot" ]; then
+  shift
+  dagpoa_getSnapshot "$@"
+elif [ "$1" == "getSnapshotAtHash" ]; then
+  shift
+  dagpoa_getSnapshotAtHash "$@"
+elif [ "$1" == "getSigners" ]; then
+  shift
+  dagpoa_getSigners "$@"
+elif [ "$1" == "getSignersAtHash" ]; then
+  shift
+  dagpoa_getSignersAtHash "$@"
+elif [ "$1" == "proposals" ]; then
+  shift
+  dagpoa_proposals "$@"
+elif [ "$1" == "propose" ]; then
+  shift
+  dagpoa_propose "$@"
+elif [ "$1" == "discard" ]; then
+  shift
+  dagpoa_discard "$@"
+elif [ "$1" == "status" ]; then
+  shift
+  dagpoa_status "$@"
+elif [ "$1" == "getSigner" ]; then
+  shift
+  dagpoa_getSigner "$@"
 
 elif [ "$1" == "list_command" ]; then
   usage

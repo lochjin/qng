@@ -312,7 +312,7 @@ func handleRescan(wsc *wsClient, icmd interface{}) (interface{}, error) {
 		// notification.
 		chainTip := chain.BestSnapshot()
 		lastBlockHash = &chainTip.Hash
-		lastBlock = chain.GetBlock(lastBlockHash)
+		lastBlock = chain.GetDAGBlock(lastBlockHash)
 		if lastBlock == nil {
 			return nil, cmds.ErrRPCBlockNotFound
 		}

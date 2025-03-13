@@ -175,6 +175,8 @@ func detectNetworkForAddress(addr string) (*params.Params, error) {
 		return &params.PrivNetParams, nil
 	case params.MixNetParam.NetworkAddressPrefix:
 		return &params.MixNetParams, nil
+	case params.AmanaNetParams.NetworkAddressPrefix:
+		return &params.AmanaNetParams, nil
 	}
 
 	return nil, fmt.Errorf("unknown network type in string encoded address")
