@@ -57,7 +57,7 @@ type Config struct {
 	Generate          bool   `long:"generate" description:"Generate (mine) coins using the CPU"`
 	GenerateOnTx      bool   `long:"generateontx" description:"Generate (mine) coins using the CPU when there is a new transaction"`
 	GenerateNoDevGap  bool   `long:"generatenodevgap" description:"Generate (mine) coins using the CPU on develop mode whithout gap"`
-	MiningAddr        string `long:"miningaddr" description:"Add the specified payment address to the list of addresses to use for generated blocks -- At least one address is required if the generate option is set"`
+	MiningAddr        string `long:"miningaddr" description:"The payment address to use for generated blocks -- The address is required if the generate option is set"`
 	MiningTimeOffset  int    `long:"miningtimeoffset" description:"Offset the mining timestamp of a block by this many seconds (positive values are in the past)"`
 	BlockMinSize      uint32 `long:"blockminsize" description:"Mininum block size in bytes to be used when creating a block"`
 	BlockMaxSize      uint32 `long:"blockmaxsize" description:"Maximum block size in bytes to be used when creating a block"`
