@@ -909,14 +909,14 @@ function dagpoa_propose(){
   local address=$1
   local auth=$2
 
-  local data='{"jsonrpc":"2.0","method":"dagpoa_propose","params":['$address','$auth'],"id":1}'
+  local data='{"jsonrpc":"2.0","method":"dagpoa_propose","params":["'$address'",'$auth'],"id":1}'
   get_result "$data"
 }
 
 function dagpoa_discard(){
   local address=$1
 
-  local data='{"jsonrpc":"2.0","method":"dagpoa_discard","params":['$address'],"id":1}'
+  local data='{"jsonrpc":"2.0","method":"dagpoa_discard","params":["'$address'"],"id":1}'
   get_result "$data"
 }
 
