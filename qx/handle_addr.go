@@ -57,7 +57,9 @@ func EcScriptKeyToAddress(version string, pubkey string) (string, error) {
 	case "testnet":
 		ver = append(ver, params.TestNetParams.ScriptHashAddrID[0:]...)
 	case "mixnet":
-		ver = append(ver, params.MixNetParam.ScriptHashAddrID[0:]...)
+		ver = append(ver, params.MixNetParams.ScriptHashAddrID[0:]...)
+	case "amananet":
+		ver = append(ver, params.AmanaNetParams.ScriptHashAddrID[0:]...)
 	default:
 		v, err := hex.DecodeString(version)
 		if err != nil {
@@ -110,6 +112,8 @@ func EcPubKeyToPKAddressSTDO(version string, pubkey string) {
 		param = &params.TestNetParams
 	case "mixnet":
 		param = &params.MixNetParams
+	case "amananet":
+		param = &params.AmanaNetParams
 	default:
 		param = &params.MainNetParams
 	}
