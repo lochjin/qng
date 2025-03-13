@@ -97,7 +97,8 @@ func (api *API) Proposals() map[common.Address]bool {
 
 // Propose injects a new authorization proposal that the signer will attempt to
 // push through.
-func (api *API) Propose(address common.Address, auth bool) {
+func (api *API) Propose(addressHex string, auth bool) {
+	address := common.HexToAddress(addressHex)
 	api.dagpoa.lock.Lock()
 	defer api.dagpoa.lock.Unlock()
 
@@ -106,7 +107,8 @@ func (api *API) Propose(address common.Address, auth bool) {
 
 // Discard drops a currently running proposal, stopping the signer from casting
 // further votes (either for or against).
-func (api *API) Discard(address common.Address) {
+func (api *API) Discard(addressHex string) {
+	address := common.HexToAddress(addressHex)
 	api.dagpoa.lock.Lock()
 	defer api.dagpoa.lock.Unlock()
 
