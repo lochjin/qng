@@ -2,6 +2,7 @@ package miner
 
 import (
 	"fmt"
+	"github.com/Qitmeer/qng/params"
 	"github.com/ethereum/go-ethereum/common"
 	"strings"
 	"sync"
@@ -67,6 +68,7 @@ func (w *PoAWorker) Update() {
 
 func (w *PoAWorker) generateBlocks() {
 	log.Info(fmt.Sprintf("Starting generate blocks worker:%s", w.GetType()))
+	period := time.Duration(params.ActiveNetParams.ToPoAConfig().Period) * time.Second
 out:
 	for {
 		// Quit when the miner is stopped.
@@ -80,14 +82,14 @@ out:
 		err := w.miner.CanMining()
 		if err != nil {
 			log.Warn(err.Error())
-			time.Sleep(time.Second)
+			time.Sleep(period)
 			continue
 		}
 
 		err = w.miner.updateBlockTemplate(false)
 		if err != nil {
 			log.Warn(err.Error())
-			time.Sleep(time.Second)
+			time.Sleep(period)
 			continue
 		}
 
@@ -108,6 +110,10 @@ out:
 			}
 			log.Info(fmt.Sprintf("%v", info), "cost", time.Since(start).String(), "txs", len(block.Transactions()))
 
+		}
+		left := time.Since(start)
+		if left <= period {
+			time.Sleep(period - left)
 		}
 	}
 
