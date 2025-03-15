@@ -595,7 +595,10 @@ func SetAccountConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config)
 	} else {
 		return
 	}
-
+	if !ks.HasAddress(acct.Address) {
+		log.Info("Can't find keystore", "address", acct.Address)
+		return
+	}
 	if err := ks.Unlock(acct, passphrase); err != nil {
 		utils.Fatalf("Failed to unlock account: %v", err)
 	}
