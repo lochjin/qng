@@ -523,8 +523,6 @@ mempool:
 	// Create a new block ready to be solved.
 	merkles := merkle.BuildMerkleTreeStore(blockTxns, false)
 
-	bc.ChainLock()
-	defer bc.ChainUnlock()
 	if parents == nil {
 		parents = bc.GetMiningTips(len(blockTxns))
 	}
@@ -552,6 +550,9 @@ mempool:
 	if err != nil {
 		return nil, err
 	}
+	bc.ChainLock()
+	defer bc.ChainUnlock()
+
 	sblock := types.NewBlock(&block)
 	err = bc.CheckConnectBlockTemplate(sblock, nextBlockHeight)
 	if err != nil {
