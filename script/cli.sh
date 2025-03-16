@@ -662,11 +662,6 @@ function checkUTXO(){
   get_result "$data"
 }
 
-function get_amana_chaininfo(){
-  local data='{"jsonrpc":"2.0","method":"getAmanaChainInfo","params":[],"id":null}'
-  get_result "$data"
-}
-
 function get_addresses(){
   local pkAddress=$1
   local data='{"jsonrpc":"2.0","method":"test_getAddresses","params":["'$pkAddress'"],"id":null}'
@@ -1100,7 +1095,7 @@ function usage(){
   echo "  proposals"
   echo "  propose <address> <auth>"
   echo "  discard <address>"
-  echo "  status"
+  echo "  poainfo"
   echo "  getSigner <hashOrOrder>"
 }
 
@@ -1842,7 +1837,7 @@ elif [ "$1" == "propose" ]; then
 elif [ "$1" == "discard" ]; then
   shift
   dagpoa_discard "$@"
-elif [ "$1" == "status" ]; then
+elif [ "$1" == "poainfo" ]; then
   shift
   dagpoa_status "$@"
 elif [ "$1" == "getSigner" ]; then
