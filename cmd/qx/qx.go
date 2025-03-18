@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/Qitmeer/qng/meerevm/common"
 	"github.com/Qitmeer/qng/services/wallet/hd"
 	"io/ioutil"
 	"os"
@@ -69,6 +70,7 @@ entropy (seed) & mnemoic & hd & ec :
     mnemonic-to-seed      convert a mnemonic world-list (BIP39) to its 512 bits seed 
     ec-new                create a new EC private key from an entropy (seed).
     ec-to-public          derive the EC public key from an EC private key (the compressed format by default )
+    ec-to-keyfile         convert an EC private key to a ethereum keystore file
     ec-to-wif             convert an EC private key to a WIF, associates with the compressed public key by default.
     wif-to-ec             convert a WIF private key to an EC private key.
     wif-to-public         derive the EC public key from a WIF private key. 
@@ -135,6 +137,9 @@ var txVersion qx.TxVersionFlag
 var txLockTime qx.TxLockTimeFlag
 var privateKeys qx.TxPrivateKey
 var msgSignatureMode string
+var nonJsonFormat bool
+var lightKDF bool
+var keyfile string
 
 func main() {
 
@@ -414,6 +419,14 @@ func main() {
 		cmdUsage(pkaddrToETHAddrCmd, "Usage: qx pkaddr-to-ethaddr [pk address] \n")
 	}
 
+	ecToKeyfileCmd := flag.NewFlagSet("ec-to-keyfile", flag.ExitOnError)
+	ecToKeyfileCmd.Usage = func() {
+		cmdUsage(ecToKeyfileCmd, "Usage: qx ec-to-keyfile [ec_private_key] \n")
+	}
+	ecToKeyfileCmd.BoolVar(&nonJsonFormat, "j", false, "output JSON instead of human-readable format")
+	ecToKeyfileCmd.BoolVar(&lightKDF, "l", false, "use less secure scrypt parameters")
+	ecToKeyfileCmd.StringVar(&keyfile, "k", common.DefaultKeyfileName, "Output keystore file path")
+
 	// Transaction
 	txDecodeCmd := flag.NewFlagSet("tx-decode", flag.ExitOnError)
 	txDecodeCmd.Usage = func() {
@@ -528,6 +541,7 @@ example:
 		ecToETHAddrCmd,
 		pkaddrToPubCmd,
 		pkaddrToETHAddrCmd,
+		ecToKeyfileCmd,
 		txEncodeCmd,
 		txDecodeCmd,
 		txSignCmd,
@@ -1392,6 +1406,30 @@ example:
 			}
 			str := strings.TrimSpace(string(src))
 			qx.PKAddressToETHAddressSTDO(str)
+		}
+	}
+
+	if ecToKeyfileCmd.Parsed() {
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeNamedPipe) == 0 {
+			if len(os.Args) == 2 || os.Args[2] == "help" || os.Args[2] == "--help" {
+				ecToPubCmd.Usage()
+			} else {
+				err := qx.EcPrivateKeyToKeyfile(os.Args[len(os.Args)-1], nonJsonFormat, lightKDF, keyfile)
+				if err != nil {
+					qx.ErrExit(err)
+				}
+			}
+		} else { //try from STDIN
+			src, err := ioutil.ReadAll(os.Stdin)
+			if err != nil {
+				errExit(err)
+			}
+			str := strings.TrimSpace(string(src))
+			err = qx.EcPrivateKeyToKeyfile(str, nonJsonFormat, lightKDF, keyfile)
+			if err != nil {
+				qx.ErrExit(err)
+			}
 		}
 	}
 

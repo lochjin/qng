@@ -9,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/crypto/bip39"
 	"github.com/Qitmeer/qng/crypto/ecc"
 	"github.com/Qitmeer/qng/crypto/seed"
+	"github.com/Qitmeer/qng/meerevm/common"
 	"github.com/Qitmeer/qng/services/wallet/hd"
 	"strconv"
 )
@@ -298,4 +299,8 @@ func WifToEcPubkey(uncompressed bool, wif string) {
 		key = pubKey.SerializeCompressed()
 	}
 	fmt.Printf("%x\n", key[:])
+}
+
+func EcPrivateKeyToKeyfile(privateKeyHex string, nonJsonFormat bool, lightKDF bool, keyfile string) error {
+	return common.GenerateKeyfile(privateKeyHex, keyfile, nonJsonFormat, lightKDF)
 }
