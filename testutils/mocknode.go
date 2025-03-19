@@ -55,6 +55,9 @@ func DefaultConfig(pb *testprivatekey.Builder) (*config.Config, error) {
 		return nil, err
 	}
 	cfg.SetMiningAddr(addrs[0])
+	for _, a := range addrs {
+		cfg.AcctAddrs = append(cfg.AcctAddrs, a.String())
+	}
 	return cfg, nil
 }
 
