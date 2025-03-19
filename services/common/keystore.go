@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"os"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -16,6 +17,13 @@ type unlocked struct {
 	*keystore.Key
 	abort chan struct{}
 	acc   *Account
+}
+
+// KeyStoreType is the reflect type of a keystore backend.
+var KeyStoreType = reflect.TypeOf(&QngKeyStore{})
+
+func init() {
+	keystore.KeyStoreType = KeyStoreType
 }
 
 type QngKeyStore struct {

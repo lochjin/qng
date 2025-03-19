@@ -14,9 +14,9 @@ import (
 	qcommon "github.com/Qitmeer/qng/services/common"
 	"github.com/Qitmeer/qng/services/tx"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"reflect"
 )
 
 type WalletManager struct {
@@ -52,7 +52,7 @@ func New(cfg *config.Config, evm model.MeerChain, _am *acct.AccountManager, _tm 
 		events:    _events,
 		autoClose: make(chan struct{}),
 	}
-	if keystores := evm.Node().AccountManager().Backends(reflect.TypeOf(&qcommon.QngKeyStore{})); len(keystores) > 0 {
+	if keystores := evm.Node().AccountManager().Backends(keystore.KeyStoreType); len(keystores) > 0 {
 		a.qks = keystores[0].(*qcommon.QngKeyStore)
 	} else {
 		return nil, fmt.Errorf("No keystore backends")

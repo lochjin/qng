@@ -577,9 +577,9 @@ func SetAccountConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config)
 		}
 	}
 	// Unlock the account by local keystore.
-	var ks *keystore.KeyStore
+	var ks *qcommon.QngKeyStore
 	if keystores := stack.AccountManager().Backends(keystore.KeyStoreType); len(keystores) > 0 {
-		ks = keystores[0].(*keystore.KeyStore)
+		ks = keystores[0].(*qcommon.QngKeyStore)
 	}
 	if ks == nil {
 		return
