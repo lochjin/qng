@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/meerevm/proxy"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"math/rand"
 	"os"
 	"path"
@@ -51,11 +50,14 @@ func DefaultConfig(pb *testprivatekey.Builder) (*config.Config, error) {
 
 	params.ActiveNetParams = &params.PrivNetParam
 	coinbasePKHex := pb.GetHex(testprivatekey.CoinbaseIdx)
-	addrs, err := wallet.GetQngAddrsFromPrivateKey(coinbasePKHex)
+	addrs, err := common.GetQngAddrsFromPrivateKey(coinbasePKHex)
 	if err != nil {
 		return nil, err
 	}
 	cfg.SetMiningAddr(addrs[0])
+	for _, a := range addrs {
+		cfg.AcctAddrs = append(cfg.AcctAddrs, a.String())
+	}
 	return cfg, nil
 }
 
@@ -150,33 +152,12 @@ func (mn *MockNode) setup() error {
 	if err != nil {
 		return err
 	}
-	err = mn.GetPrivateWalletManagerAPI().Unlock(account.EvmAcct.Address.String(), testprivatekey.Password, time.Hour)
+	err = mn.GetPrivateWalletManagerAPI().Unlock(account.Address.String(), testprivatekey.Password, time.Hour)
 	if err != nil {
 		return err
 	}
 
-	//
-	ethchain := mn.n.GetQitmeerFull().GetBlockChain().MeerChain().(*meer.BlockChain).ETHChain()
-	backends := ethchain.Backend().AccountManager().Backends(keystore.KeyStoreType)
-	if len(backends) == 0 {
-		return fmt.Errorf("Failed to unlock accounts, keystore is not available")
-	}
-	ks := backends[0].(*keystore.KeyStore)
-	/*pk, err := crypto.ToECDSA(mn.pb.Get(testprivatekey.CoinbaseIdx))
-	if err != nil {
-		return err
-	}
-	acc, err := ks.ImportECDSA(pk, testprivatekey.Password)
-	if err != nil {
-		return err
-	}*/
-	err = ks.Unlock(*account.EvmAcct, testprivatekey.Password)
-	if err != nil {
-		return err
-	}
-	//
-
-	log.Info("Import default key", "addr", account.String())
+	log.Info("Import default key", "addr", account.Address.String())
 
 	params.ActiveNetParams.ToPoWConfig().PowConfig.DifficultyMode = pow.DIFFICULTY_MODE_DEVELOP
 	return nil
@@ -269,7 +250,7 @@ func (mn *MockNode) Node() *node.Node {
 	return mn.n
 }
 
-func (mn *MockNode) NewAddress() (*wallet.Account, error) {
+func (mn *MockNode) NewAddress() (*common.Account, error) {
 	// init
 	pkb, err := mn.pb.Build()
 	if err != nil {
@@ -280,12 +261,11 @@ func (mn *MockNode) NewAddress() (*wallet.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = mn.GetPrivateWalletManagerAPI().Unlock(account.EvmAcct.Address.String(), testprivatekey.Password, time.Hour)
+	err = mn.GetPrivateWalletManagerAPI().Unlock(account.Address.String(), testprivatekey.Password, time.Hour)
 	if err != nil {
 		return nil, err
 	}
-
-	return account, nil
+	return mn.walletManager.GetAccount(account.Address), nil
 }
 
 func (mn *MockNode) GetPriKeyBuilder() *testprivatekey.Builder {

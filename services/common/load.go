@@ -20,7 +20,6 @@ import (
 	"github.com/Qitmeer/qng/log"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/version"
-	gp "github.com/howeyc/gopass"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli/v2"
 )
@@ -363,10 +362,6 @@ func SetupConfig(cfg *config.Config) error {
 
 	if cfg.NTP {
 		roughtime.Init()
-	}
-	if cfg.AutoCollectEvm {
-		s3, _ := gp.GetPasswdPrompt("please input your pass unlock your wallet:", true, os.Stdin, os.Stdout)
-		cfg.WalletPass = string(s3)
 	}
 	config.Cfg = cfg
 	return nil

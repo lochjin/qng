@@ -7,6 +7,7 @@ package eth
 import (
 	"encoding/json"
 	"fmt"
+	qcommon "github.com/Qitmeer/qng/services/common"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/external"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -260,7 +261,7 @@ func SetAccountManagerBackends(conf *node.Config, am *accounts.Manager, keydir s
 	// If/when we implement some form of lockfile for USB and keystore wallets,
 	// we can have both, but it's very confusing for the user to see the same
 	// accounts in both externally and locally, plus very racey.
-	am.AddBackend(keystore.NewKeyStore(keydir, scryptN, scryptP))
+	am.AddBackend(qcommon.NewQngKeyStore(keystore.NewKeyStore(keydir, scryptN, scryptP)))
 	if conf.USB {
 		// Start a USB hub for Ledger hardware wallets
 		if ledgerhub, err := usbwallet.NewLedgerHub(); err != nil {
@@ -576,9 +577,9 @@ func SetAccountConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config)
 		}
 	}
 	// Unlock the account by local keystore.
-	var ks *keystore.KeyStore
+	var ks *qcommon.QngKeyStore
 	if keystores := stack.AccountManager().Backends(keystore.KeyStoreType); len(keystores) > 0 {
-		ks = keystores[0].(*keystore.KeyStore)
+		ks = keystores[0].(*qcommon.QngKeyStore)
 	}
 	if ks == nil {
 		return

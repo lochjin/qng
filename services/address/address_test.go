@@ -3,6 +3,7 @@ package address
 import (
 	"encoding/hex"
 	"github.com/Qitmeer/qng/params"
+	"github.com/Qitmeer/qng/services/common"
 	"github.com/Qitmeer/qng/testutils/testprivatekey"
 	"testing"
 )
@@ -14,7 +15,7 @@ func TestNewAddresses(t *testing.T) {
 		t.Fatal(err)
 	}
 	privateKeyHex := hex.EncodeToString(pb.Get(0))
-	privateKey, addr, eaddr, err := NewAddresses(privateKeyHex)
+	privateKey, addr, eaddr, err := common.NewAddresses(privateKeyHex)
 	if err != nil {
 		t.Fatal(err)
 	}

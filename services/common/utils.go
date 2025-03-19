@@ -1,17 +1,19 @@
-package wallet
+package common
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"github.com/Qitmeer/qng/core/types"
-	"github.com/Qitmeer/qng/services/address"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"strconv"
 )
 
 func GetQngAddrsFromPrivateKey(privateKeyStr string) ([]types.Address, error) {
-	_, pkAddr, _, err := address.NewAddresses(privateKeyStr)
+	_, pkAddr, _, err := NewAddresses(privateKeyStr)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +27,15 @@ type Account struct {
 	EvmAcct   *accounts.Account
 	UtxoAccts []types.Address
 	Index     int
+}
+
+func NewAccount(act *accounts.Account, idx int, privKey *ecdsa.PrivateKey) (*Account, error) {
+	privkeyHex := hex.EncodeToString(crypto.FromECDSA(privKey))
+	addrs, err := GetQngAddrsFromPrivateKey(privkeyHex)
+	if err != nil {
+		return nil, err
+	}
+	return &Account{EvmAcct: act, UtxoAccts: addrs, Index: idx}, nil
 }
 
 func (a Account) String() string {

@@ -5,6 +5,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	qcommon "github.com/Qitmeer/qng/services/common"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"os"
@@ -298,7 +299,7 @@ func accountUpdate(ctx *cli.Context) error {
 	if len(backends) == 0 {
 		utils.Fatalf("Keystore is not available")
 	}
-	ks := backends[0].(*keystore.KeyStore)
+	ks := backends[0].(*qcommon.QngKeyStore)
 
 	for _, addr := range ctx.Args().Slice() {
 		if !common.IsHexAddress(addr) {
@@ -342,7 +343,7 @@ func importWallet(ctx *cli.Context) error {
 	if !ok {
 		password = utils.GetPassPhrase("", false)
 	}
-	ks := backends[0].(*keystore.KeyStore)
+	ks := backends[0].(*qcommon.QngKeyStore)
 	acct, err := ks.ImportPreSaleKey(keyJSON, password)
 	if err != nil {
 		utils.Fatalf("%v", err)
@@ -365,7 +366,7 @@ func accountImport(ctx *cli.Context) error {
 	if len(backends) == 0 {
 		utils.Fatalf("Keystore is not available")
 	}
-	ks := backends[0].(*keystore.KeyStore)
+	ks := backends[0].(*qcommon.QngKeyStore)
 	password, ok := readPasswordFromFile(ctx.Path(utils.PasswordFileFlag.Name))
 	if !ok {
 		password = utils.GetPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true)
