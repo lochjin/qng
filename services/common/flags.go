@@ -604,11 +604,6 @@ var (
 			Usage:       "auto collect miner coinbase utxo to evm",
 			Destination: &cfg.AutoCollectEvm,
 		},
-		&cli.StringFlag{
-			Name:        "walletpass",
-			Usage:       "wallet password",
-			Destination: &cfg.WalletPass,
-		},
 		&cli.IntFlag{
 			Name:        "evmtrietimeout",
 			Usage:       "Set the interval time(seconds) for flush evm trie to disk",

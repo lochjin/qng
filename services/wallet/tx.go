@@ -133,8 +133,8 @@ func (a *WalletManager) sendTxWithUtxos(fromAddress string, amount int64, output
 	inputs := make([]qx.Input, 0)
 	priKeyList := make([]string, 0)
 	addr, _ := address.DecodeAddress(fromAddress)
-	pri, ok := a.qks.unlocked[fromAddress]
-	if !ok {
+	pri := a.qks.GetKey(fromAddress)
+	if pri == nil {
 		return "", fmt.Errorf("please unlock %s first", fromAddress)
 	}
 	typ := txscript.PubKeyHashTy
@@ -197,8 +197,8 @@ func (a *WalletManager) sendTxWithUtxos(fromAddress string, amount int64, output
 
 func (a *WalletManager) SpendUtxo(inputs []json.TransactionInput, amounts json.AddressAmount, lockTime *int64) (*types.Transaction, error) {
 	ac := a.GetAccountByIdx(0)
-	pri, ok := a.qks.unlocked[ac.PKHAddress().String()]
-	if !ok {
+	pri := a.qks.GetKey(ac.PKHAddress().String())
+	if pri == nil {
 		return nil, fmt.Errorf("please unlock %s first", ac.EvmAcct.Address.String())
 	}
 	for _, input := range inputs {

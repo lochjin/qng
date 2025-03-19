@@ -297,7 +297,7 @@ func newQitmeerFullNode(node *Node) (*QitmeerFull, error) {
 		return nil, err
 	}
 	// init address api
-	qm.addressApi = address.NewAddressApi(cfg, node.Params, qm.GetBlockChain())
+	qm.addressApi = address.NewAddressApi(cfg, node.Params)
 	if err := qm.RegisterAccountService(cfg); err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package address
+package common
 
 import (
 	"encoding/hex"

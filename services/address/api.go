@@ -6,12 +6,12 @@ import (
 	"encoding/hex"
 	"github.com/Qitmeer/qng/common/encode/base58"
 	"github.com/Qitmeer/qng/config"
-	"github.com/Qitmeer/qng/core/blockchain"
 	qjson "github.com/Qitmeer/qng/core/json"
 	"github.com/Qitmeer/qng/params"
 	"github.com/Qitmeer/qng/rpc"
 	"github.com/Qitmeer/qng/rpc/api"
 	"github.com/Qitmeer/qng/rpc/client/cmds"
+	"github.com/Qitmeer/qng/services/common"
 	"sync"
 )
 
@@ -19,18 +19,16 @@ type AddressApi struct {
 	sync.Mutex
 	params *params.Params
 	config *config.Config
-	chain  *blockchain.BlockChain
 }
 
 type PublicAddressAPI struct {
 	addressApi *AddressApi
 }
 
-func NewAddressApi(cfg *config.Config, par *params.Params, chain *blockchain.BlockChain) *AddressApi {
+func NewAddressApi(cfg *config.Config, par *params.Params) *AddressApi {
 	return &AddressApi{
 		config: cfg,
 		params: par,
-		chain:  chain,
 	}
 }
 
@@ -92,7 +90,7 @@ func NewPrivateAddressAPI(ai *AddressApi) *PrivateAddressAPI {
 }
 
 func (api *PrivateAddressAPI) GetAddresses(privateKeyHex string) (interface{}, error) {
-	privateKey, addr, eaddr, err := NewAddresses(privateKeyHex)
+	privateKey, addr, eaddr, err := common.NewAddresses(privateKeyHex)
 	if err != nil {
 		return nil, err
 	}
