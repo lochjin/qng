@@ -455,7 +455,7 @@ func (c *DagPoA) Seal(block *qtypes.Block, results chan<- struct{}, stop <-chan 
 
 		select {
 		case results <- struct{}{}:
-		default:
+		case <-stop:
 			log.Warn("Sealing result is not read by miner", "sealhash", SealHash(b.Header()))
 		}
 	}()
