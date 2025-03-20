@@ -1344,13 +1344,15 @@ func (b *BlockChain) CheckTransactionInputs(tx *types.Tx, utxoView *utxo.UtxoVie
 		}
 		allFees[coinId] = atomin - atomout
 	}
-	state := b.GetTokenState(b.TokenTipID)
-	if state == nil {
-		return nil, fmt.Errorf("No token sate:%d\n", b.TokenTipID)
-	}
-	err := state.CheckFees(allFees)
-	if err != nil {
-		return nil, err
+	if b.params.ConsensusConfig.Type().IsPoW() {
+		state := b.GetTokenState(b.TokenTipID)
+		if state == nil {
+			return nil, fmt.Errorf("No token sate:%d\n", b.TokenTipID)
+		}
+		err := state.CheckFees(allFees)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return allFees, nil
 }
