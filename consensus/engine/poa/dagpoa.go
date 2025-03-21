@@ -6,6 +6,7 @@ package poa
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Qitmeer/qng/common/hash"
 	"github.com/Qitmeer/qng/consensus/engine/config"
 	ptypes "github.com/Qitmeer/qng/consensus/engine/poa/types"
@@ -259,6 +260,9 @@ func (c *DagPoA) snapshot(height uint64, hash *hash.Hash) (*Snapshot, error) {
 		b, err := c.db.GetBlock(hash)
 		if err != nil {
 			return nil, err
+		}
+		if b == nil {
+			return nil, fmt.Errorf("Can't find block:%s", hash.String())
 		}
 		block, err := NewBlock(b)
 		if err != nil {
