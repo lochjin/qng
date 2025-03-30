@@ -152,6 +152,10 @@ type Config struct {
 	TranferTxLegacyMode bool `long:"tranfertxlegacymode" description:"Support transaction transmission mode compatible with older versions before the snapsync P2P"`
 
 	miningAddr types.Address
+
+	// ollama
+	Ollama      bool   `short:"o" long:"ollama" description:"Enable Ollama"`
+	OllamaModel string `long:"ollama.model" description:"Ollama model"`
 }
 
 func (c *Config) GetMinningAddr() types.Address {

@@ -3,6 +3,7 @@ package node
 
 import (
 	"fmt"
+	"github.com/Qitmeer/qng/services/ollama"
 	"path/filepath"
 	"reflect"
 	"time"
@@ -155,6 +156,13 @@ func (qm *QitmeerFull) RegisterWalletService(cfg *config.Config) error {
 	return nil
 }
 
+func (qm *QitmeerFull) RegisterOllamaService(cfg *config.Config) error {
+	if !cfg.Ollama {
+		return nil
+	}
+	return qm.Services().RegisterService(ollama.NewOllamaService(cfg))
+}
+
 // return address api
 func (qm *QitmeerFull) GetAddressApi() *address.AddressApi {
 	return qm.addressApi
@@ -302,6 +310,9 @@ func newQitmeerFullNode(node *Node) (*QitmeerFull, error) {
 		return nil, err
 	}
 	if err := qm.RegisterWalletService(cfg); err != nil {
+		return nil, err
+	}
+	if err := qm.RegisterOllamaService(cfg); err != nil {
 		return nil, err
 	}
 

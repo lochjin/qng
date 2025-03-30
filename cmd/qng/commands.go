@@ -12,6 +12,7 @@ import (
 	"github.com/Qitmeer/qng/p2p"
 	"github.com/Qitmeer/qng/services/acct"
 	"github.com/Qitmeer/qng/services/common"
+	"github.com/Qitmeer/qng/services/ollama"
 	"github.com/Qitmeer/qng/version"
 	"github.com/urfave/cli/v2"
 	"os"
@@ -26,6 +27,7 @@ func commands() []*cli.Command {
 	cmds = append(cmds, cmd.Commands...)
 	cmds = append(cmds, dbCmd())
 	cmds = append(cmds, cleanupCmd())
+	cmds = append(cmds, ollama.Cmds())
 
 	for _, cmd := range cmds {
 		cmd.Before = loadConfig
