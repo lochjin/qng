@@ -39,7 +39,7 @@ require (
 	github.com/multiformats/go-multistream v0.6.0
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/ollama/ollama v0.6.2
+	github.com/ollama/ollama v0.6.3
 	github.com/pkg/errors v0.9.1
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20200618145306-2ae0807bef65
 	github.com/prysmaticlabs/go-ssz v0.0.0-20200101200214-e24db4d9e963
@@ -62,7 +62,7 @@ require (
 
 require (
 	github.com/DataDog/zstd v1.5.2 // indirect
-	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/Microsoft/go-winio v0.6.3 // indirect
 	github.com/Qitmeer/go-secp256k1 v0.5.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/aead/skein v0.0.0-20160722084837-9365ae6e95d2 // indirect
@@ -268,4 +268,4 @@ replace github.com/ethereum/go-ethereum v1.15.5 => github.com/Qitmeer/go-ethereu
 
 replace github.com/karalabe/usb v0.0.2 => github.com/dindinw/karalabe-usb v0.0.0-20230613095851-cd69a62c9c30
 
-replace github.com/ollama/ollama v0.6.2 =>  github.com/lochjin/ollama v0.6.2-q.0
+replace github.com/ollama/ollama v0.6.3 => github.com/Qitmeer/ollama v0.6.3-q.0
