@@ -664,6 +664,18 @@ var (
 			Usage:       "Hash of the block to full sync to (dev testing feature)",
 			Destination: &cfg.SyncTarget,
 		},
+		&cli.BoolFlag{
+			Name:        "ollama",
+			Usage:       "Enable Ollama",
+			Value:       false,
+			Destination: &cfg.Ollama,
+		},
+		&cli.StringFlag{
+			Name:        "ollama.model",
+			Usage:       "Ollama model",
+			Value:       "qwen2.5:0.5b",
+			Destination: &cfg.OllamaModel,
+		},
 	}
 )
 
