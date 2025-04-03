@@ -89,7 +89,7 @@ func (this *QitmeerWork) BuildBlock(header *types.BlockHeader) bool {
 	this.GbtID++
 	this.Block = &BlockHeader{}
 	this.Block.ParentRoot = header.ParentRoot
-	this.Block.WorkData = header.BlockData()
+	this.Block.WorkData = header.Digest()
 	this.Block.Target = fmt.Sprintf("%064x", pow.CompactToBig(header.Difficulty))
 	this.Block.GBTID = this.GbtID
 	common.LatestGBTID = this.GbtID

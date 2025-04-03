@@ -14,7 +14,7 @@ import (
 
 	"github.com/Qitmeer/qng/cmd/miner/common"
 	"github.com/Qitmeer/qng/cmd/miner/core"
-	qitmeer "github.com/Qitmeer/qng/cmd/miner/symbols/lib"
+	"github.com/Qitmeer/qng/cmd/miner/symbols/lib"
 )
 
 var robotminer core.Robot
@@ -55,12 +55,12 @@ func main() {
 func GetRobot(cfg *common.GlobalConfig) core.Robot {
 	switch strings.ToUpper(cfg.NecessaryConfig.Symbol) {
 	case core.SYMBOL_PMEER:
-		r := &qitmeer.QitmeerRobot{}
+		r := &lib.QitmeerRobot{}
 		r.Cfg = cfg
 		r.NeedGBT = make(chan struct{}, 1)
 		r.Started = uint32(time.Now().Unix())
 		r.SubmitStr = make(chan string)
-		r.PendingBlocks = map[string]qitmeer.PendingBlock{}
+		r.PendingBlocks = map[string]lib.PendingBlock{}
 		return r
 	default:
 
