@@ -26,9 +26,9 @@ func init() {
 	for _, arg := range os.Args {
 		flag := strings.TrimLeft(arg, "-")
 		for _, enabler := range enablerFlags {
-			if !emetrics.Enabled && flag == enabler {
+			if !emetrics.Enabled() && flag == enabler {
 				log.Info("Enabling metrics collection.")
-				emetrics.Enabled = true
+				emetrics.Enable()
 			}
 		}
 	}
