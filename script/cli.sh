@@ -926,6 +926,17 @@ function dagpoa_getSigner(){
   get_result "$data"
 }
 
+function ollama_list(){
+  local data='{"jsonrpc":"2.0","method":"ollamaList","params":[],"id":1}'
+  get_result "$data"
+}
+
+function ollama_generate(){
+  local prompt=$(echo -n $@ | xxd -p)
+  local data='{"jsonrpc":"2.0","method":"ollamaGenerate","params":["'$prompt'"],"id":1}'
+  get_result "$data"
+}
+
 function get_result(){
   local proto="https"
   if [ $notls -eq 1 ]; then
@@ -1016,6 +1027,8 @@ function usage(){
   echo "  calcExportSig"
   echo "  calcUTXOSig"
   echo "  checkUTXO"
+  echo "  ollamalist"
+  echo "  ollamagenerate"
   echo "block  :"
   echo "  block <order|hash>"
   echo "  blockbyhash <hash>"
@@ -1843,6 +1856,12 @@ elif [ "$1" == "poainfo" ]; then
 elif [ "$1" == "getSigner" ]; then
   shift
   dagpoa_getSigner "$@"
+elif [ "$1" == "ollamalist" ]; then
+  shift
+  ollama_list "$@"
+elif [ "$1" == "ollamagenerate" ]; then
+  shift
+  ollama_generate "$@"
 
 elif [ "$1" == "list_command" ]; then
   usage
