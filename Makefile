@@ -155,13 +155,20 @@ build/dev/%/$(EXECUTABLE).exe:
 	@echo zip $(EXECUTABLE_QX)-$(VERSION)-$(GOOS)-$(GOARCH)
 	@zip $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-$(GOOS)-$(GOARCH).zip "$<"
 
-
 release: clean checkversion
 	@echo "Build release version : $(VERSION)"
 	@$(MAKE) $(RELEASE_TARGETS)
-	@shasum -a 512 $(EXECUTABLES) > $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt
-	@shasum -a 512 $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt
-	@shasum -a 512 $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt
+
+	@if [ "$(GOOS)" = "windows" ]; then \
+		openssl sha512 $(EXECUTABLES) > $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		openssl sha512 $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		openssl sha512 $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+	else \
+		shasum -a 512 $(EXECUTABLES) > $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		shasum -a 512 $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		shasum -a 512 $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+	fi
+
 dev: clean checkversion
 	@echo "Build dev version : $(VERSION)"
 	@$(MAKE) $(DEV_TARGETS)
