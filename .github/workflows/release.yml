@@ -40,8 +40,8 @@ jobs:
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
             choco install mingw -y
             choco install make -y
-            choco install unzip -y
-            unzip --version 
+            choco install zip -y
+            zip -v
           fi
           git --version
           make --version
