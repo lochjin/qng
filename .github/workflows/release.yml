@@ -36,23 +36,15 @@ jobs:
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             sudo apt-get update
-            sudo apt-get install -y gcc libc6-dev make
-            git --version
-            make --version
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            git --version
-            brew update
-            brew install make
-            make --version
-          else
+            sudo apt-get install -y gcc libc6-dev
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
             choco install mingw -y
-            choco install git -y
-            git --version
             choco install make -y
-            make --version
             choco install unzip -y
             unzip --version 
           fi
+          git --version
+          make --version
           
       - name: Setup Go
         uses: actions/setup-go@v5
