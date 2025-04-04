@@ -31,18 +31,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Install Dependencies Windows
         shell: bash
+        if: ${{ matrix.platform }} == windows
         run: |
-          case "${{ matrix.platform }}" in
-            linux)
-              sudo apt-get update
-              sudo apt-get install -y gcc libc6-dev
-              ;;
-            windows)
-              choco install mingw -y
-              ;;
-          esac
+          choco install mingw -y
+          choco install git -y
+          git --version
+          choco install make -y
+          make --version
+          choco install unzip -y
+          unzip --version
+
+      - name: Install Dependencies Linux
+        shell: bash
+        if: ${{ matrix.platform }} == linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libc6-dev make
+          git --version
+          make --version
+
+      - name: Install Dependencies MacOS
+        shell: bash
+        if: ${{ matrix.platform }} == darwin
+        run: |
+          git --version
+          brew update
+          brew install make
+          make --version
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -56,34 +73,16 @@ jobs:
           GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: 1
         run: |
-          workDir=$(pwd)
-          mkdir -p ./build/bin
-          OUTPUT="${workDir}/build/bin/qng-${{ matrix.platform }}-${{ matrix.arch }}"
-          if [ "${{ matrix.platform }}" == "windows" ]; then
-            OUTPUT="$OUTPUT.exe"
-          fi
-          cd ./cmd/qng
-          go build -o $OUTPUT
-          cd $workDir
-
-      - name: Package Artifact
-        shell: bash
-        run: |
-          cd ./build/bin
-          ARTIFACT="./qng-${{ matrix.platform }}-${{ matrix.arch }}"
-          if [ "${{ matrix.platform }}" == "windows" ]; then
-            pwsh -Command "Compress-Archive -Path '${ARTIFACT}.exe' -DestinationPath '${ARTIFACT}.zip'"
-          else
-            tar czf "${ARTIFACT}.tar.gz" "${ARTIFACT}"
-          fi
-
+          make release
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qng-${{ matrix.platform }}-${{ matrix.arch }}
+          name: ${{ matrix.platform }}-${{ matrix.arch }}
           path: |
-            ./build/bin/qng-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.package_type }}
+            ./build/release/*.tar.gz
+            ./build/release/*.zip
+            ./build/release/*_checksum.txt
 
   release:
     name: Create GitHub Release
@@ -94,10 +93,10 @@ jobs:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./build/bin
+          path: ./build/release
 
       - name: List downloaded files
-        run: ls -R ./build/bin
+        run: ls -R ./build/release
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -107,4 +106,4 @@ jobs:
           release_name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-          files: ./build/bin/**
+          files: ./build/release/**
