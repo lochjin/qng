@@ -15,54 +15,43 @@ GOFLAGS_RELEASE = -ldflags "$(LDFLAG_RELEASE)"
 GOFLAGS_RELEASE_QX = -ldflags "$(LDFLAG_RELEASE)"
 VERSION=$(shell ./build/bin/qng --version | grep ^QNG | cut -d' ' -f3|cut -d'+' -f1)
 GOBIN = ./build/bin
-
+RELEASE_DIR = ./build/release
 # Automatic detection operating system
-ifeq ($(OS),Windows_NT)
-    # Windows Environment
-    OUTPUT_SUFFIX=.exe
-else
-    OUTPUT_SUFFIX=
-endif
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Linux)
+	OUTPUT_SUFFIX=
+	GOOS=linux
+    GOARCH=amd64
 
-# for Linux/Mac has to use `uname -s`
-UNAME_OS := $(shell uname -s)
-ifeq ($(UNAME_OS),Darwin)
-    # https://github.com/golang/go/issues/67799
+else ifeq ($(UNAME_S), Darwin)
+	OUTPUT_SUFFIX=
+	# https://github.com/golang/go/issues/67799
     GOFLAGS_DEV = -ldflags="$(LDFLAG_DEV) -extldflags=-Wl,-no_warn_duplicate_libraries"
+    GOFLAGS_RELEASE = -ldflags="$(LDFLAG_RELEASE) -extldflags=-Wl,-no_warn_duplicate_libraries"
+    GOOS=darwin
+    GOARCH=arm64
+
+else ifeq ($(findstring MINGW,$(UNAME_S)), MINGW)
+	OUTPUT_SUFFIX=.exe
+	GOOS=windows
+    GOARCH=amd64
+
+else
+	OUTPUT_SUFFIX=
+
 endif
 
-UNIX_EXECUTABLES := \
-	build/release/darwin/amd64/bin/$(EXECUTABLE) \
-	build/release/darwin/arm64/bin/$(EXECUTABLE) \
-	build/release/linux/amd64/bin/$(EXECUTABLE) \
-	build/release/freebsd/amd64/bin/$(EXECUTABLE)
-WIN_EXECUTABLES := \
-	build/release/windows/amd64/bin/$(EXECUTABLE).exe
-
-UNIX_EXECUTABLES_QX := \
-	build/release/darwin/amd64/bin/$(EXECUTABLE_QX) \
-	build/release/darwin/arm64/bin/$(EXECUTABLE_QX) \
-	build/release/linux/amd64/bin/$(EXECUTABLE_QX) \
-	build/release/freebsd/amd64/bin/$(EXECUTABLE_QX)
-WIN_EXECUTABLES_QX := \
-	build/release/windows/amd64/bin/$(EXECUTABLE_QX).exe
+EXECUTABLE_PATH := $(RELEASE_DIR)/$(GOOS)/$(GOARCH)/bin/$(EXECUTABLE)$(OUTPUT_SUFFIX)
+EXECUTABLE_QX_PATH := $(RELEASE_DIR)/$(GOOS)/$(GOARCH)/bin/$(EXECUTABLE_QX)
 
 
-EXECUTABLES=$(UNIX_EXECUTABLES) $(WIN_EXECUTABLES) $(UNIX_EXECUTABLES_QX) $(WIN_EXECUTABLES_QX)
+EXECUTABLES=$(EXECUTABLE_PATH) $(EXECUTABLE_QX_PATH)
 
 DEV_EXECUTABLES := \
-	build/dev/darwin/amd64/bin/$(EXECUTABLE) \
-	build/dev/darwin/arm64/bin/$(EXECUTABLE) \
-	build/dev/linux/amd64/bin/$(EXECUTABLE) \
-	build/dev/freebsd/amd64/bin/$(EXECUTABLE) \
-	build/dev/windows/amd64/bin/$(EXECUTABLE).exe
+	build/dev/$(GOOS)/$(GOARCH)/bin/$(EXECUTABLE) \
+	build/dev/$(GOOS)/$(GOARCH)/bin/$(EXECUTABLE).exe
 
-COMPRESSED_EXECUTABLES := \
-     $(UNIX_EXECUTABLES:%=%.qng.tar.gz) \
-     $(WIN_EXECUTABLES:%.exe=%.qng.zip) \
-     $(WIN_EXECUTABLES:%.exe=%.qng.cn.zip) \
-     $(UNIX_EXECUTABLES_QX:%=%.qx.tar.gz) \
-     $(WIN_EXECUTABLES_QX:%.exe=%.qx.zip)
+COMPRESSED_EXECUTABLES := $(EXECUTABLE_PATH:%=%.qng.tar.gz) $(EXECUTABLE_QX_PATH:%=%.qx.tar.gz)
 
 
 RELEASE_TARGETS=$(EXECUTABLES) $(COMPRESSED_EXECUTABLES)
@@ -121,20 +110,18 @@ checkversion: qng-build
 all: qng-build qx relay
 
 # amd64 release
-build/release/%: OS=$(word 3,$(subst /, ,$(@)))
-build/release/%: ARCH=$(word 4,$(subst /, ,$(@)))
 build/release/%/$(EXECUTABLE):
 	@echo Build $(@)
-	@GOOS=$(OS) GOARCH=$(ARCH) go build $(GOFLAGS_RELEASE) -o $(@) "github.com/Qitmeer/qng/cmd/qng"
+	go build $(GOFLAGS_RELEASE) -o $(@) "github.com/Qitmeer/qng/cmd/qng"
 build/release/%/$(EXECUTABLE).exe:
 	@echo Build $(@)
-	@GOOS=$(OS) GOARCH=$(ARCH) go build $(GOFLAGS_RELEASE) -o $(@) "github.com/Qitmeer/qng/cmd/qng"
+	go build $(GOFLAGS_RELEASE) -o $(@) "github.com/Qitmeer/qng/cmd/qng"
 build/release/%/$(EXECUTABLE_QX):
 	@echo Build $(@)
-	@GOOS=$(OS) GOARCH=$(ARCH) go build $(GOFLAGS_RELEASE_QX) -o $(@) "github.com/Qitmeer/qng/cmd/qx"
+	go build $(GOFLAGS_RELEASE_QX) -o $(@) "github.com/Qitmeer/qng/cmd/qx"
 build/release/%/$(EXECUTABLE_QX).exe:
 	@echo Build $(@)
-	@GOOS=$(OS) GOARCH=$(ARCH) go build $(GOFLAGS_RELEASE_QX) -o $(@) "github.com/Qitmeer/qng/cmd/qx"
+	go build $(GOFLAGS_RELEASE_QX) -o $(@) "github.com/Qitmeer/qng/cmd/qx"
 
 
 # amd64 dev
@@ -149,38 +136,45 @@ build/dev/%/$(EXECUTABLE).exe:
 
 
 %.qng.zip: %.exe
-	@echo zip $(EXECUTABLE)-$(VERSION)-$(OS)-$(ARCH)
-	@zip $(EXECUTABLE)-$(VERSION)-$(OS)-$(ARCH).zip "$<"
+	@echo zip $(EXECUTABLE)-$(VERSION)-$(GOOS)-$(ARCH)
+	@zip $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-$(GOOS)-$(GOARCH).zip "$<"
 
 %.qng.cn.zip: %.exe
-	@echo zip $(EXECUTABLE)-$(VERSION)-$(OS)-$(ARCH)
-	@zip -j $(EXECUTABLE)-$(VERSION)-$(OS)-$(ARCH).cn.zip "$<" script/win/start.bat
+	@echo zip $(EXECUTABLE)-$(VERSION)-$(GOOS)-$(ARCH)
+	@zip -j $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-$(GOOS)-$(GOARCH).cn.zip "$<" script/win/start.bat
 
 %.qng.tar.gz : %
-	@echo tar $(EXECUTABLE)-$(VERSION)-$(OS)-$(ARCH)
-	@tar -zcvf $(EXECUTABLE)-$(VERSION)-$(OS)-$(ARCH).tar.gz "$<"
+	@echo tar $(EXECUTABLE)-$(VERSION)-$(GOOS)-$(ARCH)
+	@tar -zcvf $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-$(GOOS)-$(GOARCH).tar.gz "$<"
 
 %.qx.tar.gz : %
 	@echo qx.tar.gz: $(@)
-	@tar -zcvf $(EXECUTABLE_QX)-$(VERSION)-$(OS)-$(ARCH).tar.gz "$<"
+	@tar -zcvf $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-$(GOOS)-$(GOARCH).tar.gz "$<"
 %.qx.zip: %.exe
 	@echo qx.zip: $(@)
-	@echo zip $(EXECUTABLE_QX)-$(VERSION)-$(OS)-$(ARCH)
-	@zip $(EXECUTABLE_QX)-$(VERSION)-$(OS)-$(ARCH).zip "$<"
-
+	@echo zip $(EXECUTABLE_QX)-$(VERSION)-$(GOOS)-$(GOARCH)
+	@zip $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-$(GOOS)-$(GOARCH).zip "$<"
 
 release: clean checkversion
 	@echo "Build release version : $(VERSION)"
 	@$(MAKE) $(RELEASE_TARGETS)
-	@shasum -a 512 $(EXECUTABLES) > release-$(VERSION)_checksum.txt
-	@shasum -a 512 $(EXECUTABLE)-$(VERSION)-* >> release-$(VERSION)_checksum.txt
-	@shasum -a 512 $(EXECUTABLE_QX)-$(VERSION)-* >> release-$(VERSION)_checksum.txt
+
+	@if [ "$(GOOS)" = "windows" ]; then \
+		openssl sha512 $(EXECUTABLES) > $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		openssl sha512 $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		openssl sha512 $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+	else \
+		shasum -a 512 $(EXECUTABLES) > $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		shasum -a 512 $(RELEASE_DIR)/$(EXECUTABLE)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+		shasum -a 512 $(RELEASE_DIR)/$(EXECUTABLE_QX)-$(VERSION)-* >> $(RELEASE_DIR)/$(VERSION)-$(GOOS)-$(GOARCH)_checksum.txt; \
+	fi
+
 dev: clean checkversion
 	@echo "Build dev version : $(VERSION)"
 	@$(MAKE) $(DEV_TARGETS)
 
 checksum: checkversion
-	@cat release-$(VERSION)_checksum.txt|shasum -c
+	@cat $(RELEASE_DIR)/release-$(VERSION)_checksum.txt|shasum -c
 clean:
 	@rm -f *.zip
 	@rm -f *.tar.gz
