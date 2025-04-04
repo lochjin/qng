@@ -64,10 +64,12 @@ jobs:
           fi
           cd ./cmd/qng
           go build -o $OUTPUT
+          cd $workDir
 
       - name: Package Artifact
         shell: bash
         run: |
+          cd ./build/bin
           ARTIFACT="./qng-${{ matrix.platform }}-${{ matrix.arch }}"
           if [ "${{ matrix.platform }}" == "windows" ]; then
             pwsh -Command "Compress-Archive -Path '${ARTIFACT}.exe' -DestinationPath '${ARTIFACT}.zip'"
@@ -81,7 +83,7 @@ jobs:
         with:
           name: qng-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
-            ./qng-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.package_type }}
+            ./build/bin/qng-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.package_type }}
 
   release:
     name: Create GitHub Release
