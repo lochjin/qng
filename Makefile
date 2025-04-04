@@ -24,6 +24,13 @@ else
     OUTPUT_SUFFIX=
 endif
 
+# for Linux/Mac has to use `uname -s`
+UNAME_OS := $(shell uname -s)
+ifeq ($(UNAME_OS),Darwin)
+    # https://github.com/golang/go/issues/67799
+    GOFLAGS_DEV = -ldflags="$(LDFLAG_DEV) -extldflags=-Wl,-no_warn_duplicate_libraries"
+endif
+
 UNIX_EXECUTABLES := \
 	build/release/darwin/amd64/bin/$(EXECUTABLE) \
 	build/release/darwin/arm64/bin/$(EXECUTABLE) \
