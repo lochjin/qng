@@ -2,9 +2,9 @@ name: GoTest
 
 on:
   push:
-    branches: [main, dev/2.0, dev/2.1, dev2.1-ollama]
+    branches: [main, dev/2.0, dev/2.1]
   pull_request:
-    branches: [main, dev/2.0, dev/2.1, dev2.1-ollama]
+    branches: [main, dev/2.0, dev/2.1]
 
   workflow_dispatch:
 
