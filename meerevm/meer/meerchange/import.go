@@ -37,7 +37,7 @@ func NewMeerchangeImportData(qtx *qtypes.Transaction, tx *types.Transaction) (*M
 	if amount.Uint64() <= 0 {
 		return nil, fmt.Errorf("import amount empty:%s", tx.Value().String())
 	}
-	signer := types.NewPKSigner(GetChainID())
+	signer := types.NewPKSigner(params.ActiveNetParams.MeerConfig)
 	pkb, err := signer.GetPublicKey(tx)
 	if err != nil {
 		return nil, err
