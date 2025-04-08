@@ -122,7 +122,7 @@ func (m *TxPool) checkMeerChangeExportTx(tx *types.Transaction, ced *meerchange.
 	if err != nil {
 		return err
 	}
-	signer := types.NewPKSigner(m.eth.BlockChain().Config().ChainID)
+	signer := types.NewPKSigner(m.eth.BlockChain().Config())
 	pkb, err := signer.GetPublicKey(tx)
 	if err != nil {
 		return err
