@@ -725,7 +725,7 @@ func (b *BlockChain) GetBalance(addre string) (int64, error) {
 }
 
 func (b *BlockChain) GetBlockIDByTxHash(txhash *hash.Hash) uint64 {
-	ret, tx, _, blockNumber, _, _ := b.chain.Backend().GetTransaction(nil, qcommon.ToEVMHash(txhash))
+	ret, tx, _, blockNumber, _ := b.chain.Backend().GetTransaction(qcommon.ToEVMHash(txhash))
 	if !ret || tx == nil {
 		return 0
 	}
