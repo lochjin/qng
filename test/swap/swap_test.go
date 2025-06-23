@@ -59,18 +59,20 @@ func TestSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutils.GenerateBlocksWaitForTxs(t, h, []string{txS})
 	log.Println("create token contract tx:", txS)
 	txWETH, err := CreateWETH(h)
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutils.GenerateBlocksWaitForTxs(t, h, []string{txWETH})
 	log.Println("create weth contract tx:", txWETH)
 	txFACTORY, err := CreateFactory(h, acc.EvmAcct.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	log.Println("create FACTORY contract tx:", txFACTORY)
-	testutils.GenerateBlocksWaitForTxs(t, h, []string{txS, txWETH, txFACTORY})
+	testutils.GenerateBlocksWaitForTxs(t, h, []string{txFACTORY})
 	// token addr
 	txD, err := h.GetEvmClient().TransactionReceipt(context.Background(), common.HexToHash(txS))
 	if err != nil {
