@@ -43,9 +43,9 @@ func (o *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 	return llms.GenerateFromSinglePrompt(ctx, o, prompt, options...)
 }
 
-// GenerateContent implements the Model interface.
+// ChatContent implements the Model interface.
 // nolint: goerr113
-func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) { // nolint: lll, cyclop, funlen
+func (o *LLM) ChatContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) { // nolint: lll, cyclop, funlen
 	if o.CallbacksHandler != nil {
 		o.CallbacksHandler.HandleLLMGenerateContentStart(ctx, messages)
 	}
@@ -150,6 +150,122 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 	choices := []*llms.ContentChoice{
 		{
 			Content: resp.Message.Content,
+			GenerationInfo: map[string]any{
+				"CompletionTokens": resp.EvalCount,
+				"PromptTokens":     resp.PromptEvalCount,
+				"TotalTokens":      resp.EvalCount + resp.PromptEvalCount,
+			},
+		},
+	}
+
+	response := &llms.ContentResponse{Choices: choices}
+
+	if o.CallbacksHandler != nil {
+		o.CallbacksHandler.HandleLLMGenerateContentEnd(ctx, response)
+	}
+
+	return response, nil
+}
+
+// GenerateContent implements the Model interface.
+func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) { // nolint: lll, cyclop, funlen
+	if o.CallbacksHandler != nil {
+		o.CallbacksHandler.HandleLLMGenerateContentStart(ctx, messages)
+	}
+
+	opts := llms.CallOptions{}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	// Override LLM model if set as llms.CallOption
+	model := o.options.model
+	if opts.Model != "" {
+		model = opts.Model
+	}
+
+	chatMsgs := make([]*llamagoclient.Message, 0, len(messages))
+	for _, mc := range messages {
+		msg := &llamagoclient.Message{Role: typeToRole(mc.Role)}
+
+		// Look at all the parts in mc; expect to find a single Text part and
+		// any number of binary parts.
+		var text string
+		foundText := false
+		var images []llamagoclient.ImageData
+
+		for _, p := range mc.Parts {
+			switch pt := p.(type) {
+			case llms.TextContent:
+				if foundText {
+					return nil, errors.New("expecting a single Text content")
+				}
+				foundText = true
+				text = pt.Text
+			case llms.BinaryContent:
+				images = append(images, llamagoclient.ImageData(pt.Data))
+			default:
+				return nil, errors.New("only support Text and BinaryContent parts right now")
+			}
+		}
+
+		msg.Content = text
+		msg.Images = images
+		chatMsgs = append(chatMsgs, msg)
+	}
+
+	// Get our ollamaOptions from llms.CallOptions
+	ollamaOptions := makeLlamagoOptionsFromOptions(o.options.ollamaOptions, opts)
+	prompts := ""
+	for _, msg := range chatMsgs {
+		if len(msg.Content) > 0 {
+			prompts += msg.Content
+		}
+	}
+	isStream := (opts.StreamingFunc != nil)
+	req := &llamagoclient.GenerateRequest{
+		Model:   model,
+		Prompt:  prompts,
+		Options: ollamaOptions,
+		Stream:  &isStream,
+	}
+
+	keepAlive := o.options.keepAlive
+	if keepAlive != "" {
+		req.KeepAlive = keepAlive
+	}
+
+	var fn llamagoclient.GenerateResponseFunc
+	streamedResponse := ""
+	var resp llamagoclient.GenerateResponse
+
+	fn = func(response llamagoclient.GenerateResponse) error {
+		if opts.StreamingFunc != nil && len(response.Response) > 0 {
+			if err := opts.StreamingFunc(ctx, []byte(response.Response)); err != nil {
+				return err
+			}
+		}
+		if len(response.Response) > 0 {
+			streamedResponse += response.Response
+		}
+		if !*req.Stream || response.Done {
+			resp = response
+			resp.Response = streamedResponse
+		}
+		return nil
+	}
+
+	err := o.client.Generate(ctx, req, fn)
+	if err != nil {
+		if o.CallbacksHandler != nil {
+			o.CallbacksHandler.HandleLLMError(ctx, err)
+		}
+		return nil, err
+	}
+
+	choices := []*llms.ContentChoice{
+		{
+			Content: resp.Response,
 			GenerationInfo: map[string]any{
 				"CompletionTokens": resp.EvalCount,
 				"PromptTokens":     resp.PromptEvalCount,

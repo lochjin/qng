@@ -5,14 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Qitmeer/qng/graph/llamago"
+	"os"
 	"testing"
 
 	"github.com/Qitmeer/qng/graph"
 	"github.com/tmc/langchaingo/llms"
 )
 
-func ExampleMessageGraph() {
-	model, err := llamago.New(llamago.WithModel("deepseek-r1:1.5b"))
+func TestExampleMessageGraph(t *testing.T) {
+	var llamagoModel string
+	if llamagoModel = os.Getenv("LLAMAGO_TEST_MODEL"); llamagoModel == "" {
+		t.Skip("LLAMAGO_TEST_MODEL not set")
+		return
+	}
+	model, err := llamago.New(llamago.WithModel(os.Getenv(llamagoModel)))
 	if err != nil {
 		fmt.Println(err)
 		return
