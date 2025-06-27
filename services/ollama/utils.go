@@ -8,10 +8,7 @@ import (
 )
 
 func initLog() {
-	level := slog.LevelInfo
-	if envconfig.Debug() {
-		level = slog.LevelDebug
-	}
+	level := envconfig.LogLevel()
 	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level:     level,
 		AddSource: true,

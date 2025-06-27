@@ -38,7 +38,7 @@ require (
 	github.com/multiformats/go-multistream v0.6.0
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/ollama/ollama v0.6.3
+	github.com/ollama/ollama v0.9.2
 	github.com/pkg/errors v0.9.1
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20200618145306-2ae0807bef65
 	github.com/prysmaticlabs/go-ssz v0.0.0-20200101200214-e24db4d9e963
@@ -51,10 +51,10 @@ require (
 	github.com/zeromq/goczmq v4.1.0+incompatible
 	go.opencensus.io v0.24.0
 	go.uber.org/goleak v1.3.0
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
-	golang.org/x/net v0.36.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/net v0.38.0
+	golang.org/x/sys v0.31.0
 	golang.org/x/tools v0.30.0
 	gonum.org/v1/gonum v0.15.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -260,9 +260,9 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/image v0.22.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/term v0.30.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.36.0 // indirect
@@ -278,4 +278,4 @@ replace github.com/ethereum/go-ethereum v1.15.11 => github.com/Qitmeer/go-ethere
 
 replace github.com/karalabe/usb v0.0.2 => github.com/dindinw/karalabe-usb v0.0.0-20230613095851-cd69a62c9c30
 
-replace github.com/ollama/ollama v0.6.3 => github.com/Qitmeer/ollama v0.6.3-q.0
+replace github.com/ollama/ollama v0.9.2 => github.com/Qitmeer/ollama v0.9.2-q.0
