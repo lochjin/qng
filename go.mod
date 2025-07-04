@@ -7,15 +7,15 @@ require (
 	github.com/Qitmeer/crypto/cryptonight v0.0.0-20201028030128-6ed4040ca34a
 	github.com/VictoriaMetrics/fastcache v1.12.2
 	github.com/aristanetworks/goarista v0.0.0-20220314170124-2797d9e951fe
-	github.com/cockroachdb/pebble v1.1.2
+	github.com/cockroachdb/pebble v1.1.5
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dchest/blake256 v1.1.0
 	github.com/deckarep/golang-set v1.8.0
 	github.com/dgraph-io/ristretto v0.0.2
-	github.com/ethereum/go-ethereum v1.15.11
+	github.com/ethereum/go-ethereum v1.16.0
 	github.com/ferranbt/fastssz v0.1.2
 	github.com/go-stack/stack v1.8.1
-	github.com/gofrs/flock v0.8.1
+	github.com/gofrs/flock v0.12.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang/protobuf v1.5.4
@@ -84,8 +84,8 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/consensys/bavard v0.1.27 // indirect
-	github.com/consensys/gnark-crypto v0.16.0 // indirect
+	github.com/consensys/bavard v0.1.31-0.20250406004941-2db259e4b582 // indirect
+	github.com/consensys/gnark-crypto v0.18.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
@@ -274,7 +274,7 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/ethereum/go-ethereum v1.15.11 => github.com/Qitmeer/go-ethereum v1.15.11-q.0
+replace github.com/ethereum/go-ethereum v1.16.0 => github.com/Qitmeer/go-ethereum v1.16.0-q.0
 
 replace github.com/karalabe/usb v0.0.2 => github.com/dindinw/karalabe-usb v0.0.0-20230613095851-cd69a62c9c30
 
