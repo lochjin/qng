@@ -4,6 +4,8 @@ go 1.24.0
 
 replace github.com/Qitmeer/qng => ../../../
 
+replace github.com/ethereum/go-ethereum v1.15.11 => github.com/Qitmeer/go-ethereum v1.15.11-q.0
+
 require github.com/Qitmeer/qng v1.2.0
 
 require (
@@ -11,6 +13,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Qitmeer/crypto v0.0.0-20201028030128-6ed4040ca34a // indirect
 	github.com/Qitmeer/crypto/cryptonight v0.0.0-20201028030128-6ed4040ca34a // indirect
+	github.com/Qitmeer/go-secp256k1 v0.5.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/aead/skein v0.0.0-20160722084837-9365ae6e95d2 // indirect
