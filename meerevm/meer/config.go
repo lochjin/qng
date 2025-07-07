@@ -94,6 +94,10 @@ func MakeConfig(cfg *config.Config) (*eth.Config, error) {
 		return nil, err
 	}
 
+	metrics.DefaultConfig.InfluxDBDatabase = "qng"
+	metrics.DefaultConfig.InfluxDBBucket = "qng"
+	metrics.DefaultConfig.InfluxDBOrganization = "qng"
+
 	return &eth.Config{
 		Eth:     econfig,
 		Node:    nodeConf,

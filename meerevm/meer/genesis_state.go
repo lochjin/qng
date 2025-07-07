@@ -144,7 +144,7 @@ func Apply(genesis *core.Genesis, txs []*GenTransaction) (Alloc, error) {
 			}
 
 			// Set the receipt logs and create the bloom filter.
-			receipt.Logs = statedb.GetLogs(tx.Hash(), vmContext.BlockNumber.Uint64(), blockHash)
+			receipt.Logs = statedb.GetLogs(tx.Hash(), vmContext.BlockNumber.Uint64(), blockHash, vmContext.Time)
 			receipt.Bloom = types.CreateBloom(receipt)
 			// These three are non-consensus fields:
 			//receipt.BlockHash

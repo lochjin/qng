@@ -2,10 +2,9 @@ package rawdb
 
 import (
 	"fmt"
-	"path/filepath"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"path/filepath"
 )
 
 type tableSize struct {
@@ -35,7 +34,7 @@ func (info *freezerInfo) size() common.StorageSize {
 	return total
 }
 
-func inspect(name string, order map[string]bool, reader ethdb.AncientReader) (freezerInfo, error) {
+func inspect(name string, order map[string]freezerTableConfig, reader ethdb.AncientReader) (freezerInfo, error) {
 	info := freezerInfo{name: name}
 	for t := range order {
 		size, err := reader.AncientSize(t)
@@ -66,7 +65,7 @@ func inspectFreezers(db ethdb.Database) ([]freezerInfo, error) {
 	for _, freezer := range freezers {
 		switch freezer {
 		case ChainFreezerName:
-			info, err := inspect(ChainFreezerName, chainFreezerNoSnappy, db)
+			info, err := inspect(ChainFreezerName, chainFreezerTableConfigs, db)
 			if err != nil {
 				return nil, err
 			}
@@ -83,7 +82,7 @@ func inspectFreezers(db ethdb.Database) ([]freezerInfo, error) {
 			}
 			defer f.Close()
 
-			info, err := inspect(freezer, stateFreezerNoSnappy, f)
+			info, err := inspect(freezer, chainFreezerTableConfigs, f)
 			if err != nil {
 				return nil, err
 			}
@@ -103,13 +102,13 @@ func inspectFreezers(db ethdb.Database) ([]freezerInfo, error) {
 func InspectFreezerTable(ancient string, freezerName string, tableName string, start, end int64) error {
 	var (
 		path   string
-		tables map[string]bool
+		tables map[string]freezerTableConfig
 	)
 	switch freezerName {
 	case ChainFreezerName:
-		path, tables = resolveChainFreezerDir(ancient), chainFreezerNoSnappy
+		path, tables = resolveChainFreezerDir(ancient), chainFreezerTableConfigs
 	case MerkleStateFreezerName, VerkleStateFreezerName:
-		path, tables = filepath.Join(ancient, freezerName), stateFreezerNoSnappy
+		path, tables = filepath.Join(ancient, freezerName), stateFreezerTableConfigs
 	default:
 		return fmt.Errorf("unknown freezer, supported ones: %v", freezers)
 	}

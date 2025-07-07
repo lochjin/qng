@@ -14,6 +14,7 @@ import (
 	"github.com/Qitmeer/qng/meerevm/meer"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -122,6 +123,43 @@ func (cdb *ChainDB) CloseDatabases() (errors []error) {
 	return cdb.closeDatabases()
 }
 
+func (cdb *ChainDB) OpenDatabaseWithOptions(name string, opt DatabaseOptions) (ethdb.Database, error) {
+	cdb.lock.Lock()
+	defer cdb.lock.Unlock()
+	if cdb.closedState.Load() {
+		return nil, ErrDBClosed
+	}
+
+	var db ethdb.Database
+	var err error
+	if cdb.cfg.DataDir == "" {
+		db, _ = rawdb.Open(memorydb.New(), rawdb.OpenOptions{
+			MetricsNamespace: opt.MetricsNamespace,
+			ReadOnly:         opt.ReadOnly,
+		})
+	} else {
+		opt.AncientsDirectory = cdb.ResolveAncient(name, opt.AncientsDirectory)
+		db, err = openDatabase(internalOpenOptions{
+			directory:       cdb.cfg.ResolveDataPath(name),
+			dbEngine:        cdb.DBEngine(),
+			DatabaseOptions: opt,
+		})
+	}
+	if err == nil {
+		db = cdb.wrapDatabase(db)
+	}
+	return db, err
+}
+
+func (cdb *ChainDB) OpenDatabase(name string, cache, handles int, namespace string, readonly bool) (ethdb.Database, error) {
+	return cdb.OpenDatabaseWithOptions(name, DatabaseOptions{
+		MetricsNamespace: namespace,
+		Cache:            cache,
+		Handles:          handles,
+		ReadOnly:         readonly,
+	})
+}
+
 func (cdb *ChainDB) OpenDatabaseWithFreezer(name string, cache, handles int, ancient string, namespace string, readonly bool) (ethdb.Database, error) {
 	if !CreateIfNoExist {
 		existingDb := rawdb.PreexistingDatabase(cdb.cfg.ResolveDataPath(name))
@@ -130,60 +168,13 @@ func (cdb *ChainDB) OpenDatabaseWithFreezer(name string, cache, handles int, anc
 		}
 	}
 
-	cdb.lock.Lock()
-	defer cdb.lock.Unlock()
-	if cdb.closedState.Load() {
-		return nil, ErrDBClosed
-	}
-
-	var db ethdb.Database
-	var err error
-	if cdb.cfg.DataDir == "" {
-		db = rawdb.NewMemoryDatabase()
-	} else {
-		db, err = openDatabase(openOptions{
-			Type:              cdb.DBEngine(),
-			Directory:         cdb.cfg.ResolveDataPath(name),
-			AncientsDirectory: cdb.ResolveAncient(name, ancient),
-			Namespace:         namespace,
-			Cache:             cache,
-			Handles:           handles,
-			ReadOnly:          readonly,
-		})
-	}
-
-	if err == nil {
-		db = cdb.wrapDatabase(db)
-	}
-	return db, err
-}
-
-func (cdb *ChainDB) OpenDatabase(name string, cache, handles int, namespace string, readonly bool) (ethdb.Database, error) {
-	cdb.lock.Lock()
-	defer cdb.lock.Unlock()
-	if cdb.closedState.Load() {
-		return nil, ErrDBClosed
-	}
-
-	var db ethdb.Database
-	var err error
-	if cdb.cfg.DataDir == "" {
-		db = rawdb.NewMemoryDatabase()
-	} else {
-		db, err = openDatabase(openOptions{
-			Type:      cdb.DBEngine(),
-			Directory: cdb.cfg.ResolveDataPath(name),
-			Namespace: namespace,
-			Cache:     cache,
-			Handles:   handles,
-			ReadOnly:  readonly,
-		})
-	}
-
-	if err == nil {
-		db = cdb.wrapDatabase(db)
-	}
-	return db, err
+	return cdb.OpenDatabaseWithOptions(name, DatabaseOptions{
+		AncientsDirectory: cdb.ResolveAncient(name, ancient),
+		MetricsNamespace:  namespace,
+		Cache:             cache,
+		Handles:           handles,
+		ReadOnly:          readonly,
+	})
 }
 
 func (cdb *ChainDB) ResolveAncient(name string, ancient string) string {

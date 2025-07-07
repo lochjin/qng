@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"github.com/Qitmeer/qng/common/roughtime"
+	"math"
 	"os"
 	"time"
 
@@ -152,7 +153,12 @@ func (l *logger) New(ctx ...interface{}) Logger {
 
 func newContext(prefix []interface{}, suffix []interface{}) []interface{} {
 	normalizedSuffix := normalize(suffix)
-	newCtx := make([]interface{}, len(prefix)+len(normalizedSuffix))
+	maxSize := 64 * 1024 * 1024 // Maximum
+	totalSize := len(prefix) + len(normalizedSuffix)
+	if totalSize > maxSize {
+		return prefix
+	}
+	newCtx := make([]interface{}, totalSize)
 	n := copy(newCtx, prefix)
 	copy(newCtx[n:], normalizedSuffix)
 	return newCtx
@@ -230,6 +236,9 @@ type Lazy struct {
 type Ctx map[string]interface{}
 
 func (c Ctx) toArray() []interface{} {
+	if len(c) > (math.MaxInt / 2) {
+		panic("Ctx size too large, potential overflow in allocation")
+	}
 	arr := make([]interface{}, len(c)*2)
 
 	i := 0

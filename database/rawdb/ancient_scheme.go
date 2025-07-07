@@ -22,6 +22,22 @@ var chainFreezerNoSnappy = map[string]bool{
 	ChainFreezerDAGBlockTable: false,
 }
 
+// chainFreezerTableConfigs configures the settings for tables in the chain freezer.
+// Compression is disabled for hashes as they don't compress well. Additionally,
+// tail truncation is disabled for the header and hash tables, as these are intended
+// to be retained long-term.
+var chainFreezerTableConfigs = map[string]freezerTableConfig{
+	ChainFreezerHeaderTable:   {noSnappy: false, prunable: false},
+	ChainFreezerBlockTable:    {noSnappy: false, prunable: false},
+	ChainFreezerDAGBlockTable: {noSnappy: false, prunable: false},
+}
+
+// freezerTableConfig contains the settings for a freezer table.
+type freezerTableConfig struct {
+	noSnappy bool // disables item compression
+	prunable bool // true for tables that can be pruned by TruncateTail
+}
+
 const (
 	// stateHistoryTableSize defines the maximum size of freezer data files.
 	stateHistoryTableSize = 2 * 1000 * 1000 * 1000
@@ -53,6 +69,15 @@ var (
 // freezers the collections of all builtin freezers.
 var freezers = []string{ChainFreezerName, MerkleStateFreezerName, VerkleStateFreezerName}
 
+// stateFreezerTableConfigs configures the settings for tables in the state freezer.
+var stateFreezerTableConfigs = map[string]freezerTableConfig{
+	stateHistoryMeta:         {noSnappy: true, prunable: true},
+	stateHistoryAccountIndex: {noSnappy: false, prunable: true},
+	stateHistoryStorageIndex: {noSnappy: false, prunable: true},
+	stateHistoryAccountData:  {noSnappy: false, prunable: true},
+	stateHistoryStorageData:  {noSnappy: false, prunable: true},
+}
+
 // NewStateFreezer initializes the ancient store for state history.
 //
 //   - if the empty directory is given, initializes the pure in-memory
@@ -61,7 +86,7 @@ var freezers = []string{ChainFreezerName, MerkleStateFreezerName, VerkleStateFre
 //     state freezer.
 func NewStateFreezer(ancientDir string, verkle bool, readOnly bool) (ethdb.ResettableAncientStore, error) {
 	if ancientDir == "" {
-		return NewMemoryFreezer(readOnly, stateFreezerNoSnappy), nil
+		return NewMemoryFreezer(readOnly, stateFreezerTableConfigs), nil
 	}
 	var name string
 	if verkle {
@@ -69,5 +94,5 @@ func NewStateFreezer(ancientDir string, verkle bool, readOnly bool) (ethdb.Reset
 	} else {
 		name = filepath.Join(ancientDir, MerkleStateFreezerName)
 	}
-	return newResettableFreezer(name, "state", readOnly, stateHistoryTableSize, stateFreezerNoSnappy)
+	return newResettableFreezer(name, "state", readOnly, stateHistoryTableSize, stateFreezerTableConfigs)
 }

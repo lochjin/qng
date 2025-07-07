@@ -3,6 +3,7 @@ package rawdb
 import (
 	"fmt"
 	"github.com/Qitmeer/qng/meerdag"
+	"github.com/ethereum/go-ethereum/core/rawdb/eradb"
 	"github.com/ethereum/go-ethereum/params"
 	"sync"
 	"time"
@@ -26,10 +27,14 @@ const (
 // feature. The background thread will keep moving ancient chain segments from
 // key-value database to flat files for saving space on live database.
 type chainFreezer struct {
-	ethdb.AncientStore // Ancient store for storing cold chain segment
-	quit               chan struct{}
-	wg                 sync.WaitGroup
-	trigger            chan chan struct{} // Manual blocking freeze trigger, test determinism
+	ancients ethdb.AncientStore // Ancient store for storing cold chain segment
+
+	// Optional Era database used as a backup for the pruned chain.
+	eradb *eradb.Store
+
+	quit    chan struct{}
+	wg      sync.WaitGroup
+	trigger chan chan struct{} // Manual blocking freeze trigger, test determinism
 }
 
 // newChainFreezer initializes the freezer for ancient chain segment.
@@ -38,23 +43,27 @@ type chainFreezer struct {
 //     state freezer (e.g. dev mode).
 //   - if non-empty directory is given, initializes the regular file-based
 //     state freezer.
-func newChainFreezer(datadir string, namespace string, readonly bool) (*chainFreezer, error) {
-	var (
-		err     error
-		freezer ethdb.AncientStore
-	)
+func newChainFreezer(datadir string, eraDir string, namespace string, readonly bool) (*chainFreezer, error) {
 	if datadir == "" {
-		freezer = NewMemoryFreezer(readonly, chainFreezerNoSnappy)
-	} else {
-		freezer, err = NewFreezer(datadir, namespace, readonly, freezerTableSize, chainFreezerNoSnappy)
+		return &chainFreezer{
+			ancients: NewMemoryFreezer(readonly, chainFreezerTableConfigs),
+			quit:     make(chan struct{}),
+			trigger:  make(chan chan struct{}),
+		}, nil
 	}
+	freezer, err := NewFreezer(datadir, namespace, readonly, freezerTableSize, chainFreezerTableConfigs)
+	if err != nil {
+		return nil, err
+	}
+	edb, err := eradb.New(resolveChainEraDir(datadir, eraDir))
 	if err != nil {
 		return nil, err
 	}
 	return &chainFreezer{
-		AncientStore: freezer,
-		quit:         make(chan struct{}),
-		trigger:      make(chan chan struct{}),
+		ancients: freezer,
+		eradb:    edb,
+		quit:     make(chan struct{}),
+		trigger:  make(chan chan struct{}),
 	}, nil
 }
 
@@ -66,7 +75,11 @@ func (f *chainFreezer) Close() error {
 		close(f.quit)
 	}
 	f.wg.Wait()
-	return f.AncientStore.Close()
+
+	if f.eradb != nil {
+		f.eradb.Close()
+	}
+	return f.ancients.Close()
 }
 
 // freeze is a background thread that periodically checks the blockchain for any
@@ -150,7 +163,7 @@ func (f *chainFreezer) freeze(db ethdb.KeyValueStore) {
 		}
 
 		// Batch of blocks have been frozen, flush them before wiping from leveldb
-		if err := f.Sync(); err != nil {
+		if err := f.SyncAncient(); err != nil {
 			log.Crit("Failed to flush frozen tables", "err", err)
 		}
 
@@ -224,4 +237,53 @@ func (f *chainFreezer) freezeRange(nfdb *nofreezedb, id, limit uint64) ([]meerda
 	})
 
 	return blocks, err
+}
+
+// Ancient retrieves an ancient binary blob from the append-only immutable files.
+func (f *chainFreezer) Ancient(kind string, number uint64) ([]byte, error) {
+	return f.ancients.Ancient(kind, number)
+}
+
+// ReadAncients executes an operation while preventing mutations to the freezer,
+// i.e. if fn performs multiple reads, they will be consistent with each other.
+func (f *chainFreezer) ReadAncients(fn func(ethdb.AncientReaderOp) error) (err error) {
+	if store, ok := f.ancients.(*Freezer); ok {
+		store.writeLock.Lock()
+		defer store.writeLock.Unlock()
+	}
+	return fn(f)
+}
+
+// Methods below are just pass-through to the underlying ancient store.
+
+func (f *chainFreezer) Ancients() (uint64, error) {
+	return f.ancients.Ancients()
+}
+
+func (f *chainFreezer) Tail() (uint64, error) {
+	return f.ancients.Tail()
+}
+
+func (f *chainFreezer) AncientSize(kind string) (uint64, error) {
+	return f.ancients.AncientSize(kind)
+}
+
+func (f *chainFreezer) AncientRange(kind string, start, count, maxBytes uint64) ([][]byte, error) {
+	return f.ancients.AncientRange(kind, start, count, maxBytes)
+}
+
+func (f *chainFreezer) ModifyAncients(fn func(ethdb.AncientWriteOp) error) (int64, error) {
+	return f.ancients.ModifyAncients(fn)
+}
+
+func (f *chainFreezer) TruncateHead(items uint64) (uint64, error) {
+	return f.ancients.TruncateHead(items)
+}
+
+func (f *chainFreezer) TruncateTail(items uint64) (uint64, error) {
+	return f.ancients.TruncateTail(items)
+}
+
+func (f *chainFreezer) SyncAncient() error {
+	return f.ancients.SyncAncient()
 }

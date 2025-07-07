@@ -9,6 +9,7 @@ import (
 	"github.com/Qitmeer/qng/consensus/model"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/meerdag"
+	"math"
 )
 
 // LookupNode returns the block node identified by the provided hash.  It will
@@ -57,6 +58,9 @@ func (b *BlockChain) GetDAGBlock(h *hash.Hash) meerdag.IBlock {
 }
 
 func (b *BlockChain) GetBlockByOrder(order uint64) model.Block {
+	if order > math.MaxInt32 {
+		return nil
+	}
 	return b.bd.GetBlockByOrder(uint(order))
 }
 
