@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"github.com/Qitmeer/qng/common/roughtime"
+	"math"
 	"os"
 	"time"
 
@@ -230,6 +231,9 @@ type Lazy struct {
 type Ctx map[string]interface{}
 
 func (c Ctx) toArray() []interface{} {
+	if len(c) > (math.MaxInt / 2) {
+		panic("Ctx size too large, potential overflow in allocation")
+	}
 	arr := make([]interface{}, len(c)*2)
 
 	i := 0
