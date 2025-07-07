@@ -6,6 +6,10 @@ github.com/Qitmeer/crypto v0.0.0-20201028030128-6ed4040ca34a h1:LUGOJG/lF0TlnlYT
 github.com/Qitmeer/crypto v0.0.0-20201028030128-6ed4040ca34a/go.mod h1:gbGKdXSJn71Mc2xcKJHqC/waPiX0byZae67zarj83m4=
 github.com/Qitmeer/crypto/cryptonight v0.0.0-20201028030128-6ed4040ca34a h1:O2Erw/YvYAkIqkc2uvP/WwuWf0V8S0+pjU/FKHmjFU4=
 github.com/Qitmeer/crypto/cryptonight v0.0.0-20201028030128-6ed4040ca34a/go.mod h1:KiA7g46zc6dkgf/3NbEpJirY75v656WYlmSQNR1wTVk=
+github.com/Qitmeer/go-ethereum v1.15.11-q.0 h1:uZ5K/Ujq7U9oye9hF4LvqTiAB08nM6pE0ABl0CKniW8=
+github.com/Qitmeer/go-ethereum v1.15.11-q.0/go.mod h1:YlCqFe2uBHreZdmTccsRP07isxY6yQs0jT9vhOKFjo4=
+github.com/Qitmeer/go-secp256k1 v0.5.1 h1:t3u4VMSz7LRn9Ki1lecG7tyTNwbLGILt1CwdOAA5N7M=
+github.com/Qitmeer/go-secp256k1 v0.5.1/go.mod h1:AkrSQDAMwdV4+pXUQnEAPvPbUiIN4DAHMAm0ueneJB8=
 github.com/StackExchange/wmi v1.2.1 h1:VIkavFPXSjcnS+O8yTq7NI32k0R5Aj+v39y29VYDOSA=
 github.com/StackExchange/wmi v1.2.1/go.mod h1:rcmrprowKIVzvc+NUiLncP2uuArMWLCbu9SBzvHz7e8=
 github.com/VictoriaMetrics/fastcache v1.12.2 h1:N0y9ASrJ0F6h0QaC3o6uJb3NIZ9VKLjCM7NQbSmF7WI=
@@ -69,8 +73,6 @@ github.com/deepmap/oapi-codegen v1.8.2/go.mod h1:YLgSKSDv/bZQB7N4ws6luhozi3cEdRk
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/ethereum/c-kzg-4844/v2 v2.1.0 h1:gQropX9YFBhl3g4HYhwE70zq3IHFRgbbNPw0Shwzf5w=
 github.com/ethereum/c-kzg-4844/v2 v2.1.0/go.mod h1:TC48kOKjJKPbN7C++qIgt0TJzZ70QznYR7Ob+WXl57E=
-github.com/ethereum/go-ethereum v1.15.11 h1:JK73WKeu0WC0O1eyX+mdQAVHUV+UR1a9VB/domDngBU=
-github.com/ethereum/go-ethereum v1.15.11/go.mod h1:mf8YiHIb0GR4x4TipcvBUPxJLw1mFdmxzoDi11sDRoI=
 github.com/ethereum/go-verkle v0.2.2 h1:I2W0WjnrFUIzzVPwm8ykY+7pL2d4VhlsePn4j7cnFk8=
 github.com/ethereum/go-verkle v0.2.2/go.mod h1:M3b90YRnzqKyyzBEWJGqj8Qff4IDeXnzFw0P9bFw3uk=
 github.com/ferranbt/fastssz v0.1.2 h1:Dky6dXlngF6Qjc+EfDipAkE83N5I5DE68bY6O0VLNPk=
