@@ -92,7 +92,7 @@ func newLevelDBDatabase(file string, cache int, handles int, namespace string, r
 		return nil, err
 	}
 	log.Info("Using LevelDB as the backing database")
-	return rawdb.NewDatabase(db), nil
+	return db, nil
 }
 
 // newPebbleDBDatabase creates a persistent key-value database without a freezer
@@ -102,5 +102,5 @@ func newPebbleDBDatabase(file string, cache int, handles int, namespace string, 
 	if err != nil {
 		return nil, err
 	}
-	return rawdb.NewDatabase(db), nil
+	return db, nil
 }
