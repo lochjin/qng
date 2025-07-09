@@ -20,7 +20,7 @@ func GetFlags() []cli.Flag {
 			utils.NoUSBFlag, // deprecated
 			utils.USBFlag,
 			utils.SmartCardDaemonPathFlag,
-			utils.OverridePrague,
+			utils.OverrideOsaka,
 			utils.OverrideVerkle,
 			utils.EnablePersonal, // deprecated
 			utils.TxPoolLocalsFlag,

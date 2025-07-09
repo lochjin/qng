@@ -143,9 +143,9 @@ func prepare(ctx *cli.Context, cfg *Config) {
 
 func makeFullNode(ctx *cli.Context, cfg *Config) (*node.Node, *eth.EthAPIBackend, *eth.Ethereum) {
 	stack := makeConfigNode(ctx, cfg)
-	if ctx.IsSet(utils.OverridePrague.Name) {
-		v := ctx.Uint64(utils.OverridePrague.Name)
-		cfg.Eth.OverridePrague = &v
+	if ctx.IsSet(utils.OverrideOsaka.Name) {
+		v := ctx.Uint64(utils.OverrideOsaka.Name)
+		cfg.Eth.OverrideOsaka = &v
 	}
 	if ctx.IsSet(utils.OverrideVerkle.Name) {
 		v := ctx.Uint64(utils.OverrideVerkle.Name)
