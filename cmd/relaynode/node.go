@@ -34,12 +34,15 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
 	"path"
 	"reflect"
 	"sync"
 )
+
+import _ "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 
 type Node struct {
 	service.Service
@@ -160,11 +163,6 @@ func (node *Node) startP2P() error {
 		libp2p.ConnectionGater(node),
 	}
 
-	if node.cfg.EnableRelay {
-		opts = append(opts, libp2p.EnableRelay())
-		opts = append(opts, libp2p.EnableRelayService())
-	}
-
 	if node.cfg.HostDNS != "" {
 		opts = append(opts, libp2p.AddrsFactory(func(addrs []multiaddr.Multiaddr) []multiaddr.Multiaddr {
 			external, err := multiaddr.NewMultiaddr(fmt.Sprintf("/dns4/%s/tcp/%s", node.cfg.HostDNS, node.cfg.Port))
@@ -194,7 +192,18 @@ func (node *Node) startP2P() error {
 	}
 	opts = append(opts, libp2p.Routing(newDHT))
 
+	if node.cfg.EnableRelay {
+		log.Info("enable relay service")
+
+		opts = append(opts, libp2p.EnableRelay())
+		opts = append(opts, libp2p.EnableNATService())
+		opts = append(opts,
+			libp2p.EnableRelayService(relayv2.WithResources(relayv2.DefaultResources())))
+	}
 	node.host, err = libp2p.New(opts...)
+	for _, addr := range node.host.Addrs() {
+		log.Info(fmt.Sprintf("Listening on: %s/p2p/%s", addr, node.host.ID().String()))
+	}
 	if err != nil {
 		log.Error("Failed to create host %v", err)
 		return err
