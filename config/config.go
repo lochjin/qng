@@ -152,6 +152,18 @@ type Config struct {
 	TranferTxLegacyMode bool `long:"tranfertxlegacymode" description:"Support transaction transmission mode compatible with older versions before the snapsync P2P"`
 
 	miningAddr types.Address
+
+	// VNC over libp2p
+	EnableVNC   bool   `long:"vnc" description:"Enable VNC stream over libp2p tunnel"`
+	VNCBindAddr string `long:"vncbind" description:"Local TCP address of the VNC server to forward (default: 127.0.0.1:5900)"`
+
+	// Allow incoming VNC requests only from specified peer IDs
+	VNCAllowedPeerIDs []string `long:"vncallowpeer" description:"Comma-separated list of allowed libp2p peer IDs for incoming VNC access"`
+
+	// Run as a VNC bridge client (reverse proxy mode)
+	EnableVNCProxy     bool   `long:"vncproxy" description:"Enable VNC bridge client mode to connect to a remote libp2p peer"`
+	VNCProxyPeerID     string `long:"vncpeer" description:"Remote libp2p peer ID that provides the VNC service"`
+	VNCProxyListenAddr string `long:"vnclisten" description:"Local TCP address to listen for VNC viewer connection (default: 127.0.0.1:5900)"`
 }
 
 func (c *Config) GetMinningAddr() types.Address {

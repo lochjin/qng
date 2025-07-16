@@ -76,6 +76,7 @@ var (
 	Blacklist         cli.StringSlice
 	GBTNotify         cli.StringSlice
 	AcctAddresses     cli.StringSlice
+	VNCAllowedPeerIDs cli.StringSlice
 	Flags             = []cli.Flag{
 		&cli.StringFlag{
 			Name:        "appdata",
@@ -663,6 +664,42 @@ var (
 			Name:        "synctarget",
 			Usage:       "Hash of the block to full sync to (dev testing feature)",
 			Destination: &cfg.SyncTarget,
+		},
+		// Vnc
+		&cli.BoolFlag{
+			Name:        "vnc",
+			Usage:       "Enable VNC stream handler",
+			Value:       false,
+			Destination: &cfg.EnableVNC,
+		},
+		&cli.StringFlag{
+			Name:        "vncaddr",
+			Usage:       "The local address for VNC service",
+			Value:       "127.0.0.1:5900",
+			Destination: &cfg.VNCBindAddr,
+		},
+
+		&cli.StringSliceFlag{
+			Name:        "vncallowpeer",
+			Usage:       "Comma-separated list of allowed peer IDs for incoming VNC connections",
+			Destination: &VNCAllowedPeerIDs,
+		},
+		&cli.BoolFlag{
+			Name:        "vncproxy",
+			Usage:       "Enable VNC bridge client mode (reverse tunnel)",
+			Value:       false,
+			Destination: &cfg.EnableVNCProxy,
+		},
+		&cli.StringFlag{
+			Name:        "vncpeer",
+			Usage:       "Remote libp2p peer ID to connect to for VNC stream",
+			Destination: &cfg.VNCProxyPeerID,
+		},
+		&cli.StringFlag{
+			Name:        "vnclisten",
+			Usage:       "Local listen address for VNC client proxy (default: 127.0.0.1:5900)",
+			Value:       "127.0.0.1:5900",
+			Destination: &cfg.VNCProxyListenAddr,
 		},
 	}
 )

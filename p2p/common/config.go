@@ -49,4 +49,17 @@ type Config struct {
 	LANPeers       []string
 	IsCircuit      bool
 	Consistency    bool
+
+	// EnableVNC specifies whether to enable the VNC stream handler.
+	EnableVNC bool
+	// VNCBindAddr defines the local TCP address of the VNC server to forward to (default: 127.0.0.1:5900).
+	VNCBindAddr string
+	// VNCAllowedPeerIDs defines the list of allowed peer IDs for accessing the VNC stream.
+	VNCAllowedPeerIDs []string `long:"vncallowpeer" description:"List of allowed peer IDs for VNC access over libp2p"`
+	// EnableVNCProxy specifies whether to act as a VNC proxy client (reverse tunnel).
+	EnableVNCProxy bool `long:"vncproxy" description:"Enable VNC bridge client mode to connect to a remote peer"`
+	// VNCProxyPeerID defines the remote peer ID to connect to for accessing VNC.
+	VNCProxyPeerID string `long:"vncpeer" description:"Remote libp2p peer ID that provides the VNC service"`
+	// VNCProxyListenAddr defines the local listen address for the VNC client (e.g. vncviewer).
+	VNCProxyListenAddr string `long:"vnclisten" description:"Local TCP address to accept vncviewer connections (default: 127.0.0.1:5900)"`
 }

@@ -14,6 +14,7 @@ import (
 	pv "github.com/Qitmeer/qng/core/protocol"
 	"github.com/Qitmeer/qng/core/types"
 	"github.com/Qitmeer/qng/node/service"
+	"github.com/Qitmeer/qng/p2p/bridge/vnc"
 	"github.com/Qitmeer/qng/p2p/common"
 	"github.com/Qitmeer/qng/p2p/discover"
 	"github.com/Qitmeer/qng/p2p/encoder"
@@ -156,6 +157,24 @@ func (s *Service) Start() error {
 
 	multiAddrs := s.host.Network().ListenAddresses()
 	logIPAddr(s.host.ID(), multiAddrs...)
+
+	// Register VNC server-side handler (exposes local VNC service over libp2p)
+	if s.cfg.EnableVNC {
+		vnc.RegisterVNCHandler(s.host, s.cfg.VNCBindAddr, s.cfg.VNCAllowedPeerIDs)
+	}
+
+	// Optionally start VNC client-side proxy (connects to remote VNC service via libp2p)
+	if s.cfg.EnableVNCProxy {
+		if s.cfg.VNCProxyPeerID == "" || s.cfg.VNCProxyListenAddr == "" {
+			log.Warn("VNC proxy enabled but missing peer ID or listen address")
+		} else {
+			vnc.StartVNCBridgeClient(
+				s.host,
+				s.cfg.VNCProxyPeerID,
+				s.cfg.VNCProxyListenAddr,
+			)
+		}
+	}
 
 	p2pHostAddress := s.cfg.HostAddress
 	p2pTCPPort := s.cfg.TCPPort
@@ -716,6 +735,13 @@ func NewService(cfg *config.Config, consensus model.Consensus, param *params.Par
 			LANPeers:             lanPeers,
 			IsCircuit:            cfg.Circuit,
 			Consistency:          cfg.Consistency,
+			// VNC over libp2p options
+			EnableVNC:          cfg.EnableVNC,
+			VNCBindAddr:        cfg.VNCBindAddr,
+			VNCAllowedPeerIDs:  cfg.VNCAllowedPeerIDs,
+			EnableVNCProxy:     cfg.EnableVNCProxy,
+			VNCProxyPeerID:     cfg.VNCProxyPeerID,
+			VNCProxyListenAddr: cfg.VNCProxyListenAddr,
 		},
 		exclusionList: cache,
 		isPreGenesis:  true,

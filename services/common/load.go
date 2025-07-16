@@ -38,6 +38,7 @@ func LoadConfig(ctx *cli.Context, parsefile bool) (*config.Config, error) {
 	cfg.Blacklist = Blacklist.Value()
 	cfg.GBTNotify = GBTNotify.Value()
 	cfg.AcctAddrs = AcctAddresses.Value()
+	cfg.VNCAllowedPeerIDs = VNCAllowedPeerIDs.Value()
 	// Show the version and exit if the version flag was specified.
 	appName := filepath.Base(os.Args[0])
 	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
