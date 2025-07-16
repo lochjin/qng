@@ -162,6 +162,7 @@ func (node *Node) startP2P() error {
 
 	if node.cfg.EnableRelay {
 		opts = append(opts, libp2p.EnableRelay())
+		opts = append(opts, libp2p.EnableRelayService())
 	}
 
 	if node.cfg.HostDNS != "" {
