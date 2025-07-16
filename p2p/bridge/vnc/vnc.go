@@ -27,7 +27,7 @@ func RegisterVNCHandler(h host.Host, vncAddr string, allowedPeers []string) {
 		allowed[p] = struct{}{}
 	}
 
-	log.Info(fmt.Sprintf("Registering VNC handler with ACL, forward to %s", vncAddr)))
+	log.Info(fmt.Sprintf("Registering VNC handler with ACL, forward to %s", vncAddr))
 
 	h.SetStreamHandler("/vnc/1.0.0", func(s network.Stream) {
 		peerID := s.Conn().RemotePeer().String()
