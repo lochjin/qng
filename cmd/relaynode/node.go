@@ -214,6 +214,9 @@ func (node *Node) startP2P() error {
 	log.Info(fmt.Sprintf("Relay Address: %s/p2p/%s\n", eMAddr.String(), node.host.ID()))
 	if node.cfg.EnableRelay {
 		log.Info("You can copy the relay address and configure it to the required Qitmeer-Node")
+		for _, p := range node.host.Mux().Protocols() {
+			fmt.Println("Supported protocol:", p)
+		}
 	} else {
 		log.Info("The relay transport is disable.")
 	}
