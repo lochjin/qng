@@ -29,6 +29,7 @@ import (
 	libp2pcore "github.com/libp2p/go-libp2p/core"
 	"github.com/libp2p/go-libp2p/core/control"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -192,15 +193,32 @@ func (node *Node) startP2P() error {
 	}
 	opts = append(opts, libp2p.Routing(newDHT))
 
+	opts = append(opts, libp2p.EnableNATService())
+	opts = append(opts, libp2p.NATPortMap()) // 允许 libp2p 做 upnp/pmapping
+	opts = append(opts, libp2p.EnableAutoNATv2())
+
 	if node.cfg.EnableRelay {
 		log.Info("enable relay service")
-
 		opts = append(opts, libp2p.EnableRelay())
-		opts = append(opts, libp2p.EnableNATService())
 		opts = append(opts,
 			libp2p.EnableRelayService(relayv2.WithResources(relayv2.DefaultResources())))
 	}
 	node.host, err = libp2p.New(opts...)
+
+	sub, err := node.host.EventBus().Subscribe(new(event.EvtLocalReachabilityChanged))
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed to subscribe to reachability events: %v", err))
+	}
+	go func() {
+		for e := range sub.Out() {
+			evt := e.(event.EvtLocalReachabilityChanged)
+			log.Info(fmt.Sprintf("[Reachability] Changed: %s", evt.Reachability))
+			for _, p := range node.host.Mux().Protocols() {
+				fmt.Println("Supported protocol:", p)
+			}
+		}
+	}()
+
 	for _, addr := range node.host.Addrs() {
 		log.Info(fmt.Sprintf("Listening on: %s/p2p/%s", addr, node.host.ID().String()))
 	}
@@ -221,6 +239,21 @@ func (node *Node) startP2P() error {
 	}
 
 	log.Info(fmt.Sprintf("Relay Address: %s/p2p/%s\n", eMAddr.String(), node.host.ID()))
+
+	emitter, err := node.host.EventBus().Emitter(new(event.EvtLocalReachabilityChanged))
+	if err != nil {
+		log.Error("Failed to get emitter: %v", err)
+		return err
+	}
+	defer emitter.Close()
+
+	err = emitter.Emit(event.EvtLocalReachabilityChanged{
+		Reachability: network.ReachabilityPublic,
+	})
+	if err != nil {
+		log.Error("Emit failed: %v", err)
+	}
+
 	if node.cfg.EnableRelay {
 		log.Info("You can copy the relay address and configure it to the required Qitmeer-Node")
 		for _, p := range node.host.Mux().Protocols() {
