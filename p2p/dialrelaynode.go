@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	circuit "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.opencensus.io/trace"
@@ -51,6 +52,7 @@ func tryReserveRelay(ctx context.Context, h host.Host, relayAddrStr string) erro
 	if err != nil {
 		return fmt.Errorf("reservation failed: %w", err)
 	}
-	log.Info(fmt.Sprintf("Relay reservation successful. Expiration: %v", rsvp.Expiration))
+	h.Peerstore().AddAddrs(h.ID(), rsvp.Addrs, peerstore.PermanentAddrTTL)
+	log.Info(fmt.Sprintf("Relay reservation successful. Expiration: %v, Addrs %v", rsvp.Expiration, rsvp.Addrs))
 	return nil
 }
