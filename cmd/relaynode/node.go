@@ -35,15 +35,51 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	pbv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/pb"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
 	"path"
 	"reflect"
 	"sync"
+	"time"
 )
 
 import _ "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+
+type MyRelayTracer struct{}
+
+func (t *MyRelayTracer) RelayStatus(enabled bool) {
+	log.Info(fmt.Sprintf("[relay] Service active: %v", enabled))
+}
+
+func (t *MyRelayTracer) ConnectionOpened() {
+	log.Info(fmt.Sprintf("[relay] 🔌 Relay connection opened"))
+}
+
+func (t *MyRelayTracer) ConnectionClosed(d time.Duration) {
+	log.Info(fmt.Sprintf("[relay] 🔌 Relay connection closed (duration=%v)", d))
+}
+
+func (t *MyRelayTracer) ConnectionRequestHandled(status pbv2.Status) {
+	log.Info(fmt.Sprintf("[relay] 📡 CONNECT request handled: status=%v", status))
+}
+
+func (t *MyRelayTracer) ReservationAllowed(isRenewal bool) {
+	log.Info(fmt.Sprintf("[relay] 📩 RESERVE allowed (renewal=%v)", isRenewal))
+}
+
+func (t *MyRelayTracer) ReservationRequestHandled(status pbv2.Status) {
+	log.Info(fmt.Sprintf("[relay] 📩 RESERVE request handled: status=%v", status))
+}
+
+func (t *MyRelayTracer) ReservationClosed(cnt int) {
+	log.Info(fmt.Sprintf("[relay] 🗑️ RESERVE closed: %d stream(s)", cnt))
+}
+
+func (t *MyRelayTracer) BytesTransferred(cnt int) {
+	log.Info(fmt.Sprintf("[relay] 📊 Relay transferred: %d bytes", cnt))
+}
 
 type Node struct {
 	service.Service
@@ -201,7 +237,10 @@ func (node *Node) startP2P() error {
 		log.Info("enable relay service")
 		opts = append(opts, libp2p.EnableRelay())
 		opts = append(opts,
-			libp2p.EnableRelayService(relayv2.WithResources(relayv2.DefaultResources())))
+			libp2p.EnableRelayService(
+				relayv2.WithResources(relayv2.DefaultResources()),
+				relayv2.WithMetricsTracer(&MyRelayTracer{}),
+			))
 	}
 	node.host, err = libp2p.New(opts...)
 
