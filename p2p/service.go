@@ -123,6 +123,13 @@ func (s *Service) Start() error {
 		peersToWatch = append(peersToWatch, s.cfg.RelayNodeAddr)
 		if err := dialRelayNode(s.Context(), s.host, s.cfg.RelayNodeAddr); err != nil {
 			log.Warn(fmt.Sprintf("Could not dial relay node:%v", err))
+		} else {
+			// ✅ 在这里调用 Reserve()
+			if err := tryReserveRelay(s.Context(), s.host, s.cfg.RelayNodeAddr); err != nil {
+				log.Warn(fmt.Sprintf("Relay reservation failed: %v", err))
+			} else {
+				log.Info("Successfully reserved relay slot")
+			}
 		}
 	}
 	_, bootstrapAddrs := parseGenericAddrs(s.cfg.BootstrapNodeAddr)

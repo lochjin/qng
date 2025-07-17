@@ -6,8 +6,11 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	circuit "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
+	ma "github.com/multiformats/go-multiaddr"
 	"go.opencensus.io/trace"
 )
 
@@ -30,4 +33,24 @@ func dialRelayNode(ctx context.Context, h host.Host, relayAddr string) error {
 	}
 
 	return h.Connect(ctx, *p)
+}
+
+func tryReserveRelay(ctx context.Context, h host.Host, relayAddrStr string) error {
+	relayAddr, err := ma.NewMultiaddr(relayAddrStr)
+	if err != nil {
+		return fmt.Errorf("invalid relay multiaddr: %w", err)
+	}
+
+	relayInfo, err := peer.AddrInfosFromP2pAddrs(relayAddr)
+	if err != nil {
+		return fmt.Errorf("failed to parse relay addr info: %w", err)
+	}
+
+	// do reservation
+	rsvp, err := circuit.Reserve(ctx, h, relayInfo[0])
+	if err != nil {
+		return fmt.Errorf("reservation failed: %w", err)
+	}
+	log.Info(fmt.Sprintf("Relay reservation successful. Expiration: %v", rsvp.Expiration))
+	return nil
 }
