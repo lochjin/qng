@@ -47,6 +47,14 @@ import (
 
 import _ "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 
+import (
+	libp2plog "github.com/ipfs/go-log/v2"
+)
+
+func init() {
+	_ = libp2plog.SetLogLevel("relay", "debug")
+}
+
 type MyRelayTracer struct{}
 
 func (t *MyRelayTracer) RelayStatus(enabled bool) {
