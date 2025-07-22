@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tmc/langchaingo/llms"
@@ -215,7 +216,7 @@ func ContinueUntilMessageContains(target string) LoopCondition {
 		for _, msg := range state {
 			for _, part := range msg.Parts {
 				if text, ok := part.(llms.TextContent); ok {
-					if contains(text.Text, target) {
+					if strings.Contains(text.Text, target) {
 						return false, nil
 					}
 				}
@@ -230,7 +231,7 @@ func ContinueWhileMessageContains(target string) LoopCondition {
 		for _, msg := range state {
 			for _, part := range msg.Parts {
 				if text, ok := part.(llms.TextContent); ok {
-					if contains(text.Text, target) {
+					if strings.Contains(text.Text, target) {
 						return true, nil
 					}
 				}
@@ -238,20 +239,4 @@ func ContinueWhileMessageContains(target string) LoopCondition {
 		}
 		return false, nil
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			containsSubstring(s, substr))))
-}
-
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
