@@ -184,3 +184,78 @@ func TestMessageGraph(t *testing.T) {
 		})
 	}
 }
+
+func TestConditionalEdge(t *testing.T) {
+	g := graph.NewMessageGraph()
+
+	g.AddNode("node_0", func(_ context.Context, state []llms.MessageContent, opts graph.Options) ([]llms.MessageContent, error) {
+		text := "I am node 0"
+		t.Log(text)
+		return append(state, llms.TextParts(llms.ChatMessageTypeAI, text)), nil
+	})
+	g.AddNode("node_1", func(_ context.Context, state []llms.MessageContent, opts graph.Options) ([]llms.MessageContent, error) {
+		text := "I am node 1"
+		t.Log(text)
+		return append(state, llms.TextParts(llms.ChatMessageTypeAI, text)), nil
+	})
+	g.AddNode("node_2", func(_ context.Context, state []llms.MessageContent, opts graph.Options) ([]llms.MessageContent, error) {
+		text := "I am node 2"
+		t.Log(text)
+		return append(state, llms.TextParts(llms.ChatMessageTypeAI, text)), nil
+	})
+	g.AddNode("node_3", func(_ context.Context, state []llms.MessageContent, opts graph.Options) ([]llms.MessageContent, error) {
+		text := "I am node 3"
+		t.Log(text)
+		return append(state, llms.TextParts(llms.ChatMessageTypeAI, text)), nil
+	})
+	g.AddNode(graph.END, func(_ context.Context, state []llms.MessageContent, opts graph.Options) ([]llms.MessageContent, error) {
+		t.Log("I am end")
+		return state, nil
+	})
+
+	g.AddEdge("node_0", "node_1")
+	g.AddConditionalEdge("node_1", func(_ context.Context, state []llms.MessageContent, _ graph.Options) string {
+		if len(state) > 0 {
+			for _, s := range state {
+				if s.Parts[0].(llms.TextContent).String() == "node 2 branch" {
+					return "node_2"
+				}
+			}
+		}
+		return "node_3"
+	})
+
+	g.AddEdge("node_2", graph.END)
+	g.AddEdge("node_3", graph.END)
+
+	g.SetEntryPoint("node_0")
+
+	runnable, err := g.Compile()
+	if err != nil {
+		t.Fatalf("compile error: %v", err)
+	}
+
+	t.Run("node_2 branch", func(t *testing.T) {
+		input := []llms.MessageContent{llms.TextParts(llms.ChatMessageTypeHuman, "node 2 branch")}
+		output, err := runnable.Invoke(context.Background(), input)
+		if err != nil {
+			t.Fatalf("invoke error: %v", err)
+		}
+		if output[3].Parts[0].(llms.TextContent).Text != "I am node 2" {
+			t.Errorf("expected no branch, got %v", output[1])
+		}
+		t.Log(output)
+	})
+
+	t.Run("node_3 branch", func(t *testing.T) {
+		input := []llms.MessageContent{}
+		output, err := runnable.Invoke(context.Background(), input)
+		if err != nil {
+			t.Fatalf("invoke error: %v", err)
+		}
+		if output[2].Parts[0].(llms.TextContent).Text != "I am node 3" {
+			t.Errorf("expected no branch, got %v", output[1])
+		}
+		t.Log(output)
+	})
+}
