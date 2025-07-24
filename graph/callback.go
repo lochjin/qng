@@ -4,20 +4,18 @@ import (
 	"golang.org/x/net/context"
 )
 
-type GraphCallback interface {
-	HandleNodeStart(ctx context.Context, node string, initialState State)
-	HandleNodeEnd(ctx context.Context, node string, finalState State)
-	HandleEdgeEntry(ctx context.Context, edge string, initialState State)
-	HandleEdgeExit(ctx context.Context, edge string, finalState State, output string)
+type NodeStartHandler interface {
+	NodeStart(ctx context.Context, node string, state State)
 }
 
-type BaseCallback struct{}
+type NodeEndHandler interface {
+	NodeEnd(ctx context.Context, node string, state State)
+}
 
-func (callback *BaseCallback) HandleNodeStart(ctx context.Context, node string, initialState State) {
+type EdgeEntryHandler interface {
+	EdgeEntry(ctx context.Context, edge string, state State)
 }
-func (callback *BaseCallback) HandleNodeEnd(ctx context.Context, node string, finalState State) {
-}
-func (callback *BaseCallback) HandleEdgeEntry(ctx context.Context, edge string, initialState State) {
-}
-func (callback *BaseCallback) HandleEdgeExit(ctx context.Context, edge string, finalState State, output string) {
+
+type EdgeExitHandler interface {
+	EdgeExit(ctx context.Context, edge string, state State, output string)
 }

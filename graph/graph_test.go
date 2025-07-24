@@ -25,7 +25,7 @@ func TestExampleMessageGraph(t *testing.T) {
 
 	g := NewGraph()
 
-	g.AddNode("oracle", func(ctx context.Context, state State, opts Options) (State, error) {
+	g.AddNode("oracle", func(ctx context.Context, name string, state State) (State, error) {
 		if state == nil {
 			return nil, errors.New("No state")
 		}
@@ -37,7 +37,7 @@ func TestExampleMessageGraph(t *testing.T) {
 		return state, nil
 	})
 
-	g.AddNode(END, func(_ context.Context, state State, opts Options) (State, error) {
+	g.AddNode(END, func(_ context.Context, name string, state State) (State, error) {
 		return state, nil
 	})
 
@@ -77,11 +77,11 @@ func TestMessageGraph(t *testing.T) {
 			name: "Simple graph",
 			buildGraph: func() *Graph {
 				g := NewGraph()
-				g.AddNode("node1", func(_ context.Context, state State, opts Options) (State, error) {
+				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					state["messages"] = append(state["messages"].([]llms.MessageContent), llms.TextParts(llms.ChatMessageTypeAI, "Node 1"))
 					return state, nil
 				})
-				g.AddNode("node2", func(_ context.Context, state State, opts Options) (State, error) {
+				g.AddNode("node2", func(_ context.Context, name string, state State) (State, error) {
 					state["messages"] = append(state["messages"].([]llms.MessageContent), llms.TextParts(llms.ChatMessageTypeAI, "Node 2"))
 					return state, nil
 				})
@@ -102,7 +102,7 @@ func TestMessageGraph(t *testing.T) {
 			name: "Entry point not set",
 			buildGraph: func() *Graph {
 				g := NewGraph()
-				g.AddNode("node1", func(_ context.Context, state State, opts Options) (State, error) {
+				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					return state, nil
 				})
 				return g
@@ -113,7 +113,7 @@ func TestMessageGraph(t *testing.T) {
 			name: "Node not found",
 			buildGraph: func() *Graph {
 				g := NewGraph()
-				g.AddNode("node1", func(_ context.Context, state State, opts Options) (State, error) {
+				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					return state, nil
 				})
 				g.AddEdge("node1", "node2")
@@ -126,7 +126,7 @@ func TestMessageGraph(t *testing.T) {
 			name: "No outgoing edge",
 			buildGraph: func() *Graph {
 				g := NewGraph()
-				g.AddNode("node1", func(_ context.Context, state State, opts Options) (State, error) {
+				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					return state, nil
 				})
 				g.SetEntryPoint("node1")
@@ -138,7 +138,7 @@ func TestMessageGraph(t *testing.T) {
 			name: "Error in node function",
 			buildGraph: func() *Graph {
 				g := NewGraph()
-				g.AddNode("node1", func(_ context.Context, _ State, opts Options) (State, error) {
+				g.AddNode("node1", func(_ context.Context, name string, _ State) (State, error) {
 					return nil, errors.New("node error")
 				})
 				g.AddEdge("node1", END)
@@ -186,37 +186,37 @@ func TestMessageGraph(t *testing.T) {
 func TestConditionalEdge(t *testing.T) {
 	g := NewGraph()
 
-	g.AddNode("node_0", func(_ context.Context, state State, opts Options) (State, error) {
+	g.AddNode("node_0", func(_ context.Context, name string, state State) (State, error) {
 		text := "I am node 0"
 		t.Log(text)
 		state["node_0"] = text
 		return state, nil
 	})
-	g.AddNode("node_1", func(_ context.Context, state State, opts Options) (State, error) {
+	g.AddNode("node_1", func(_ context.Context, name string, state State) (State, error) {
 		text := "I am node 1"
 		t.Log(text)
 		state["node_1"] = text
 		return state, nil
 	})
-	g.AddNode("node_2", func(_ context.Context, state State, opts Options) (State, error) {
+	g.AddNode("node_2", func(_ context.Context, name string, state State) (State, error) {
 		text := "I am node 2"
 		t.Log(text)
 		state["node_2"] = text
 		return state, nil
 	})
-	g.AddNode("node_3", func(_ context.Context, state State, opts Options) (State, error) {
+	g.AddNode("node_3", func(_ context.Context, name string, state State) (State, error) {
 		text := "I am node 3"
 		t.Log(text)
 		state["node_3"] = text
 		return state, nil
 	})
-	g.AddNode(END, func(_ context.Context, state State, opts Options) (State, error) {
+	g.AddNode(END, func(_ context.Context, name string, state State) (State, error) {
 		t.Log("I am end")
 		return state, nil
 	})
 
 	g.AddEdge("node_0", "node_1")
-	g.AddConditionalEdge("node_1", func(_ context.Context, state State, _ Options) string {
+	g.AddConditionalEdge("node_1", func(_ context.Context, name string, state State) string {
 		if state["input"] == "node 2 branch" {
 			return "node_2"
 		}

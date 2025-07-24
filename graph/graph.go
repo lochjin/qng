@@ -23,7 +23,7 @@ var (
 type State map[string]interface{}
 
 // Node represents a node in the message graph.
-type NodeFunction func(ctx context.Context, state State, options Options) (State, error)
+type NodeFunction func(ctx context.Context, name string, state State) (State, error)
 
 type Node struct {
 	// Name is the unique identifier for the node.
@@ -35,7 +35,7 @@ type Node struct {
 }
 
 // Edge represents an edge in the message graph.
-type EdgeFunction func(ctx context.Context, state State, options Options) string
+type EdgeFunction func(ctx context.Context, name string, state State) string
 
 type Edge struct {
 	// From is the name of the node from which the edge originates.
@@ -56,12 +56,12 @@ type Graph struct {
 	// entryPoint is the name of the entry point node in the graph.
 	entryPoint string
 
-	options Options
+	options Config
 }
 
 // NewGraph creates a new instance of Graph.
-func NewGraph(opts ...GraphOptions) *Graph {
-	options := Options{}
+func NewGraph(opts ...Option) *Graph {
+	options := Config{}
 
 	for _, opt := range opts {
 		opt(&options)
@@ -85,7 +85,7 @@ func (g *Graph) AddNode(name string, fn NodeFunction) {
 func (g *Graph) AddEdge(from, to string) {
 	g.edges = append(g.edges, Edge{
 		From: from,
-		To: func(_ context.Context, state State, _ Options) string {
+		To: func(_ context.Context, name string, state State) string {
 			// direct edge doesn't have a condition function
 			return to
 		},
@@ -142,15 +142,14 @@ func (r *Runnable) Invoke(ctx context.Context, state State) (State, error) {
 
 		graphOpts := r.graph.options
 
-		callback := graphOpts.CallbackHandler
-		if callback != nil {
-			callback.HandleNodeStart(ctx, currentNode, state)
+		if graphOpts.NodeStartHandler != nil {
+			graphOpts.NodeStartHandler.NodeStart(ctx, currentNode, state)
 		}
 
 		var err error
-		state, err = node.Function(ctx, state, graphOpts)
-		if callback != nil {
-			callback.HandleNodeEnd(ctx, currentNode, state)
+		state, err = node.Function(ctx, node.Name, state)
+		if graphOpts.NodeEndHandler != nil {
+			graphOpts.NodeEndHandler.NodeEnd(ctx, currentNode, state)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("error in node %s: %w", currentNode, err)
@@ -159,12 +158,12 @@ func (r *Runnable) Invoke(ctx context.Context, state State) (State, error) {
 		foundNext := false
 		for _, edge := range r.graph.edges {
 			if edge.From == currentNode {
-				if callback != nil {
-					callback.HandleEdgeEntry(ctx, edge.From, state)
+				if graphOpts.EdgeEntryHandler != nil {
+					graphOpts.EdgeEntryHandler.EdgeEntry(ctx, edge.From, state)
 				}
-				nextNode := edge.To(ctx, state, graphOpts)
-				if callback != nil {
-					callback.HandleEdgeExit(ctx, edge.From, state, nextNode)
+				nextNode := edge.To(ctx, edge.From, state)
+				if graphOpts.EdgeExitHandler != nil {
+					graphOpts.EdgeExitHandler.EdgeExit(ctx, edge.From, state, nextNode)
 				}
 				currentNode = nextNode
 				foundNext = true
