@@ -13,11 +13,11 @@ type GraphCallback interface {
 
 type BaseCallback struct{}
 
-func (callback BaseCallback) HandleNodeStart(ctx context.Context, node string, initialState State) {
+func (callback *BaseCallback) HandleNodeStart(ctx context.Context, node string, initialState State) {
 }
-func (callback BaseCallback) HandleNodeEnd(ctx context.Context, node string, finalState State) {
+func (callback *BaseCallback) HandleNodeEnd(ctx context.Context, node string, finalState State) {
 }
-func (callback BaseCallback) HandleEdgeEntry(ctx context.Context, edge string, initialState State) {
+func (callback *BaseCallback) HandleEdgeEntry(ctx context.Context, edge string, initialState State) {
 }
-func (callback BaseCallback) HandleEdgeExit(ctx context.Context, edge string, finalState State, output string) {
+func (callback *BaseCallback) HandleEdgeExit(ctx context.Context, edge string, finalState State, output string) {
 }

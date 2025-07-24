@@ -6,16 +6,16 @@ import (
 )
 
 type TestClass struct {
-	BaseCallback
+	*BaseCallback
 	t *testing.T
 }
 
-func (tc TestClass) HandleNodeStart(ctx context.Context, node string, initialState State) {
+func (tc *TestClass) HandleNodeStart(ctx context.Context, node string, initialState State) {
 	tc.t.Logf("At %s:%v", node, initialState)
 }
 
 func TestCallback(t *testing.T) {
-	g := NewGraph(WithCallback(TestClass{BaseCallback: BaseCallback{}, t: t}))
+	g := NewGraph(WithCallback(&TestClass{BaseCallback: &BaseCallback{}, t: t}))
 
 	g.AddNode("node_0", func(_ context.Context, state State, opts Options) (State, error) {
 		text := "I am node 0"
