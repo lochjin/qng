@@ -1,22 +1,34 @@
 package graph
 
-import "context"
+type Option func(*Config)
 
-type GraphOptions func(*Options)
-
-type Options struct {
-	StreamHandler   func(ctx context.Context, chunk []byte) error
-	CallbackHandler GraphCallback
+type Config struct {
+	NodeStartHandler NodeStartHandler
+	NodeEndHandler   NodeEndHandler
+	EdgeEntryHandler EdgeEntryHandler
+	EdgeExitHandler  EdgeExitHandler
 }
 
-func WithStreamHandler(handler func(ctx context.Context, chunk []byte) error) GraphOptions {
-	return func(opts *Options) {
-		opts.StreamHandler = handler
+func WithNodeStartHandler(callback NodeStartHandler) Option {
+	return func(opts *Config) {
+		opts.NodeStartHandler = callback
 	}
 }
 
-func WithCallback(callback GraphCallback) GraphOptions {
-	return func(opts *Options) {
-		opts.CallbackHandler = callback
+func WithNodeEndHandler(callback NodeEndHandler) Option {
+	return func(opts *Config) {
+		opts.NodeEndHandler = callback
+	}
+}
+
+func WithEdgeEntryHandler(callback EdgeEntryHandler) Option {
+	return func(opts *Config) {
+		opts.EdgeEntryHandler = callback
+	}
+}
+
+func WithEdgeExitHandler(callback EdgeExitHandler) Option {
+	return func(opts *Config) {
+		opts.EdgeExitHandler = callback
 	}
 }
