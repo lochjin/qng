@@ -1,27 +1,23 @@
 package graph
 
 import (
-	"github.com/tmc/langchaingo/llms"
 	"golang.org/x/net/context"
 )
 
 type GraphCallback interface {
-	HandleNodeStart(ctx context.Context, node string, initialState []llms.MessageContent)
-	HandleNodeEnd(ctx context.Context, node string, finalState []llms.MessageContent)
-	HandleNodeStream(ctx context.Context, node string, chunk []byte)
-	HandleEdgeEntry(ctx context.Context, edge string, initialState []llms.MessageContent)
-	HandleEdgeExit(ctx context.Context, edge string, finalState []llms.MessageContent, output string)
+	HandleNodeStart(ctx context.Context, node string, initialState State)
+	HandleNodeEnd(ctx context.Context, node string, finalState State)
+	HandleEdgeEntry(ctx context.Context, edge string, initialState State)
+	HandleEdgeExit(ctx context.Context, edge string, finalState State, output string)
 }
 
-type SimpleCallback struct{}
+type BaseCallback struct{}
 
-func (callback SimpleCallback) HandleNodeStart(ctx context.Context, node string, initialState []llms.MessageContent) {
+func (callback BaseCallback) HandleNodeStart(ctx context.Context, node string, initialState State) {
 }
-func (callback SimpleCallback) HandleNodeEnd(ctx context.Context, node string, finalState []llms.MessageContent) {
+func (callback BaseCallback) HandleNodeEnd(ctx context.Context, node string, finalState State) {
 }
-func (callback SimpleCallback) HandleNodeStream(ctx context.Context, node string, chunk []byte) {
+func (callback BaseCallback) HandleEdgeEntry(ctx context.Context, edge string, initialState State) {
 }
-func (callback SimpleCallback) HandleEdgeEntry(ctx context.Context, edge string, initialState []llms.MessageContent) {
-}
-func (callback SimpleCallback) HandleEdgeExit(ctx context.Context, edge string, finalState []llms.MessageContent, output string) {
+func (callback BaseCallback) HandleEdgeExit(ctx context.Context, edge string, finalState State, output string) {
 }
