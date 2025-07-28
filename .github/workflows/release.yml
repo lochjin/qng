@@ -26,6 +26,7 @@ jobs:
             runs-on: ubuntu-24.04
             package_type: tar.gz
 
+    if: ${{ github.ref_type == 'tag' && github.ref_name =~ '^v[0-9]+\\.[0-9]+\\.[0-9]+$' }}
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Checkout code
@@ -71,6 +72,7 @@ jobs:
 
   release:
     name: Create GitHub Release
+    if: ${{ github.ref_type == 'tag' && github.ref_name =~ '^v[0-9]+\\.[0-9]+\\.[0-9]+$' }}
     runs-on: ubuntu-latest
     needs: build
 
