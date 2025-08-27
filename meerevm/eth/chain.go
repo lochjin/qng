@@ -179,13 +179,16 @@ func makeFullNode(ctx *cli.Context, cfg *Config) (*node.Node, *eth.EthAPIBackend
 		utils.RegisterEthStatsService(stack, backend, cfg.Ethstats.URL)
 	}
 	// Configure full-sync tester service if requested
+	var synctarget common.Hash
 	if ctx.IsSet(utils.SyncTargetFlag.Name) {
 		hex := hexutil.MustDecode(ctx.String(utils.SyncTargetFlag.Name))
 		if len(hex) != common.HashLength {
 			utils.Fatalf("invalid sync target length: have %d, want %d", len(hex), common.HashLength)
 		}
-		utils.RegisterFullSyncTester(stack, ethe, common.BytesToHash(hex))
+		synctarget = common.BytesToHash(hex)
 	}
+	utils.RegisterSyncOverrideService(stack, ethe, synctarget, ctx.Bool(utils.ExitWhenSyncedFlag.Name))
+
 	return stack, backend, ethe
 }
 
