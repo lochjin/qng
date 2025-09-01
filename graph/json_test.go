@@ -24,7 +24,7 @@ func TestJson(t *testing.T) {
 		return
 	}
 
-	g := NewGraph()
+	g := NewGraph[State, State]()
 
 	g.AddNode("oracle", func(ctx context.Context, name string, state State) (State, error) {
 		if state == nil {

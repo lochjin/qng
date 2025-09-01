@@ -5,22 +5,13 @@ import (
 	"testing"
 )
 
-type TestClass struct {
-	t *testing.T
-}
+func TestLamabda(t *testing.T) {
+	g := NewGraph[State, State]()
 
-func (tc *TestClass) NodeStart(ctx context.Context, node string, state State) {
-	tc.t.Logf("At %s:%v", node, state)
-}
-
-func TestCallback(t *testing.T) {
-	g := NewGraph[State, State](WithNodeStartHandler(&TestClass{t: t}))
-
-	g.AddNode("node_0", func(_ context.Context, name string, state State) (State, error) {
-		text := "I am node 0"
+	g.AddLambdaNode("node_0", func() error {
+		text := "I am lambda node"
 		t.Log(text)
-		state["node_0"] = text
-		return state, nil
+		return nil
 	})
 	g.AddNode(END, func(_ context.Context, name string, state State) (State, error) {
 		t.Log("I am end")
