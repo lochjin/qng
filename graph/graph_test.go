@@ -23,7 +23,7 @@ func TestExampleMessageGraph(t *testing.T) {
 		return
 	}
 
-	g := NewGraph()
+	g := NewGraph[State, State]()
 
 	g.AddNode("oracle", func(ctx context.Context, name string, state State) (State, error) {
 		if state == nil {
@@ -68,15 +68,15 @@ func TestMessageGraph(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
 		name           string
-		buildGraph     func() *Graph
+		buildGraph     func() *Graph[State, State]
 		inputMessages  State
 		expectedOutput State
 		expectedError  error
 	}{
 		{
 			name: "Simple graph",
-			buildGraph: func() *Graph {
-				g := NewGraph()
+			buildGraph: func() *Graph[State, State] {
+				g := NewGraph[State, State]()
 				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					state["messages"] = append(state["messages"].([]llms.MessageContent), llms.TextParts(llms.ChatMessageTypeAI, "Node 1"))
 					return state, nil
@@ -100,8 +100,8 @@ func TestMessageGraph(t *testing.T) {
 		},
 		{
 			name: "Entry point not set",
-			buildGraph: func() *Graph {
-				g := NewGraph()
+			buildGraph: func() *Graph[State, State] {
+				g := NewGraph[State, State]()
 				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					return state, nil
 				})
@@ -111,8 +111,8 @@ func TestMessageGraph(t *testing.T) {
 		},
 		{
 			name: "Node not found",
-			buildGraph: func() *Graph {
-				g := NewGraph()
+			buildGraph: func() *Graph[State, State] {
+				g := NewGraph[State, State]()
 				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					return state, nil
 				})
@@ -124,8 +124,8 @@ func TestMessageGraph(t *testing.T) {
 		},
 		{
 			name: "No outgoing edge",
-			buildGraph: func() *Graph {
-				g := NewGraph()
+			buildGraph: func() *Graph[State, State] {
+				g := NewGraph[State, State]()
 				g.AddNode("node1", func(_ context.Context, name string, state State) (State, error) {
 					return state, nil
 				})
@@ -136,8 +136,8 @@ func TestMessageGraph(t *testing.T) {
 		},
 		{
 			name: "Error in node function",
-			buildGraph: func() *Graph {
-				g := NewGraph()
+			buildGraph: func() *Graph[State, State] {
+				g := NewGraph[State, State]()
 				g.AddNode("node1", func(_ context.Context, name string, _ State) (State, error) {
 					return nil, errors.New("node error")
 				})
@@ -184,7 +184,7 @@ func TestMessageGraph(t *testing.T) {
 }
 
 func TestConditionalEdge(t *testing.T) {
-	g := NewGraph()
+	g := NewGraph[State, State]()
 
 	g.AddNode("node_0", func(_ context.Context, name string, state State) (State, error) {
 		text := "I am node 0"

@@ -14,7 +14,7 @@ func (tc *TestClass) NodeStart(ctx context.Context, node string, state State) {
 }
 
 func TestCallback(t *testing.T) {
-	g := NewGraph(WithNodeStartHandler(&TestClass{t: t}))
+	g := NewGraph[State, State](WithNodeStartHandler(&TestClass{t: t}))
 
 	g.AddNode("node_0", func(_ context.Context, name string, state State) (State, error) {
 		text := "I am node 0"
