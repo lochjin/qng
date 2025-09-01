@@ -25,15 +25,6 @@ type State map[string]interface{}
 // Node represents a node in the message graph.
 type NodeFunction func(ctx context.Context, name string, state State) (State, error)
 
-type Node struct {
-	// Name is the unique identifier for the node.
-	Name string
-
-	// Function is the function associated with the node.
-	// It takes a context and a slice of MessageContent as input and returns a slice of MessageContent and an error.
-	Function NodeFunction
-}
-
 // Edge represents an edge in the message graph.
 type EdgeFunction func(ctx context.Context, name string, state State) string
 
@@ -75,10 +66,7 @@ func NewGraph[I, O any](opts ...Option) *Graph[I, O] {
 
 // AddNode adds a new node to the message graph with the given name and function.
 func (g *Graph[I, O]) AddNode(name string, fn NodeFunction) {
-	g.nodes[name] = Node{
-		Name:     name,
-		Function: fn,
-	}
+	g.nodes[name] = NewBaseNode(name, fn)
 }
 
 // AddEdge adds a new edge to the message graph between the "from" and "to" nodes.
@@ -147,7 +135,7 @@ func (r *Runnable[I, O]) Invoke(ctx context.Context, state State) (State, error)
 		}
 
 		var err error
-		state, err = node.Function(ctx, node.Name, state)
+		state, err = node.GetNodeFunction()(ctx, node.GetName(), state)
 		if graphOpts.NodeEndHandler != nil {
 			graphOpts.NodeEndHandler.NodeEnd(ctx, currentNode, state)
 		}
