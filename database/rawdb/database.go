@@ -2,12 +2,18 @@ package rawdb
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/cockroachdb/pebble"
-	"github.com/olekukonko/tablewriter"
+	"golang.org/x/sync/errgroup"
+	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -260,36 +266,36 @@ func (c counter) Percentage(current uint64) string {
 	return fmt.Sprintf("%d", current*100/uint64(c))
 }
 
-// stat stores sizes and count for a parameter
+// stat provides lock-free statistics aggregation using atomic operations
 type stat struct {
-	size  common.StorageSize
-	count counter
+	size  uint64
+	count uint64
 }
 
-// Add size to the stat and increase the counter by 1
-func (s *stat) Add(size common.StorageSize) {
-	s.size += size
-	s.count++
+func (s *stat) empty() bool {
+	return atomic.LoadUint64(&s.count) == 0
 }
 
-func (s *stat) Size() string {
-	return s.size.String()
+func (s *stat) add(size common.StorageSize) {
+	atomic.AddUint64(&s.size, uint64(size))
+	atomic.AddUint64(&s.count, 1)
 }
 
-func (s *stat) Count() string {
-	return s.count.String()
+func (s *stat) sizeString() string {
+	return common.StorageSize(atomic.LoadUint64(&s.size)).String()
+}
+
+func (s *stat) countString() string {
+	return counter(atomic.LoadUint64(&s.count)).String()
 }
 
 // InspectDatabase traverses the entire database and checks the size
 // of all different categories of data.
 func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
-	it := db.NewIterator(keyPrefix, keyStart)
-	defer it.Release()
-
 	var (
-		count  int64
-		start  = time.Now()
-		logged = time.Now()
+		start = time.Now()
+		count atomic.Int64
+		total atomic.Uint64
 
 		// Key-value store statistics
 		headers             stat
@@ -309,91 +315,145 @@ func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 		addridx             stat
 
 		// Meta- and unaccounted data
-		metadata    stat
 		unaccounted stat
-		// Totals
-		total common.StorageSize
-	)
-	// Inspect key-value database first.
-	for it.Next() {
-		var (
-			key  = it.Key()
-			size = common.StorageSize(len(key) + len(it.Value()))
-		)
-		total += size
-		switch {
-		case bytes.HasPrefix(key, headerPrefix) && len(key) == (len(headerPrefix)+common.HashLength):
-			headers.Add(size)
-		case bytes.HasPrefix(key, blockPrefix) && len(key) == (len(blockPrefix)+common.HashLength):
-			bodies.Add(size)
-		case bytes.HasPrefix(key, spendJournalPrefix) && len(key) == (len(spendJournalPrefix)+common.HashLength):
-			spendJournal.Add(size)
-		case bytes.HasPrefix(key, utxoPrefix):
-			utxo.Add(size)
-		case bytes.HasPrefix(key, tokenStatePrefix) && len(key) == (len(tokenStatePrefix)+8):
-			tokenState.Add(size)
-		case bytes.HasPrefix(key, dagBlockPrefix) && len(key) == (len(dagBlockPrefix)+8):
-			dagBlock.Add(size)
-		case bytes.HasPrefix(key, blockIDPrefix) && len(key) == (len(blockIDPrefix)+common.HashLength):
-			blockID.Add(size)
-		case bytes.HasPrefix(key, dagMainChainPrefix) && len(key) == (len(dagMainChainPrefix)+8):
-			dagMainChain.Add(size)
-		case bytes.HasPrefix(key, txLookupPrefix) && len(key) == (len(txLookupPrefix)+common.HashLength):
-			txLookup.Add(size)
-		case bytes.HasPrefix(key, txFullHashPrefix) && len(key) == (len(txFullHashPrefix)+common.HashLength):
-			txFullHash.Add(size)
-		case bytes.HasPrefix(key, invalidtxLookupPrefix) && len(key) == (len(invalidtxLookupPrefix)+common.HashLength):
-			invalidtxLookup.Add(size)
-		case bytes.HasPrefix(key, invalidtxFullHashPrefix) && len(key) == (len(invalidtxFullHashPrefix)+common.HashLength):
-			invalidtxFullHash.Add(size)
 
-		case bytes.HasPrefix(key, SnapshotBlockOrderPrefix) && len(key) == (len(SnapshotBlockOrderPrefix)+8):
-			SnapshotBlockOrder.Add(size)
-		case bytes.HasPrefix(key, SnapshotBlockStatusPrefix) && len(key) == (len(SnapshotBlockStatusPrefix)+8):
-			SnapshotBlockStatus.Add(size)
-		case bytes.HasPrefix(key, AddridxPrefix):
-			addridx.Add(size)
-		default:
-			var accounted bool
-			for _, meta := range [][]byte{VersionKey, CompressionVersionKey, BlockIndexVersionKey, CreatedKey,
-				snapshotDisabledKey, SnapshotRootKey, snapshotJournalKey, snapshotGeneratorKey, snapshotRecoveryKey, SnapshotSyncStatusKey,
-				badBlockKey, uncleanShutdownKey, bestChainStateKey, dagInfoKey, mainchainTipKey, dagTipsKey, diffAnticoneKey, EstimateFeeDatabaseKey,
-				addridxTipKey,
-			} {
-				if bytes.Equal(key, meta) {
-					metadata.Add(size)
-					accounted = true
-					break
+		// This map tracks example keys for unaccounted data.
+		// For each unique two-byte prefix, the first unaccounted key encountered
+		// by the iterator will be stored.
+		unaccountedKeys = make(map[[2]byte][]byte)
+		unaccountedMu   sync.Mutex
+	)
+
+	inspectRange := func(ctx context.Context, r byte) error {
+		var s []byte
+		if len(keyStart) > 0 {
+			switch {
+			case r < keyStart[0]:
+				return nil
+			case r == keyStart[0]:
+				s = keyStart[1:]
+			default:
+				// entire key range is included for inspection
+			}
+		}
+		it := db.NewIterator(append(keyPrefix, r), s)
+		defer it.Release()
+
+		for it.Next() {
+			var (
+				key  = it.Key()
+				size = common.StorageSize(len(key) + len(it.Value()))
+			)
+			total.Add(uint64(size))
+			count.Add(1)
+
+			switch {
+			case bytes.HasPrefix(key, headerPrefix) && len(key) == (len(headerPrefix)+common.HashLength):
+				headers.add(size)
+			case bytes.HasPrefix(key, blockPrefix) && len(key) == (len(blockPrefix)+common.HashLength):
+				bodies.add(size)
+			case bytes.HasPrefix(key, spendJournalPrefix) && len(key) == (len(spendJournalPrefix)+common.HashLength):
+				spendJournal.add(size)
+			case bytes.HasPrefix(key, utxoPrefix):
+				utxo.add(size)
+			case bytes.HasPrefix(key, tokenStatePrefix) && len(key) == (len(tokenStatePrefix)+8):
+				tokenState.add(size)
+			case bytes.HasPrefix(key, dagBlockPrefix) && len(key) == (len(dagBlockPrefix)+8):
+				dagBlock.add(size)
+			case bytes.HasPrefix(key, blockIDPrefix) && len(key) == (len(blockIDPrefix)+common.HashLength):
+				blockID.add(size)
+			case bytes.HasPrefix(key, dagMainChainPrefix) && len(key) == (len(dagMainChainPrefix)+8):
+				dagMainChain.add(size)
+			case bytes.HasPrefix(key, txLookupPrefix) && len(key) == (len(txLookupPrefix)+common.HashLength):
+				txLookup.add(size)
+			case bytes.HasPrefix(key, txFullHashPrefix) && len(key) == (len(txFullHashPrefix)+common.HashLength):
+				txFullHash.add(size)
+			case bytes.HasPrefix(key, invalidtxLookupPrefix) && len(key) == (len(invalidtxLookupPrefix)+common.HashLength):
+				invalidtxLookup.add(size)
+			case bytes.HasPrefix(key, invalidtxFullHashPrefix) && len(key) == (len(invalidtxFullHashPrefix)+common.HashLength):
+				invalidtxFullHash.add(size)
+
+			case bytes.HasPrefix(key, SnapshotBlockOrderPrefix) && len(key) == (len(SnapshotBlockOrderPrefix)+8):
+				SnapshotBlockOrder.add(size)
+			case bytes.HasPrefix(key, SnapshotBlockStatusPrefix) && len(key) == (len(SnapshotBlockStatusPrefix)+8):
+				SnapshotBlockStatus.add(size)
+			case bytes.HasPrefix(key, AddridxPrefix):
+				addridx.add(size)
+
+			default:
+				unaccounted.add(size)
+				if len(key) >= 2 {
+					prefix := [2]byte(key[:2])
+					unaccountedMu.Lock()
+					if _, ok := unaccountedKeys[prefix]; !ok {
+						unaccountedKeys[prefix] = bytes.Clone(key)
+					}
+					unaccountedMu.Unlock()
 				}
 			}
-			if !accounted {
-				unaccounted.Add(size)
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
 			}
 		}
-		count++
-		if count%1000 == 0 && time.Since(logged) > 8*time.Second {
-			log.Info("Inspecting database", "count", count, "elapsed", common.PrettyDuration(time.Since(start)))
-			logged = time.Now()
-		}
+
+		return it.Error()
 	}
+
+	var (
+		eg, ctx = errgroup.WithContext(context.Background())
+		workers = runtime.NumCPU()
+	)
+	eg.SetLimit(workers)
+
+	// Progress reporter
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(8 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				log.Info("Inspecting database", "count", count.Load(), "size", common.StorageSize(total.Load()), "elapsed", common.PrettyDuration(time.Since(start)))
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	// Inspect key-value database in parallel.
+	for i := 0; i < 256; i++ {
+		eg.Go(func() error { return inspectRange(ctx, byte(i)) })
+	}
+
+	if err := eg.Wait(); err != nil {
+		close(done)
+		return err
+	}
+	close(done)
+
 	// Display the database statistic of key-value store.
 	stats := [][]string{
-		{"Key-Value store", "Headers", headers.Size(), headers.Count()},
-		{"Key-Value store", "Bodies", bodies.Size(), bodies.Count()},
-		{"Key-Value store", "SpendJournal", spendJournal.Size(), spendJournal.Count()},
-		{"Key-Value store", "UTXO", utxo.Size(), utxo.Count()},
-		{"Key-Value store", "TokenState", tokenState.Size(), tokenState.Count()},
-		{"Key-Value store", "DAGBlock", dagBlock.Size(), dagBlock.Count()},
-		{"Key-Value store", "BlockID", blockID.Size(), blockID.Count()},
-		{"Key-Value store", "DAGMainChain", dagMainChain.Size(), dagMainChain.Count()},
-		{"Key-Value store", "TxLookup", txLookup.Size(), txLookup.Count()},
-		{"Key-Value store", "TxFullHash", txFullHash.Size(), txFullHash.Count()},
-		{"Key-Value store", "InvalidTxLookup", invalidtxLookup.Size(), invalidtxLookup.Count()},
-		{"Key-Value store", "InvalidTxFullHash", invalidtxFullHash.Size(), invalidtxFullHash.Count()},
-		{"Key-Value store", "SnapshotBlockOrder", SnapshotBlockOrder.Size(), SnapshotBlockOrder.Count()},
-		{"Key-Value store", "SnapshotBlockStatus", SnapshotBlockStatus.Size(), SnapshotBlockStatus.Count()},
-		{"Key-Value store", "Addridx", addridx.Size(), addridx.Count()},
+		{"Key-Value store", "Headers", headers.sizeString(), headers.countString()},
+		{"Key-Value store", "Bodies", bodies.sizeString(), bodies.countString()},
+		{"Key-Value store", "SpendJournal", spendJournal.sizeString(), spendJournal.countString()},
+		{"Key-Value store", "UTXO", utxo.sizeString(), utxo.countString()},
+		{"Key-Value store", "TokenState", tokenState.sizeString(), tokenState.countString()},
+		{"Key-Value store", "DAGBlock", dagBlock.sizeString(), dagBlock.countString()},
+		{"Key-Value store", "BlockID", blockID.sizeString(), blockID.countString()},
+		{"Key-Value store", "DAGMainChain", dagMainChain.sizeString(), dagMainChain.countString()},
+		{"Key-Value store", "TxLookup", txLookup.sizeString(), txLookup.countString()},
+		{"Key-Value store", "TxFullHash", txFullHash.sizeString(), txFullHash.countString()},
+		{"Key-Value store", "InvalidTxLookup", invalidtxLookup.sizeString(), invalidtxLookup.countString()},
+		{"Key-Value store", "InvalidTxFullHash", invalidtxFullHash.sizeString(), invalidtxFullHash.countString()},
+		{"Key-Value store", "SnapshotBlockOrder", SnapshotBlockOrder.sizeString(), SnapshotBlockOrder.countString()},
+		{"Key-Value store", "SnapshotBlockStatus", SnapshotBlockStatus.sizeString(), SnapshotBlockStatus.countString()},
+		{"Key-Value store", "Addridx", addridx.sizeString(), addridx.countString()},
 	}
+
 	// Inspect all registered append-only file store then.
 	ancients, err := inspectFreezers(db)
 	if err != nil {
@@ -408,16 +468,20 @@ func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 				fmt.Sprintf("%d", ancient.count()),
 			})
 		}
-		total += ancient.size()
+		total.Add(uint64(ancient.size()))
 	}
-	table := tablewriter.NewWriter(os.Stdout)
+
+	table := newTableWriter(os.Stdout)
 	table.SetHeader([]string{"Database", "Category", "Size", "Items"})
-	table.SetFooter([]string{"", "Total", total.String(), " "})
+	table.SetFooter([]string{"", "Total", common.StorageSize(total.Load()).String(), fmt.Sprintf("%d", count.Load())})
 	table.AppendBulk(stats)
 	table.Render()
 
-	if unaccounted.size > 0 {
-		log.Error("Database contains unaccounted data", "size", unaccounted.size, "count", unaccounted.count)
+	if !unaccounted.empty() {
+		log.Error("Database contains unaccounted data", "size", unaccounted.sizeString(), "count", unaccounted.countString())
+		for _, e := range slices.SortedFunc(maps.Values(unaccountedKeys), bytes.Compare) {
+			log.Error(fmt.Sprintf("   example key: %x", e))
+		}
 	}
 	return nil
 }
