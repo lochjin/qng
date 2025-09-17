@@ -222,7 +222,7 @@ func (b *BlockChain) buildBlock(parent *types.Header, qtxs []mmeer.Tx, timestamp
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		statedb.StartPrefetcher("meer", bundle)
+		statedb.StartPrefetcher("meer", bundle, nil)
 	}
 	txs, receipts, evm, err := b.fillBlock(qtxs, header, statedb)
 	if err != nil {
