@@ -4,8 +4,6 @@ import (
 	"github.com/Qitmeer/qng/config"
 	"github.com/Qitmeer/qng/node/service"
 	"github.com/Qitmeer/qng/rpc"
-	"github.com/Qitmeer/qng/rpc/api"
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -14,14 +12,12 @@ type MCPService struct {
 	cfg       *config.Config
 	mcpServer *server.MCPServer
 	rpcSer    *rpc.RpcServer
-	apis      []api.API
 }
 
-func New(cfg *config.Config, rpcSer *rpc.RpcServer, apis []api.API) (*MCPService, error) {
+func New(cfg *config.Config, rpcSer *rpc.RpcServer) (*MCPService, error) {
 	m := &MCPService{
 		cfg:    cfg,
 		rpcSer: rpcSer,
-		apis:   apis,
 	}
 	err := m.initMCPServer()
 	if err != nil {
@@ -56,11 +52,6 @@ func (m *MCPService) initMCPServer() error {
 		server.WithToolCapabilities(true),
 	)
 
-	// Core QNG blockchain tools with enhanced descriptions for better AI model understanding
-	m.mcpServer.AddTool(mcpgo.NewTool("qng_tips",
-		mcpgo.WithDescription("Get QNG tips info"),
-	), m.handleTips)
-
 	err := m.registerTools()
 	if err != nil {
 		return err
@@ -70,14 +61,4 @@ func (m *MCPService) initMCPServer() error {
 	m.rpcSer.RegisterHandler("/mcp/sse", sseServer.SSEHandler())
 	m.rpcSer.RegisterHandler("/mcp/message", sseServer.MessageHandler())
 	return nil
-}
-
-func getAPI[T any](apis []api.API) (T, bool) {
-	var zero T
-	for _, a := range apis {
-		if v, ok := a.Service.(T); ok {
-			return v, true
-		}
-	}
-	return zero, false
 }

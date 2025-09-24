@@ -156,11 +156,11 @@ func (qm *QitmeerFull) RegisterWalletService(cfg *config.Config) error {
 	return nil
 }
 
-func (qm *QitmeerFull) RegisterMCPService(cfg *config.Config, apis []api.API) error {
+func (qm *QitmeerFull) RegisterMCPService(cfg *config.Config) error {
 	if !cfg.MCP {
 		return nil
 	}
-	mcps, err := mcp.New(cfg, qm.GetRpcServer(), apis)
+	mcps, err := mcp.New(cfg, qm.GetRpcServer())
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func newQitmeerFullNode(node *Node) (*QitmeerFull, error) {
 		qm.GetMiner().RpcSer = qm.GetRpcServer()
 	}
 
-	if err := qm.RegisterMCPService(cfg, apis); err != nil {
+	if err := qm.RegisterMCPService(cfg); err != nil {
 		return nil, err
 	}
 
